@@ -4,6 +4,9 @@ import { successResponse, errorResponse } from '@/lib/api-helpers'
 import { generateTokenPair } from '@/lib/jwt'
 import { cookies } from 'next/headers'
 
+// Use Node.js runtime (required for jsonwebtoken)
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const { username, password, rememberMe } = await request.json()
@@ -41,12 +44,11 @@ export async function POST(request: NextRequest) {
       path: '/',
     })
 
-    const { password: _, ...userWithoutPassword } = user
-
+    // authenticateUser already returns user without password field
     return Response.json(
       successResponse(
         {
-          user: userWithoutPassword,
+          user: user,
           accessToken: tokenPair.accessToken,
         },
         'Login successful'

@@ -4,6 +4,9 @@ import { verifyRefreshToken, generateTokenPair } from '@/lib/jwt'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 
+// Use Node.js runtime (required for jsonwebtoken)
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies()
