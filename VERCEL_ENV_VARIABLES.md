@@ -51,7 +51,35 @@ REFRESH_TOKEN_EXPIRY=7d
 
 ---
 
-### 4. **Environment Type** (Optional)
+### 4. **Email Configuration** (Required for Forgot Password)
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-official-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=your-official-email@gmail.com
+```
+- **Description**: SMTP configuration for sending password reset emails
+- **Required**: ✅ Yes (for forgot password feature)
+- **Security**: 🔒 Use app passwords for Gmail (not regular password)
+
+**For Gmail:**
+1. Enable 2-Factor Authentication
+2. Generate App Password: Google Account → Security → App passwords
+3. Use the app password as `SMTP_PASS`
+
+**Important:**
+- `SMTP_FROM` = Your **official email address** (where emails come FROM)
+- `SMTP_USER` = Same email (or account with SMTP access)
+- For Gmail, both should be the same email address
+
+**Other Providers:**
+- **SendGrid**: `SMTP_HOST=smtp.sendgrid.net`, `SMTP_USER=apikey`, `SMTP_PASS=your-api-key`
+- **Outlook**: `SMTP_HOST=smtp-mail.outlook.com`, `SMTP_PORT=587`
+
+---
+
+### 5. **Environment Type** (Optional)
 ```
 NODE_ENV=production
 ```
@@ -89,6 +117,11 @@ vercel env add JWT_SECRET
 vercel env add JWT_REFRESH_SECRET
 vercel env add ACCESS_TOKEN_EXPIRY
 vercel env add REFRESH_TOKEN_EXPIRY
+vercel env add SMTP_HOST
+vercel env add SMTP_PORT
+vercel env add SMTP_USER
+vercel env add SMTP_PASS
+vercel env add SMTP_FROM
 
 # Pull environment variables (for local development)
 vercel env pull .env.local
@@ -111,6 +144,13 @@ JWT_REFRESH_SECRET=your-different-64-character-random-secret-key
 # Token Expiry (Optional - has defaults)
 ACCESS_TOKEN_EXPIRY=15m
 REFRESH_TOKEN_EXPIRY=7d
+
+# Email Configuration (REQUIRED for Forgot Password)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-official-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=your-official-email@gmail.com
 
 # Environment (Optional - Vercel sets automatically)
 NODE_ENV=production
@@ -151,6 +191,11 @@ After adding environment variables in Vercel:
 - [ ] `JWT_REFRESH_SECRET` is set (different from JWT_SECRET)
 - [ ] `ACCESS_TOKEN_EXPIRY` is set (or using default)
 - [ ] `REFRESH_TOKEN_EXPIRY` is set (or using default)
+- [ ] `SMTP_HOST` is set (e.g., smtp.gmail.com)
+- [ ] `SMTP_PORT` is set (e.g., 587)
+- [ ] `SMTP_USER` is set (your official email)
+- [ ] `SMTP_PASS` is set (app password for Gmail)
+- [ ] `SMTP_FROM` is set (same as SMTP_USER for Gmail)
 - [ ] Variables are added to Production environment
 - [ ] Variables are added to Preview environment (if needed)
 - [ ] Redeployed the application after adding variables
