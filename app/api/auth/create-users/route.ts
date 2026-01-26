@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 import { createUser } from '@/lib/auth'
-import { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // POST /api/auth/create-users - Create default users for all roles
 export async function POST(request: NextRequest) {
@@ -12,22 +14,22 @@ export async function POST(request: NextRequest) {
       {
         username: 'superadmin',
         password: 'superadmin123',
-        role: UserRole.SUPER_ADMIN,
+        role: 'SUPER_ADMIN' as UserRole,
       },
       {
         username: 'admin',
         password: 'admin123',
-        role: UserRole.ADMIN,
+        role: 'ADMIN' as UserRole,
       },
       {
         username: 'receptionist',
         password: 'receptionist123',
-        role: UserRole.RECEPTIONIST,
+        role: 'RECEPTIONIST' as UserRole,
       },
       {
         username: 'staff',
         password: 'staff123',
-        role: UserRole.STAFF,
+        role: 'STAFF' as UserRole,
       },
     ]
 

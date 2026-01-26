@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-import { UserRole, BookingStatus } from '@prisma/client'
+
+// Types - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
+type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED'
 import { validateStatusTransition } from '@/lib/booking-state-machine'
 import { BookingError, InvalidStatusTransitionError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
@@ -52,7 +55,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireAuth(UserRole.RECEPTIONIST)(request)
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const userId = (authResult as any).userId
@@ -218,7 +221,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireAuth(UserRole.RECEPTIONIST)(request)
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const userId = (authResult as any).userId

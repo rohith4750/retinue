@@ -2,16 +2,18 @@ import { NextRequest } from 'next/server'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 import { requireAuth } from '@/lib/api-helpers'
 import { hashPassword } from '@/lib/auth'
-import { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // Validation schema for updating a user
 const updateUserSchema = z.object({
   username: z.string().min(3).max(50).optional(),
   email: z.union([z.string().email(), z.string().length(0), z.undefined()]).optional(),
   password: z.string().min(6).max(100).optional(),
-  role: z.nativeEnum(UserRole).optional(),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'STAFF']).optional(),
 })
 
 // GET /api/auth/users/[id] - Get a specific user (Admin only)
@@ -21,7 +23,7 @@ export async function GET(
 ) {
   try {
     // Check authentication and admin role
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) {
       return authResult
     }
@@ -62,7 +64,7 @@ export async function PUT(
 ) {
   try {
     // Check authentication and admin role
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) {
       return authResult
     }
@@ -165,7 +167,7 @@ export async function DELETE(
 ) {
   try {
     // Check authentication and admin role
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) {
       return authResult
     }

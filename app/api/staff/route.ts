@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-import { UserRole } from '@prisma/client'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // GET /api/staff - List all staff
 export async function GET(request: NextRequest) {
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
 // POST /api/staff - Create staff member (Admin only)
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()

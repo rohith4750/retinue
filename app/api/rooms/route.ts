@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 // POST /api/rooms - Create new room (Admin only)
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()

@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-import { UserRole } from '@prisma/client'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // GET /api/inventory - List all inventory items
 export async function GET(request: NextRequest) {
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Check for low stock
-    const lowStockItems = items.filter((item) => item.quantity <= item.minStock)
+    const lowStockItems = items.filter((item: { quantity: number; minStock: number }) => item.quantity <= item.minStock)
 
     return Response.json(successResponse({ items, lowStockItems }))
   } catch (error) {
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
 // POST /api/inventory - Create inventory item (Admin only)
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()

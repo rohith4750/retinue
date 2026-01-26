@@ -2,23 +2,25 @@ import { NextRequest } from 'next/server'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 import { createUser } from '@/lib/auth'
 import { requireAuth } from '@/lib/api-helpers'
-import { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // Validation schema for creating a user
 const createUserSchema = z.object({
   username: z.string().min(3).max(50),
   email: z.union([z.string().email(), z.string().length(0), z.undefined()]).optional(),
   password: z.string().min(6).max(100),
-  role: z.nativeEnum(UserRole),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'STAFF']),
 })
 
 // POST /api/auth/users - Create a new user (Admin only)
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and admin role
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) {
       return authResult // Return error response
     }
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and admin role
-    const authResult = await requireAuth(UserRole.ADMIN)(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) {
       return authResult // Return error response
     }

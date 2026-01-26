@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 // POST /api/bookings - Create new booking with all Phase 1-3 improvements
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth(UserRole.RECEPTIONIST)(request)
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const userId = (authResult as any).userId // Get user ID from auth
