@@ -40,13 +40,13 @@ export function useMutationWithInvalidation<TData = any, TVariables = any, TErro
 
   return useMutation<TData, TError, TVariables>({
     ...mutationOptions,
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, context, mutation) => {
       // Automatically invalidate all related queries
       invalidateRelatedQueries(queryClient, endpoint)
       
       // Call custom onSuccess if provided
       if (onSuccess) {
-        onSuccess(data, variables, context)
+        onSuccess(data, variables, context, mutation)
       }
     },
   })

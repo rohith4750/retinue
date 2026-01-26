@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 import { createUser } from '@/lib/auth'
 import { requireAuth } from '@/lib/api-helpers'
-// @ts-expect-error - UserRole is available at runtime from Prisma client
 import { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'

@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-// @ts-expect-error - UserRole and BookingStatus are available at runtime from Prisma client
 import { UserRole, BookingStatus } from '@prisma/client'
 import { validateStatusTransition } from '@/lib/booking-state-machine'
 import { BookingError, InvalidStatusTransitionError } from '@/lib/booking-errors'

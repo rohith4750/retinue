@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, FaTag, FaEye } from 'react-icons/fa'
@@ -12,7 +12,7 @@ import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents
 import { useFormValidation } from '@/hooks/useFormValidation'
 import { bookingValidationRules } from '@/lib/form-validation'
 
-export default function NewBookingPage() {
+function NewBookingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
@@ -481,5 +481,26 @@ export default function NewBookingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function NewBookingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen relative flex">
+        <Navbar />
+        <div className="flex-1 lg:ml-64">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="card">
+              <div className="card-header">
+                <h1 className="text-2xl font-bold text-slate-100">Loading...</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <NewBookingContent />
+    </Suspense>
   )
 }
