@@ -58,7 +58,7 @@ export default function LoginPage() {
               <FaHotel className="text-xl text-white" />
             </div>
             <h2 className="text-xl font-bold text-slate-100 mb-1.5">
-              Hotel Management System
+              The Retinue
             </h2>
             <p className="text-sm text-slate-400">
               Sign in to access your dashboard

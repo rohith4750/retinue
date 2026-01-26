@@ -72,7 +72,7 @@ export function Sidebar() {
               className="flex items-center space-x-2 text-base font-bold text-slate-100 hover:text-sky-400 transition-colors"
             >
               <FaHotel className="w-5 h-5" />
-              <span>Hotel Management</span>
+              <span>The Retinue</span>
             </Link>
           </div>
 

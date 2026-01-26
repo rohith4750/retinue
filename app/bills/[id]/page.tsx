@@ -6,8 +6,10 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaFileInvoice, FaMoneyBillWave } from 'react-icons/fa'
+import { FaFileInvoice, FaMoneyBillWave, FaDownload, FaPrint } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
+import { pdf } from '@react-pdf/renderer'
+import { BillPDF } from '@/components/BillPDF'
 
 export default function BillPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -75,6 +77,24 @@ export default function BillPage({ params }: { params: { id: string } }) {
   const guest = booking.guest
   const room = booking.room
 
+  const handleDownloadPDF = async () => {
+    try {
+      const blob = await pdf(<BillPDF bill={bill} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Bill-${bill.billNumber}-TheRetinue.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success('PDF downloaded successfully')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF')
+    }
+  }
+
   return (
     <div className="min-h-screen relative flex">
       <Navbar />
@@ -83,36 +103,103 @@ export default function BillPage({ params }: { params: { id: string } }) {
         <div className="glow-emerald bottom-20 left-20"></div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         <div className="card">
-          <div className="flex justify-between items-start mb-6 relative z-10">
-            <div>
-              <h1 className="text-xl font-bold text-slate-100">Invoice</h1>
-              <p className="text-xs text-slate-400">Bill Number: {bill.billNumber}</p>
+          {/* Hotel Header */}
+          <div className="border-b border-white/10 pb-6 mb-6 relative z-10">
+            <div className="text-center mb-4">
+              <h1 className="text-3xl font-bold text-blue-400 mb-1">THE RETINUE</h1>
+              <p className="text-sm text-slate-400">Luxury Hotel & Hospitality</p>
             </div>
-            <button
-              onClick={() => window.print()}
-              className="btn-primary"
-            >
-              Print / Download
-            </button>
+            <div className="text-center text-xs text-slate-500">
+              <p>123 Hotel Street, City, State - 123456</p>
+              <p>Phone: +91 1234567890 | Email: info@theretinue.com</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 mb-8 relative z-10">
+          <div className="flex justify-between items-start mb-6 relative z-10">
             <div>
-              <h3 className="font-semibold text-slate-100 mb-2">Guest Details</h3>
-              <p className="text-slate-300">{guest.name}</p>
-              <p className="text-slate-300">{guest.phone}</p>
-              {guest.address && <p className="text-slate-300">{guest.address}</p>}
+              <h2 className="text-xl font-bold text-slate-100">Invoice</h2>
+              <p className="text-xs text-slate-400 mt-1">Bill Number: {bill.billNumber}</p>
+              <p className="text-xs text-slate-400">
+                Date: {new Date(bill.createdAt).toLocaleString('en-IN')}
+              </p>
             </div>
-            <div>
-              <h3 className="font-semibold text-slate-100 mb-2">Booking Details</h3>
-              <p className="text-slate-300">Room: {room.roomNumber}</p>
-              <p className="text-slate-300">Type: {room.roomType}</p>
-              <p className="text-slate-300">
-                Check-in: {new Date(booking.checkIn).toLocaleDateString()}
-              </p>
-              <p className="text-slate-300">
-                Check-out: {new Date(booking.checkOut).toLocaleDateString()}
-              </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDownloadPDF}
+                className="btn-primary flex items-center gap-2"
+              >
+                <FaDownload className="w-4 h-4" />
+                <span>Download PDF</span>
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <FaPrint className="w-4 h-4" />
+                <span>Print</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 relative z-10">
+            <div className="bg-slate-800/40 p-4 rounded-lg">
+              <h3 className="font-semibold text-slate-100 mb-3 text-lg border-b border-white/10 pb-2">
+                Guest Details
+              </h3>
+              <div className="space-y-2">
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Name:</span> {guest.name}
+                </p>
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Phone:</span> {guest.phone}
+                </p>
+                {guest.email && (
+                  <p className="text-slate-300">
+                    <span className="text-slate-400">Email:</span> {guest.email}
+                  </p>
+                )}
+                {guest.address && (
+                  <p className="text-slate-300">
+                    <span className="text-slate-400">Address:</span> {guest.address}
+                  </p>
+                )}
+                {guest.idProof && (
+                  <p className="text-slate-300">
+                    <span className="text-slate-400">ID Proof:</span> {guest.idProof}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="bg-slate-800/40 p-4 rounded-lg">
+              <h3 className="font-semibold text-slate-100 mb-3 text-lg border-b border-white/10 pb-2">
+                Booking Details
+              </h3>
+              <div className="space-y-2">
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Booking ID:</span> {booking.id}
+                </p>
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Room:</span> {room.roomNumber} ({room.roomType})
+                </p>
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Floor:</span> {room.floor}
+                </p>
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Check-in:</span>{' '}
+                  {new Date(booking.checkIn).toLocaleString('en-IN')}
+                </p>
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Check-out:</span>{' '}
+                  {new Date(booking.checkOut).toLocaleString('en-IN')}
+                </p>
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Slot Type:</span> {booking.slot.slotType}
+                </p>
+                <p className="text-slate-300">
+                  <span className="text-slate-400">Status:</span>{' '}
+                  <span className="badge badge-info">{booking.status}</span>
+                </p>
+              </div>
             </div>
           </div>
 

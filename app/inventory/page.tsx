@@ -50,7 +50,7 @@ export default function InventoryPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-1">Inventory Management</h1>
-            <p className="text-sm text-slate-400">Track and manage hotel inventory items</p>
+            <p className="text-sm text-slate-400">Track and manage inventory items</p>
           </div>
           <button
             onClick={() => setShowModal(true)}

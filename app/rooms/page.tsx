@@ -86,7 +86,7 @@ export default function RoomsPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-1">Room Management</h1>
             <p className="text-sm text-slate-400">
-              {canManageRooms ? 'Manage hotel rooms, availability, and pricing' : 'View hotel rooms and availability'}
+              {canManageRooms ? 'Manage rooms, availability, and pricing' : 'View rooms and availability'}
             </p>
           </div>
           {canManageRooms && (

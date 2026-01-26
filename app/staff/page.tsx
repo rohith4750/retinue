@@ -47,7 +47,7 @@ export default function StaffPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-1">Staff Management</h1>
-            <p className="text-sm text-slate-400">Manage hotel staff members and attendance</p>
+            <p className="text-sm text-slate-400">Manage staff members and attendance</p>
           </div>
           <button
             onClick={() => setShowModal(true)}

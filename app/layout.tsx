@@ -11,8 +11,8 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Hotel Management System',
-  description: 'Complete hotel management solution',
+  title: 'The Retinue - Hotel Management',
+  description: 'The Retinue - Luxury Hotel & Hospitality Management System',
 }
 
 export default function RootLayout({
