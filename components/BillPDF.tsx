@@ -190,7 +190,8 @@ interface BillPDFProps {
 }
 
 export function BillPDF({ bill }: BillPDFProps) {
-  const { booking, guest, room } = bill
+  const { booking } = bill
+  const { guest, room } = booking
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
