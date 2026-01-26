@@ -1,0 +1,236 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  DELUXE
+  SUITE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  BOOKED
+  MAINTENANCE
+}
+
+enum SlotType {
+  MORNING
+  AFTERNOON
+  NIGHT
+  FULL_DAY
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  RECEPTIONIST
+  STAFF
+}
+
+enum InventoryTransactionType {
+  IN
+  OUT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+}
+
+// Room Master
+model Room {
+  id          String      @id @default(cuid())
+  roomNumber  String      @unique
+  roomType    RoomType
+  floor       Int
+  basePrice   Float
+  capacity    Int // Total capacity (adults + children)
+  status      RoomStatus  @default(AVAILABLE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  slots       RoomSlot[]
+  bookings    Booking[]
+}
+
+// Room Slot / Availability
+model RoomSlot {
+  id          String      @id @default(cuid())
+  roomId      String
+  date        DateTime
+  slotType    SlotType
+  price       Float
+  isAvailable Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  room        Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+}
+
+// Guest
+model Guest {
+  id          String      @id @default(cuid())
+  name        String
+  phone       String
+  idProof     String?
+  address     String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  bookings    Booking[]
+}
+
+// Booking
+model Booking {
+  id          String      @id @default(cuid())
+  roomId      String
+  slotId      String
+  guestId     String
+  bookingDate DateTime    @default(now())
+  checkIn     DateTime
+  checkOut    DateTime
+  totalAmount Float
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  room        Room        @relation(fields: [roomId], references: [id])
+  slot        RoomSlot    @relation(fields: [slotId], references: [id])
+  guest       Guest       @relation(fields: [guestId], references: [id])
+  bill        Bill?
+  history     BookingHistory[]
+
+  // Indexes for performance (Phase 2)
+  @@index([roomId, status])
+  @@index([guestId])
+  @@index([checkIn, checkOut])
+  @@index([status, checkIn])
+  @@index([status])
+}
+
+// Bill
+model Bill {
+  id            String        @id @default(cuid())
+  bookingId     String        @unique
+  billNumber    String        @unique
+  subtotal      Float
+  tax           Float         @default(0)
+  discount      Float         @default(0)
+  totalAmount   Float
+  paidAmount    Float         @default(0)
+  balanceAmount Float
+  paymentStatus PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+// Inventory
+model Inventory {
+  id          String                  @id @default(cuid())
+  itemName    String
+  category    String
+  quantity    Int
+  unit        String
+  minStock    Int
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  transactions InventoryTransaction[]
+}
+
+// Inventory Transaction
+model InventoryTransaction {
+  id          String                  @id @default(cuid())
+  inventoryId String
+  type        InventoryTransactionType
+  quantity    Int
+  reference   String? // booking id or room id
+  notes       String?
+  createdAt   DateTime                @default(now())
+
+  inventory   Inventory               @relation(fields: [inventoryId], references: [id])
+}
+
+// Staff
+model Staff {
+  id          String            @id @default(cuid())
+  name        String
+  role        String
+  phone       String
+  salary      Float?
+  status      String            @default("ACTIVE")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  attendance  Attendance[]
+}
+
+// Attendance
+model Attendance {
+  id          String            @id @default(cuid())
+  staffId     String
+  date        DateTime
+  status      AttendanceStatus
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  staff       Staff             @relation(fields: [staffId], references: [id], onDelete: Cascade)
+}
+
+// User (Authentication)
+model User {
+  id          String      @id @default(cuid())
+  username    String      @unique
+  email       String?     @unique
+  password    String // hashed
+  role        UserRole
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// Booking History / Audit Trail (Phase 3)
+model BookingHistory {
+  id          String   @id @default(cuid())
+  bookingId   String
+  action      String   // CREATED, UPDATED, STATUS_CHANGED, CANCELLED, etc.
+  changedBy   String?  // User ID
+  changes     Json?    // What changed (before/after)
+  notes       String?
+  timestamp   DateTime @default(now())
+
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([timestamp])
+}
