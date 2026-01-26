@@ -1,4 +1,5 @@
-import type { UserRole } from '@prisma/client'
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 /**
  * Standard API Response Types

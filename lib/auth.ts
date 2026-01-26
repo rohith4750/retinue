@@ -1,6 +1,8 @@
 import { compare, hash } from 'bcryptjs'
 import { prisma } from './prisma'
-import type { UserRole } from '@prisma/client'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 export async function hashPassword(password: string): Promise<string> {
   return hash(password, 12)
