@@ -24,10 +24,22 @@ export async function POST(request: NextRequest) {
 
     // In production, generate JWT token here
     return Response.json(successResponse(user, 'Login successful'))
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error)
+    
+    // More detailed error messages for debugging
+    const errorMessage = error?.message || 'An error occurred during login'
+    
+    // Check if it's a database connection error
+    if (errorMessage.includes('connect') || errorMessage.includes('P1001') || errorMessage.includes('relation') || errorMessage.includes('does not exist')) {
+      return Response.json(
+        errorResponse('Database error', 'Database connection failed. Please check your database configuration.'),
+        { status: 500 }
+      )
+    }
+    
     return Response.json(
-      errorResponse('Server error', 'An error occurred during login'),
+      errorResponse('Server error', errorMessage),
       { status: 500 }
     )
   }
