@@ -23,7 +23,8 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        credentials: 'include', // Include cookies for refresh token
+        body: JSON.stringify({ username, password, rememberMe }),
       })
 
       const data = await response.json()

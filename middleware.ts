@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verifyAccessToken, extractTokenFromHeader } from './lib/jwt'
 
 // Routes that don't require authentication
 const publicRoutes = ['/login', '/api/auth/login', '/api/auth/refresh', '/api/health']
@@ -13,41 +12,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for access token
-  const authHeader = request.headers.get('authorization')
-  const token = extractTokenFromHeader(authHeader)
-
-  // For API routes, require token
-  if (pathname.startsWith('/api')) {
-    if (!token) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', message: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
-    const payload = verifyAccessToken(token)
-    if (!payload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized', message: 'Invalid or expired token' },
-        { status: 401 }
-      )
-    }
-
-    // Add user info to request headers for API routes
-    const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-id', payload.userId)
-    requestHeaders.set('x-user-role', payload.role)
-
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    })
-  }
-
-  // For page routes, redirect to login if no token
-  // Note: Client-side auth check is also done in components
+  // Note: JWT verification is handled in API routes via requireAuth()
+  // Middleware runs on Edge Runtime which doesn't support jsonwebtoken
+  // API routes use Node.js runtime and can properly verify JWT tokens
+  
+  // For page routes, client-side auth check is done in components
+  // API routes will handle authentication via requireAuth() helper
   return NextResponse.next()
 }
 

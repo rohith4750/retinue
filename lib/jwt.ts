@@ -1,11 +1,5 @@
-// Conditional import for jsonwebtoken (install with: npm install jsonwebtoken @types/jsonwebtoken)
-let jwt: any
-try {
-  jwt = require('jsonwebtoken')
-} catch {
-  // Fallback if jsonwebtoken is not installed
-  console.warn('jsonwebtoken not installed. Please run: npm install jsonwebtoken @types/jsonwebtoken')
-}
+// Import jsonwebtoken (must be installed: npm install jsonwebtoken @types/jsonwebtoken)
+import jwt, { type SignOptions } from 'jsonwebtoken'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
 type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
@@ -30,26 +24,36 @@ export interface TokenPair {
  * Generate access token (short-lived)
  */
 export function generateAccessToken(payload: TokenPayload): string {
-  if (!jwt) {
-    throw new Error('jsonwebtoken is not installed. Please run: npm install jsonwebtoken @types/jsonwebtoken')
+  if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
+    throw new Error('JWT_SECRET environment variable is not set. Please set it in Vercel environment variables.')
   }
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: ACCESS_TOKEN_EXPIRY,
-    issuer: 'hotel-management-system',
-  })
+  // Type assertion needed due to strict jsonwebtoken types - string values work fine at runtime
+  return jwt.sign(
+    payload as object,
+    JWT_SECRET,
+    {
+      expiresIn: ACCESS_TOKEN_EXPIRY,
+      issuer: 'hotel-management-system',
+    } as SignOptions
+  )
 }
 
 /**
  * Generate refresh token (long-lived)
  */
 export function generateRefreshToken(payload: TokenPayload): string {
-  if (!jwt) {
-    throw new Error('jsonwebtoken is not installed. Please run: npm install jsonwebtoken @types/jsonwebtoken')
+  if (!JWT_REFRESH_SECRET || JWT_REFRESH_SECRET === 'your-refresh-secret-key-change-in-production') {
+    throw new Error('JWT_REFRESH_SECRET environment variable is not set. Please set it in Vercel environment variables.')
   }
-  return jwt.sign(payload, JWT_REFRESH_SECRET, {
-    expiresIn: REFRESH_TOKEN_EXPIRY,
-    issuer: 'hotel-management-system',
-  })
+  // Type assertion needed due to strict jsonwebtoken types - string values work fine at runtime
+  return jwt.sign(
+    payload as object,
+    JWT_REFRESH_SECRET,
+    {
+      expiresIn: REFRESH_TOKEN_EXPIRY,
+      issuer: 'hotel-management-system',
+    } as SignOptions
+  )
 }
 
 /**
@@ -66,13 +70,18 @@ export function generateTokenPair(payload: TokenPayload): TokenPair {
  * Verify access token
  */
 export function verifyAccessToken(token: string): TokenPayload | null {
-  if (!jwt) {
+  if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
+    console.error('JWT_SECRET is not set. Token verification will fail.')
     return null
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
     return decoded
-  } catch (error) {
+  } catch (error: any) {
+    // Log error for debugging (remove in production if needed)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Token verification failed:', error.message)
+    }
     return null
   }
 }
@@ -81,13 +90,18 @@ export function verifyAccessToken(token: string): TokenPayload | null {
  * Verify refresh token
  */
 export function verifyRefreshToken(token: string): TokenPayload | null {
-  if (!jwt) {
+  if (!JWT_REFRESH_SECRET || JWT_REFRESH_SECRET === 'your-refresh-secret-key-change-in-production') {
+    console.error('JWT_REFRESH_SECRET is not set. Token verification will fail.')
     return null
   }
   try {
     const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as TokenPayload
     return decoded
-  } catch (error) {
+  } catch (error: any) {
+    // Log error for debugging (remove in production if needed)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Refresh token verification failed:', error.message)
+    }
     return null
   }
 }
