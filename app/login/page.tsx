@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api-client'
 import toast from 'react-hot-toast'
-import { FaHotel, FaSpinner } from 'react-icons/fa'
+import { FaHotel, FaSpinner, FaTimes } from 'react-icons/fa'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,6 +13,16 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  // Forgot password states
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+  const [resetCodeSent, setResetCodeSent] = useState(false)
+  const [resetCode, setResetCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,6 +62,78 @@ export default function LoginPage() {
       toast.error(errorMessage)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setForgotPasswordLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send reset code')
+      }
+
+      toast.success('Reset code sent to your email!')
+      setResetCodeSent(true)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send reset code')
+    } finally {
+      setForgotPasswordLoading(false)
+    }
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
+    setResetPasswordLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotPasswordEmail,
+          code: resetCode,
+          newPassword,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to reset password')
+      }
+
+      toast.success('Password reset successfully! You can now login.')
+      setShowForgotPassword(false)
+      setResetCodeSent(false)
+      setForgotPasswordEmail('')
+      setResetCode('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reset password')
+    } finally {
+      setResetPasswordLoading(false)
     }
   }
 
@@ -114,18 +196,27 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              <div className="flex items-center">
-                <input
-                  id="rememberMe"
-                  name="rememberMe"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-sky-500 bg-slate-800 border-white/10 rounded focus:ring-sky-500 focus:ring-2"
-                />
-                <label htmlFor="rememberMe" className="ml-2 text-sm text-slate-300">
-                  Remember me
-                </label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="rememberMe"
+                    name="rememberMe"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-sky-500 bg-slate-800 border-white/10 rounded focus:ring-sky-500 focus:ring-2"
+                  />
+                  <label htmlFor="rememberMe" className="ml-2 text-sm text-slate-300">
+                    Remember me
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-sky-400 hover:text-sky-300 transition-colors"
+                >
+                  Forgot password?
+                </button>
               </div>
             </div>
 
@@ -152,6 +243,167 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card max-w-md w-full relative">
+            <button
+              onClick={() => {
+                setShowForgotPassword(false)
+                setResetCodeSent(false)
+                setForgotPasswordEmail('')
+                setResetCode('')
+                setNewPassword('')
+                setConfirmPassword('')
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <FaTimes className="w-5 h-5" />
+            </button>
+
+            {!resetCodeSent ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-100 mb-2">Forgot Password</h2>
+                  <p className="text-sm text-slate-400">
+                    Enter your email address and we'll send you a 6-digit code to reset your password.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="forgotEmail" className="form-label">
+                    Email Address
+                  </label>
+                  <input
+                    id="forgotEmail"
+                    type="email"
+                    required
+                    className="form-input"
+                    placeholder="Enter your email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setForgotPasswordEmail('')
+                    }}
+                    className="btn-secondary flex-1"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotPasswordLoading}
+                    className="btn-primary flex-1"
+                  >
+                    {forgotPasswordLoading ? (
+                      <span className="flex items-center justify-center">
+                        <FaSpinner className="animate-spin mr-2" />
+                        Sending...
+                      </span>
+                    ) : (
+                      'Send Code'
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-100 mb-2">Reset Password</h2>
+                  <p className="text-sm text-slate-400">
+                    Enter the 6-digit code sent to <span className="text-slate-300 font-semibold">{forgotPasswordEmail}</span> and your new password.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="resetCode" className="form-label">
+                    6-Digit Code
+                  </label>
+                  <input
+                    id="resetCode"
+                    type="text"
+                    required
+                    maxLength={6}
+                    pattern="[0-9]{6}"
+                    className="form-input text-center text-2xl tracking-widest"
+                    placeholder="000000"
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="newPassword" className="form-label">
+                    New Password
+                  </label>
+                  <input
+                    id="newPassword"
+                    type="password"
+                    required
+                    minLength={6}
+                    className="form-input"
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="confirmPassword" className="form-label">
+                    Confirm Password
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    required
+                    minLength={6}
+                    className="form-input"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetCodeSent(false)
+                      setResetCode('')
+                      setNewPassword('')
+                      setConfirmPassword('')
+                    }}
+                    className="btn-secondary flex-1"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetPasswordLoading || resetCode.length !== 6}
+                    className="btn-primary flex-1"
+                  >
+                    {resetPasswordLoading ? (
+                      <span className="flex items-center justify-center">
+                        <FaSpinner className="animate-spin mr-2" />
+                        Resetting...
+                      </span>
+                    ) : (
+                      'Reset Password'
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

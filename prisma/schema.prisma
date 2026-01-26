@@ -210,13 +210,14 @@ model Attendance {
 
 // User (Authentication)
 model User {
-  id          String      @id @default(cuid())
-  username    String      @unique
-  email       String?     @unique
-  password    String // hashed
-  role        UserRole
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id            String          @id @default(cuid())
+  username      String          @unique
+  email         String?         @unique
+  password      String // hashed
+  role          UserRole
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  passwordResets PasswordReset[]
 }
 
 // Booking History / Audit Trail (Phase 3)
@@ -233,4 +234,22 @@ model BookingHistory {
 
   @@index([bookingId])
   @@index([timestamp])
+}
+
+// Password Reset
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String   // 6-digit code
+  email     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email])
+  @@index([code])
+  @@index([expiresAt])
 }
