@@ -1,10 +1,12 @@
 import { NextRequest } from 'next/server'
 import { authenticateUser } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
+import { generateTokenPair } from '@/lib/jwt'
+import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json()
+    const { username, password, rememberMe } = await request.json()
 
     if (!username || !password) {
       return Response.json(
@@ -22,8 +24,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // In production, generate JWT token here
-    return Response.json(successResponse(user, 'Login successful'))
+    // Generate JWT tokens
+    const tokenPair = generateTokenPair({
+      userId: user.id,
+      role: user.role,
+      username: user.username,
+    })
+
+    // Set refresh token in httpOnly cookie
+    const cookieStore = await cookies()
+    cookieStore.set('refreshToken', tokenPair.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60, // 30 days if remember me, else 7 days
+      path: '/',
+    })
+
+    const { password: _, ...userWithoutPassword } = user
+
+    return Response.json(
+      successResponse(
+        {
+          user: userWithoutPassword,
+          accessToken: tokenPair.accessToken,
+        },
+        'Login successful'
+      )
+    )
   } catch (error: any) {
     console.error('Login error:', error)
     

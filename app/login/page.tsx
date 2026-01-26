@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -32,9 +33,15 @@ export default function LoginPage() {
       }
 
       // Store auth info
-      localStorage.setItem('auth_token', 'token')
-      localStorage.setItem('user_id', data.data.id)
-      localStorage.setItem('user', JSON.stringify(data.data))
+      if (data.data.accessToken) {
+        localStorage.setItem('accessToken', data.data.accessToken)
+      }
+      localStorage.setItem('user', JSON.stringify(data.data.user))
+      
+      // Store remember me preference
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true')
+      }
 
       toast.success('Login successful!')
       router.push('/dashboard')
@@ -105,6 +112,19 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="rememberMe"
+                  name="rememberMe"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 text-sky-500 bg-slate-800 border-white/10 rounded focus:ring-sky-500 focus:ring-2"
+                />
+                <label htmlFor="rememberMe" className="ml-2 text-sm text-slate-300">
+                  Remember me
+                </label>
               </div>
             </div>
 

@@ -6,13 +6,18 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaUser, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory } from 'react-icons/fa'
+import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaUser, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory, FaDownload, FaSearch } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
+import { SearchInput } from '@/components/SearchInput'
+import { useDebounce } from '@/hooks/useDebounce'
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut'
 
 export default function BookingsPage() {
   const router = useRouter()
   const [page, setPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearch = useDebounce(searchQuery, 300)
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean
     bookingId: string | null
@@ -41,10 +46,36 @@ export default function BookingsPage() {
 
   const queryClient = useQueryClient()
 
-  // Phase 2: Pagination support
+  // Keyboard shortcut: Ctrl+K for search
+  useKeyboardShortcut({
+    ctrl: true,
+    key: 'k',
+    callback: () => {
+      const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement
+      searchInput?.focus()
+    },
+  })
+
+  // Keyboard shortcut: Ctrl+N for new booking
+  useKeyboardShortcut({
+    ctrl: true,
+    key: 'n',
+    callback: () => router.push('/bookings/new'),
+  })
+
+  // Phase 2: Pagination support with search
   const { data: bookingsResponse, isLoading } = useQuery({
-    queryKey: ['bookings', page],
-    queryFn: () => api.get(`/bookings?page=${page}&limit=12`),
+    queryKey: ['bookings', page, debouncedSearch],
+    queryFn: () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '12',
+      })
+      if (debouncedSearch) {
+        params.append('search', debouncedSearch)
+      }
+      return api.get(`/bookings?${params.toString()}`)
+    },
   })
 
   // Handle new API response format: { data: [...], pagination: {...} }
@@ -87,6 +118,48 @@ export default function BookingsPage() {
     },
   })
 
+  const handleExportCSV = () => {
+    if (!bookings || bookings.length === 0) {
+      toast.error('No bookings to export')
+      return
+    }
+
+    // Create CSV content
+    const headers = ['Booking ID', 'Guest Name', 'Phone', 'Room', 'Check-in', 'Check-out', 'Status', 'Amount']
+    const rows: string[][] = bookings.map((booking: any) => [
+      booking.bookingId || booking.id,
+      booking.guest.name,
+      booking.guest.phone,
+      `Room ${booking.room.roomNumber}`,
+      new Date(booking.checkIn).toLocaleDateString(),
+      new Date(booking.checkOut).toLocaleDateString(),
+      booking.status,
+      `₹${booking.totalAmount.toLocaleString()}`,
+    ])
+
+    const csvRows: string[] = rows.map((row: string[]) => 
+      row.map((cell: string) => `"${cell}"`).join(',')
+    )
+
+    const csvContent = [
+      headers.join(','),
+      ...csvRows,
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `bookings_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast.success('Bookings exported successfully')
+  }
+
   const handleStatusUpdate = (bookingId: string, status: string, action: string) => {
     setConfirmModal({ show: true, bookingId, status, action })
   }
@@ -105,8 +178,35 @@ export default function BookingsPage() {
     return (
       <div className="min-h-screen relative flex">
         <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Loading...</div>
+        <div className="flex-1 lg:ml-64">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <div className="h-8 w-32 bg-slate-700/50 rounded-lg animate-pulse mb-2" />
+                <div className="h-4 w-64 bg-slate-700/50 rounded animate-pulse" />
+              </div>
+              <div className="flex space-x-2">
+                <div className="h-10 w-32 bg-slate-700/50 rounded-lg animate-pulse" />
+                <div className="h-10 w-32 bg-slate-700/50 rounded-lg animate-pulse" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="card">
+                  <div className="h-6 w-32 bg-slate-700/50 rounded animate-pulse mb-4" />
+                  <div className="space-y-2 mb-4">
+                    <div className="h-3 w-full bg-slate-700/50 rounded animate-pulse" />
+                    <div className="h-3 w-3/4 bg-slate-700/50 rounded animate-pulse" />
+                    <div className="h-3 w-2/3 bg-slate-700/50 rounded animate-pulse" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
+                    <div className="h-8 bg-slate-700/50 rounded-lg animate-pulse" />
+                    <div className="h-8 bg-slate-700/50 rounded-lg animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -119,25 +219,44 @@ export default function BookingsPage() {
         <div className="glow-sky top-20 right-20"></div>
         <div className="glow-emerald bottom-20 left-20"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-100 mb-1">Bookings</h1>
-            <p className="text-sm text-slate-400">Manage guest bookings and reservations</p>
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-100 mb-1">Bookings</h1>
+              <p className="text-sm text-slate-400">Manage guest bookings and reservations</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => router.push('/bookings/history')}
+                className="btn-secondary flex items-center space-x-2"
+              >
+                <FaHistory className="w-4 h-4" />
+                <span>View History</span>
+              </button>
+              <button
+                onClick={() => router.push('/bookings/new')}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <FaCalendarAlt className="w-4 h-4" />
+                <span>New Booking</span>
+              </button>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
+            <div className="flex-1 max-w-md">
+              <SearchInput
+                placeholder="Search by guest name, phone, or booking ID..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            </div>
             <button
-              onClick={() => router.push('/bookings/history')}
+              onClick={handleExportCSV}
               className="btn-secondary flex items-center space-x-2"
+              title="Export to CSV"
             >
-              <FaHistory className="w-4 h-4" />
-              <span>View History</span>
-            </button>
-            <button
-              onClick={() => router.push('/bookings/new')}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <FaCalendarAlt className="w-4 h-4" />
-              <span>New Booking</span>
+              <FaDownload className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
             </button>
           </div>
         </div>

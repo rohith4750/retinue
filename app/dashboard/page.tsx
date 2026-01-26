@@ -6,7 +6,9 @@ import { api } from '@/lib/api-client'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 import { FaHome, FaCheckCircle, FaCalendarAlt, FaDollarSign, FaExclamationTriangle, FaBox } from 'react-icons/fa'
+import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -15,6 +17,24 @@ export default function DashboardPage() {
     const user = localStorage.getItem('user')
     if (!user) {
       router.push('/login')
+      return
+    }
+
+    // Setup session timeout
+    const handleTimeout = () => {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('user')
+      localStorage.removeItem('rememberMe')
+      toast.error('Session expired. Please login again.')
+      router.push('/login')
+    }
+
+    initSessionTimeout(handleTimeout)
+    const cleanup = setupSessionListeners(handleTimeout)
+
+    return () => {
+      clearSessionTimeout()
+      cleanup()
     }
   }, [router])
 
@@ -27,8 +47,29 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen relative flex">
         <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Loading...</div>
+        <div className="flex-1 lg:ml-64">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mb-6">
+              <div className="h-8 w-48 bg-slate-700/50 rounded-lg animate-pulse mb-2" />
+              <div className="h-4 w-64 bg-slate-700/50 rounded animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-slate-800/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+                  <div className="h-4 w-24 bg-slate-700/50 rounded animate-pulse mb-3" />
+                  <div className="h-10 w-32 bg-slate-700/50 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+            <div className="card">
+              <div className="h-6 w-40 bg-slate-700/50 rounded animate-pulse mb-4" />
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-12 bg-slate-700/50 rounded animate-pulse" />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

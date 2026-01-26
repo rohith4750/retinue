@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-import { UserRole } from '@prisma/client'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 import { createBookingSchema, validateBookingDates, checkDateConflicts, isRoomAvailable, calculateBookingPrice } from '@/lib/booking-validators'
 import { BookingError, RoomUnavailableError, DateConflictError, InvalidDateError, ValidationError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
@@ -16,6 +18,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const date = searchParams.get('date')
+    const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
@@ -28,6 +31,16 @@ export async function GET(request: NextRequest) {
       const endOfDay = new Date(date)
       endOfDay.setHours(23, 59, 59, 999)
       where.checkIn = { gte: startOfDay, lte: endOfDay }
+    }
+    
+    // Search functionality
+    if (search) {
+      where.OR = [
+        { bookingId: { contains: search, mode: 'insensitive' } },
+        { guest: { name: { contains: search, mode: 'insensitive' } } },
+        { guest: { phone: { contains: search, mode: 'insensitive' } } },
+        { room: { roomNumber: { contains: search, mode: 'insensitive' } } },
+      ]
     }
 
     const [bookings, total] = await Promise.all([

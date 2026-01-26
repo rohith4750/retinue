@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { useState } from 'react'
+import { QUERY_STALE_TIME, QUERY_CACHE_TIME, TOAST_DURATION, TOAST_POSITION } from './constants'
 
 export function ReactQueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -10,9 +11,15 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 0, // Always consider data stale to ensure fresh data after mutations
+            staleTime: QUERY_STALE_TIME, // 5 minutes
+            gcTime: QUERY_CACHE_TIME, // 10 minutes (formerly cacheTime)
             refetchOnWindowFocus: false,
-            refetchOnMount: true, // Refetch when component mounts
+            refetchOnMount: true,
+            retry: 2, // Retry failed requests twice
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+          },
+          mutations: {
+            retry: 1, // Retry mutations once
           },
         },
       })
@@ -22,9 +29,9 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
     <QueryClientProvider client={queryClient}>
       {children}
       <Toaster
-        position="top-right"
+        position={TOAST_POSITION}
         toastOptions={{
-          duration: 3000,
+          duration: TOAST_DURATION,
           style: {
             background: '#1e293b',
             color: '#e2e8f0',

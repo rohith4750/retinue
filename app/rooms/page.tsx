@@ -6,14 +6,18 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaHome, FaEdit, FaTrash, FaPlus } from 'react-icons/fa'
+import { FaHome, FaEdit, FaTrash, FaPlus, FaSearch } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
+import { SearchInput } from '@/components/SearchInput'
+import { useDebounce } from '@/hooks/useDebounce'
 
 export default function RoomsPage() {
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
   const [editingRoom, setEditingRoom] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearch = useDebounce(searchQuery, 300)
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean
     roomId: string | null
@@ -37,9 +41,26 @@ export default function RoomsPage() {
   const queryClient = useQueryClient()
 
   const { data: rooms, isLoading } = useQuery({
-    queryKey: ['rooms'],
-    queryFn: () => api.get('/rooms'),
+    queryKey: ['rooms', debouncedSearch],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (debouncedSearch) {
+        params.append('search', debouncedSearch)
+      }
+      return api.get(`/rooms?${params.toString()}`)
+    },
   })
+
+  // Filter rooms client-side if needed (for additional filtering)
+  const filteredRooms = rooms?.filter((room: any) => {
+    if (!debouncedSearch) return true
+    const search = debouncedSearch.toLowerCase()
+    return (
+      room.roomNumber.toLowerCase().includes(search) ||
+      room.roomType.toLowerCase().includes(search) ||
+      room.status.toLowerCase().includes(search)
+    )
+  }) || []
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/rooms/${id}`),
@@ -103,9 +124,18 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {rooms && rooms.length > 0 ? (
+        <div className="mb-4">
+          <SearchInput
+            placeholder="Search by room number, type, or status..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="max-w-md"
+          />
+        </div>
+
+        {filteredRooms && filteredRooms.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-            {rooms.map((room: any) => (
+            {filteredRooms.map((room: any) => (
               <div
                 key={room.id}
                 className="bg-slate-900/60 backdrop-blur-xl rounded-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-4 border border-white/5 relative overflow-hidden group hover:scale-105 transition-transform duration-200"

@@ -49,16 +49,31 @@ git push origin main
    Click **"Environment Variables"** and add:
 
    ```
+   # Database (Required)
    DATABASE_URL=your_postgresql_connection_string_here
+   
+   # JWT Authentication (Required - NEW)
+   JWT_SECRET=generate_a_64_character_random_secret_here
+   JWT_REFRESH_SECRET=generate_a_different_64_character_random_secret_here
+   
+   # Token Expiry (Optional - has defaults)
+   ACCESS_TOKEN_EXPIRY=15m
+   REFRESH_TOKEN_EXPIRY=7d
+   
+   # NextAuth (if still using)
    NEXTAUTH_SECRET=generate_a_random_secret_here
    NEXTAUTH_URL=https://your-app-name.vercel.app
    ```
 
-   **How to generate NEXTAUTH_SECRET:**
+   **How to generate secrets:**
    ```bash
-   openssl rand -base64 32
+   # Generate JWT secrets (run twice for two different secrets)
+   node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+   
+   # Or use openssl
+   openssl rand -base64 64
    ```
-   Or use an online generator: https://generate-secret.vercel.app/32
+   Or use an online generator: https://generate-secret.vercel.app/64
 
 6. **Click "Deploy"**
 
@@ -81,7 +96,16 @@ git push origin main
 
 4. **Add Environment Variables**:
    ```bash
+   # Required variables
    vercel env add DATABASE_URL
+   vercel env add JWT_SECRET
+   vercel env add JWT_REFRESH_SECRET
+   
+   # Optional variables
+   vercel env add ACCESS_TOKEN_EXPIRY
+   vercel env add REFRESH_TOKEN_EXPIRY
+   
+   # NextAuth (if still using)
    vercel env add NEXTAUTH_SECRET
    vercel env add NEXTAUTH_URL
    ```
@@ -161,11 +185,24 @@ After deployment, update the `NEXTAUTH_URL` environment variable:
 
 Add these in Vercel Dashboard → Settings → Environment Variables:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db?sslmode=require` |
-| `NEXTAUTH_SECRET` | Secret for NextAuth encryption | Generate with `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | Your production URL | `https://your-app.vercel.app` |
+### Required Variables
+
+| Variable | Description | Example | How to Generate |
+|----------|-------------|---------|-----------------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db?sslmode=require` | From your database provider |
+| `JWT_SECRET` | Secret for JWT access tokens | 64+ character random string | `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `JWT_REFRESH_SECRET` | Secret for JWT refresh tokens | Different 64+ character random string | Same as above (run twice) |
+
+### Optional Variables
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `ACCESS_TOKEN_EXPIRY` | Access token expiration | `15m` | `15m`, `1h`, `30m` |
+| `REFRESH_TOKEN_EXPIRY` | Refresh token expiration | `7d` | `7d`, `30d`, `14d` |
+| `NEXTAUTH_SECRET` | NextAuth secret (if using) | - | Generate with `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | NextAuth URL (if using) | - | `https://your-app.vercel.app` |
+
+**⚠️ Important**: `JWT_SECRET` and `JWT_REFRESH_SECRET` must be different values!
 
 ## Troubleshooting
 
@@ -190,12 +227,15 @@ Add these in Vercel Dashboard → Settings → Environment Variables:
 ## Post-Deployment Checklist
 
 - [ ] Database migrations completed
+- [ ] **JWT environment variables set** (`JWT_SECRET`, `JWT_REFRESH_SECRET`)
 - [ ] Environment variables set correctly
 - [ ] Admin user created (if needed)
-- [ ] Test login functionality
+- [ ] Test login functionality (JWT authentication)
+- [ ] Test token refresh functionality
 - [ ] Test database operations
 - [ ] Check build logs for errors
 - [ ] Verify all API routes work
+- [ ] Test session timeout (if implemented)
 
 ## Custom Domain (Optional)
 

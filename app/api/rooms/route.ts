@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-import { UserRole } from '@prisma/client'
+
+// UserRole type - will be available from @prisma/client after running: npx prisma generate
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // GET /api/rooms - List all rooms
 export async function GET(request: NextRequest) {
@@ -12,10 +14,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const roomType = searchParams.get('roomType')
+    const search = searchParams.get('search')
 
     const where: any = {}
     if (status) where.status = status
     if (roomType) where.roomType = roomType
+    
+    // Search functionality
+    if (search) {
+      where.OR = [
+        { roomNumber: { contains: search, mode: 'insensitive' } },
+        { roomType: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
     const rooms = await prisma.room.findMany({
       where,
