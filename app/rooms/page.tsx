@@ -1,14 +1,13 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaHome, FaEdit, FaTrash, FaPlus, FaSearch } from 'react-icons/fa'
+import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaSearch } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
-import { PageLoader } from '@/components/LoadingSpinner'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 
@@ -19,6 +18,8 @@ export default function RoomsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean
     roomId: string | null
@@ -29,31 +30,54 @@ export default function RoomsPage() {
 
   useEffect(() => {
     const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-    } else {
+    if (user) {
       setCurrentUser(JSON.parse(user))
     }
-  }, [router])
+  }, [])
 
   // Check if user can manage rooms (ADMIN or SUPER_ADMIN only)
   const canManageRooms = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN'
 
   const queryClient = useQueryClient()
 
-  const { data: rooms, isLoading } = useQuery({
-    queryKey: ['rooms', debouncedSearch],
+  // Fetch rooms - either all rooms or available rooms based on date
+  const { data: rooms, isLoading, refetch } = useQuery({
+    queryKey: ['rooms', debouncedSearch, selectedDate, isCheckingAvailability],
     queryFn: () => {
       const params = new URLSearchParams()
       if (debouncedSearch) {
         params.append('search', debouncedSearch)
       }
+      // If checking availability with date, use the available endpoint
+      if (isCheckingAvailability && selectedDate) {
+        // Set check-in to start of selected day and check-out to end of selected day
+        const checkIn = new Date(selectedDate)
+        checkIn.setHours(0, 0, 0, 0)
+        const checkOut = new Date(selectedDate)
+        checkOut.setHours(23, 59, 59, 999)
+        return api.get(`/rooms/available?checkIn=${encodeURIComponent(checkIn.toISOString())}&checkOut=${encodeURIComponent(checkOut.toISOString())}`)
+      }
       return api.get(`/rooms?${params.toString()}`)
     },
   })
 
+  // Extract rooms array from response (handles both /rooms and /rooms/available responses)
+  const roomsData = rooms?.rooms || rooms || []
+
+  const handleCheckAvailability = () => {
+    if (selectedDate) {
+      setIsCheckingAvailability(true)
+      refetch()
+    }
+  }
+
+  const handleClearDate = () => {
+    setSelectedDate('')
+    setIsCheckingAvailability(false)
+  }
+
   // Filter rooms client-side if needed (for additional filtering)
-  const filteredRooms = rooms?.filter((room: any) => {
+  const filteredRooms = roomsData?.filter((room: any) => {
     if (!debouncedSearch) return true
     const search = debouncedSearch.toLowerCase()
     return (
@@ -88,41 +112,64 @@ export default function RoomsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <PageLoader />
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-100 mb-1">Room Management</h1>
-            <p className="text-sm text-slate-400">
-              {canManageRooms ? 'Manage rooms, availability, and pricing' : 'View rooms and availability'}
-            </p>
-          </div>
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
+        {/* Header with Add Room button */}
+        <div className="flex justify-between items-center mb-4">
+          <div></div>
           {canManageRooms && (
             <button
               onClick={() => {
                 setEditingRoom(null)
                 setShowModal(true)
               }}
-              className="btn-primary flex items-center space-x-1.5 text-sm px-4 py-2"
+              className="flex items-center space-x-2 px-3 py-1.5 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
             >
-              <FaPlus className="w-3.5 h-3.5" />
+              <FaPlus className="w-3 h-3" />
               <span>Add Room</span>
             </button>
           )}
+        </div>
+
+        {/* Date-based Availability Check */}
+        <div className="mb-4 p-4 bg-slate-800/40 rounded-xl border border-white/5">
+          <div className="flex flex-wrap items-center gap-3">
+            <FaCalendarAlt className="w-4 h-4 text-sky-400" />
+            <span className="text-sm font-medium text-slate-200">Check Availability on:</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value)
+                if (e.target.value) {
+                  setIsCheckingAvailability(true)
+                }
+              }}
+              className="form-input text-sm py-1.5 w-auto"
+            />
+            {isCheckingAvailability && (
+              <button
+                onClick={handleClearDate}
+                className="px-3 py-1.5 bg-slate-700 text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                Show All
+              </button>
+            )}
+            {isCheckingAvailability && selectedDate && (
+              <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                {filteredRooms.length} available on {new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mb-4">
@@ -135,66 +182,70 @@ export default function RoomsPage() {
         </div>
 
         {filteredRooms && filteredRooms.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+          <div className="flex flex-wrap gap-2">
             {filteredRooms.map((room: any) => (
               <div
                 key={room.id}
-                className="bg-slate-900/60 backdrop-blur-xl rounded-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-4 border border-white/5 relative overflow-hidden group hover:scale-105 transition-transform duration-200"
+                className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border-2 cursor-pointer transition-all hover:scale-105 ${
+                  room.status === 'AVAILABLE' 
+                    ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30' 
+                    : room.status === 'BOOKED' 
+                    ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30' 
+                    : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
+                }`}
+                onClick={() => {
+                  if (canManageRooms) {
+                    setEditingRoom(room)
+                    setShowModal(true)
+                  }
+                }}
               >
-                <div className="mb-3 relative z-10">
-                  <div className="flex items-center space-x-1.5 mb-2">
-                    <FaHome className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
-                    <h3 className="text-base font-bold text-slate-100 truncate flex-1">
-                      Room {room.roomNumber}
-                    </h3>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="badge badge-info text-[10px] px-2 py-0.5">{room.roomType}</span>
-                    <span className={`badge ${
-                      room.status === 'AVAILABLE' ? 'badge-success' :
-                      room.status === 'BOOKED' ? 'badge-danger' :
-                      'badge-warning'
-                    } text-[10px] px-2 py-0.5 flex-shrink-0`}>
-                      {room.status}
-                    </span>
-                  </div>
-                </div>
+                {/* Room Number */}
+                <span className={`text-sm font-bold ${
+                  room.status === 'AVAILABLE' ? 'text-emerald-300' :
+                  room.status === 'BOOKED' ? 'text-red-300' :
+                  'text-yellow-300'
+                }`}>{room.roomNumber}</span>
+                
+                {/* Divider */}
+                <span className={`w-px h-4 ${
+                  room.status === 'AVAILABLE' ? 'bg-emerald-500/50' :
+                  room.status === 'BOOKED' ? 'bg-red-500/50' :
+                  'bg-yellow-500/50'
+                }`}></span>
+                
+                {/* Type */}
+                <span className="text-xs text-slate-300">{room.roomType}</span>
+                
+                {/* Divider */}
+                <span className={`w-px h-4 ${
+                  room.status === 'AVAILABLE' ? 'bg-emerald-500/50' :
+                  room.status === 'BOOKED' ? 'bg-red-500/50' :
+                  'bg-yellow-500/50'
+                }`}></span>
+                
+                {/* Price */}
+                <span className="text-sm font-semibold text-white">₹{room.basePrice.toLocaleString()}</span>
+                
+                {/* Status Text */}
+                <span className={`text-[10px] font-semibold uppercase ${
+                  room.status === 'AVAILABLE' ? 'text-emerald-400' :
+                  room.status === 'BOOKED' ? 'text-red-400' :
+                  'text-yellow-400'
+                }`}>{room.status}</span>
 
-                <div className="space-y-2 mb-3 relative z-10">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Floor</span>
-                    <span className="text-slate-300 font-medium text-xs">F{room.floor}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Capacity</span>
-                    <span className="text-slate-300 font-medium text-xs">{room.capacity}</span>
-                  </div>
-                  <div className="flex items-center justify-between pt-1.5 border-t border-white/5">
-                    <span className="text-slate-500 text-xs">Price</span>
-                    <span className="text-base font-bold text-sky-400">₹{room.basePrice.toLocaleString()}</span>
-                  </div>
-                </div>
-
+                {/* Delete Button - only show for admins */}
                 {canManageRooms && (
-                  <div className="flex items-center space-x-1.5 pt-2.5 border-t border-white/5 relative z-10">
-                    <button
-                      onClick={() => {
-                        setEditingRoom(room)
-                        setShowModal(true)
-                      }}
-                      className="flex-1 text-sky-400 hover:text-sky-300 font-medium text-xs px-2 py-1.5 rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1"
-                    >
-                      <FaEdit className="w-3 h-3" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(room.id)}
-                      className="flex-1 text-red-400 hover:text-red-300 font-medium text-xs px-2 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1"
-                    >
-                      <FaTrash className="w-3 h-3" />
-                      <span>Delete</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDelete(room.id)
+                    }}
+                    className="ml-1 p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
+                    title="Delete"
+                  >
+                    <FaTrash className="w-2.5 h-2.5" />
+                  </button>
                 )}
               </div>
             ))}
@@ -245,9 +296,8 @@ export default function RoomsPage() {
           isLoading={deleteMutation.isPending}
           confirmText="Delete Room"
         />
-        </div>
       </div>
-    </div>
+    </>
   )
 }
 

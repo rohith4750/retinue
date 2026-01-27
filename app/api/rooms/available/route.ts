@@ -92,9 +92,16 @@ export async function GET(request: NextRequest) {
       orderBy: { roomNumber: 'asc' },
     })
 
+    // Override status to show actual availability for the selected date
+    // If room is returned here, it means it's available for these dates
+    const roomsWithCorrectStatus = availableRooms.map(room => ({
+      ...room,
+      status: room.status === 'MAINTENANCE' ? 'MAINTENANCE' : 'AVAILABLE',
+    }))
+
     return Response.json(
       successResponse({
-        rooms: availableRooms,
+        rooms: roomsWithCorrectStatus,
         dateRange: {
           checkIn: checkInDate.toISOString(),
           checkOut: checkOutDate.toISOString(),

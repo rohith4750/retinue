@@ -1,13 +1,12 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, FaTag, FaEye } from 'react-icons/fa'
-import { LoadingSpinner, PageLoader } from '@/components/LoadingSpinner'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
 import { useFormValidation } from '@/hooks/useFormValidation'
@@ -18,8 +17,9 @@ function NewBookingContent() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
 
+  const roomIdParam = searchParams.get('roomId')
   const initialFormData = {
-    roomId: searchParams.get('roomId') || '',
+    roomIds: roomIdParam ? [roomIdParam] : [] as string[],
     slotId: searchParams.get('slotId') || '',
     guestName: '',
     guestPhone: '',
@@ -30,6 +30,9 @@ function NewBookingContent() {
     checkOut: '',
     paymentMode: 'CASH',
     discount: '0',
+    extraBed: false,
+    extraBedCount: '1',
+    extraBedPrice: '500', // Default price, user can change
   }
 
   // Use form validation hook
@@ -43,15 +46,10 @@ function NewBookingContent() {
     setFormData,
   } = useFormValidation(initialFormData, bookingValidationRules)
 
-  const [selectedRoom, setSelectedRoom] = useState<any>(null)
+  const [selectedRooms, setSelectedRooms] = useState<any[]>([])
   const [selectedSlot, setSelectedSlot] = useState<any>(null)
 
-  useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-    }
-  }, [router])
+  // Auth is handled by root layout
 
   // Fetch available rooms based on selected dates
   const { data: availableRoomsData, isLoading: roomsLoading, refetch: refetchRooms } = useQuery({
@@ -71,37 +69,21 @@ function NewBookingContent() {
   // Extract rooms array from response
   const availableRooms = availableRoomsData?.rooms || availableRoomsData || []
 
-  // Fetch room details if roomId is provided
-  const { data: room } = useQuery({
-    queryKey: ['room', formData.roomId],
-    queryFn: () => api.get(`/rooms/${formData.roomId}`),
-    enabled: !!formData.roomId,
-  })
-
+  // Update selectedRooms when roomIds or availableRooms change
   useEffect(() => {
-    if (room) {
-      setSelectedRoom(room)
-    } else if (availableRooms && formData.roomId) {
-      // Find room from available rooms list
-      const foundRoom = availableRooms.find((r: any) => r.id === formData.roomId)
-      if (foundRoom) setSelectedRoom(foundRoom)
+    if (availableRooms && formData.roomIds.length > 0) {
+      const rooms = availableRooms.filter((r: any) => formData.roomIds.includes(r.id))
+      setSelectedRooms(rooms)
+    } else {
+      setSelectedRooms([])
     }
-  }, [room, availableRooms, formData.roomId])
+  }, [availableRooms, formData.roomIds])
 
   // Slot will be handled during booking creation if slotId is provided
 
   const createMutation = useMutationWithInvalidation({
     mutationFn: async (data: any) => {
-      const days =
-        (new Date(data.checkOut).getTime() - new Date(data.checkIn).getTime()) /
-        (1000 * 60 * 60 * 24)
-      const baseAmount = (selectedSlot?.price || selectedRoom?.basePrice || 0) * Math.max(1, days)
-      const discountAmount = parseFloat(data.discount) || 0
-      const subtotal = baseAmount - discountAmount
-      const totalAmount = Math.max(0, subtotal)
-
       // Ensure dates are sent as ISO strings
-      // Handle datetime-local format (YYYY-MM-DDTHH:mm) and convert to ISO
       if (!data.checkIn || !data.checkOut) {
         throw new Error('Check-in and check-out dates are required')
       }
@@ -119,24 +101,45 @@ function NewBookingContent() {
       const checkInISO = checkInDate.toISOString()
       const checkOutISO = checkOutDate.toISOString()
 
-      return api.post('/bookings', {
-        roomId: data.roomId || selectedRoom?.id,
-        slotId: data.slotId || '',
-        guestName: data.guestName,
-        guestPhone: data.guestPhone,
-        guestIdProof: data.guestIdProof,
-        guestIdProofType: data.guestIdProofType,
-        guestAddress: data.guestAddress,
-        checkIn: checkInISO,
-        checkOut: checkOutISO,
-        totalAmount,
-        discount: discountAmount,
-        paymentMode: data.paymentMode,
-      })
+      const days = Math.max(1, (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
+      const discountAmount = parseFloat(data.discount) || 0
+      const extraBedCount = data.extraBed ? parseInt(data.extraBedCount) || 1 : 0
+      const extraBedPrice = parseFloat(data.extraBedPrice) || 0
+      const extraBedAmount = extraBedCount * extraBedPrice * days
+
+      // If multiple rooms selected, send roomIds array to API
+      if (data.roomIds && data.roomIds.length > 0) {
+        // Calculate total for all rooms
+        const totalBaseAmount = selectedRooms.reduce((total, room) => {
+          return total + ((selectedSlot?.price || room?.basePrice || 0) * days)
+        }, 0)
+        const totalAmount = Math.max(0, totalBaseAmount + extraBedAmount - discountAmount)
+
+        return api.post('/bookings', {
+          roomIds: data.roomIds,
+          slotId: data.slotId || '',
+          guestName: data.guestName,
+          guestPhone: data.guestPhone,
+          guestIdProof: data.guestIdProof,
+          guestIdProofType: data.guestIdProofType,
+          guestAddress: data.guestAddress,
+          checkIn: checkInISO,
+          checkOut: checkOutISO,
+          totalAmount,
+          discount: discountAmount,
+          extraBed: data.extraBed,
+          extraBedCount: extraBedCount,
+          extraBedAmount: extraBedAmount,
+          paymentMode: data.paymentMode,
+        })
+      }
+
+      throw new Error('Please select at least one room')
     },
     endpoint: '/bookings', // Automatically invalidates all related queries
-    onSuccess: () => {
-      toast.success('Booking created successfully!')
+    onSuccess: (result: any) => {
+      const roomCount = result?.bookings?.length || 1
+      toast.success(`${roomCount} room${roomCount > 1 ? 's' : ''} booked successfully!`)
       router.push('/bookings')
     },
     onError: (error: any) => {
@@ -175,7 +178,7 @@ function NewBookingContent() {
   }
 
   const calculateOverview = () => {
-    if (!selectedRoom) return null
+    if (selectedRooms.length === 0) return null
 
     const days =
       formData.checkIn && formData.checkOut
@@ -186,15 +189,27 @@ function NewBookingContent() {
           )
         : 1
 
-    const baseAmount = (selectedSlot?.price || selectedRoom?.basePrice || 0) * days
+    // Calculate total base amount for all selected rooms
+    const baseAmount = selectedRooms.reduce((total, room) => {
+      return total + ((selectedSlot?.price || room?.basePrice || 0) * days)
+    }, 0)
+    
+    // Extra bed calculation
+    const extraBedCount = formData.extraBed ? parseInt(formData.extraBedCount) || 1 : 0
+    const extraBedPrice = parseFloat(formData.extraBedPrice) || 0
+    const extraBedAmount = extraBedCount * extraBedPrice * days
+    
     const discountAmount = parseFloat(formData.discount) || 0
-    const subtotal = baseAmount - discountAmount
+    const subtotal = baseAmount + extraBedAmount - discountAmount
     const tax = subtotal * 0.18 // 18% GST
     const totalAmount = Math.max(0, subtotal + tax)
 
     return {
       days,
       baseAmount,
+      extraBedCount,
+      extraBedPrice,
+      extraBedAmount,
       discountAmount,
       subtotal,
       tax,
@@ -205,15 +220,13 @@ function NewBookingContent() {
   const overview = calculateOverview()
 
   return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-          <button
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full max-w-4xl px-4 lg:px-6 py-4 relative z-10">
+        <button
           onClick={() => router.back()}
-          className="mb-6 flex items-center space-x-2 text-slate-400 hover:text-slate-200 transition-colors"
+          className="mb-4 flex items-center space-x-2 text-slate-400 hover:text-slate-200 transition-colors"
         >
           <FaArrowLeft className="w-4 h-4" />
           <span className="text-sm">Back to Bookings</span>
@@ -221,7 +234,7 @@ function NewBookingContent() {
 
         <div className="card">
           <div className="card-header">
-            <h1 className="text-2xl font-bold text-slate-100 flex items-center">
+            <h1 className="text-xl font-bold text-slate-100 flex items-center">
               <FaCalendarAlt className="mr-2 w-5 h-5" />
               Create New Booking
             </h1>
@@ -288,71 +301,13 @@ function NewBookingContent() {
               </div>
             </div>
 
-            {/* Booking Details */}
+            {/* Step 1: Select Dates */}
             <div>
-              <h3 className="text-sm font-semibold text-slate-100 mb-4">Booking Details</h3>
-              
-              {/* Date selection hint */}
-              {!formData.checkIn || !formData.checkOut ? (
-                <div className="bg-sky-500/10 border border-sky-500/20 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-sky-400">
-                    💡 Select check-in and check-out dates first to see available rooms for those dates.
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-emerald-400">
-                    ✓ Showing {availableRooms?.length || 0} room(s) available for selected dates
-                  </p>
-                </div>
-              )}
-
+              <h3 className="text-sm font-semibold text-slate-100 mb-4 flex items-center">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold mr-2">1</span>
+                Select Dates
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <FormSelect
-                    label="Select Room *"
-                    value={formData.roomId}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                      const selectedId = e.target.value
-                      updateField('roomId', selectedId)
-                      const room = availableRooms?.find((r: any) => r.id === selectedId)
-                      if (room) setSelectedRoom(room)
-                    }}
-                    onBlur={() => handleBlur('roomId')}
-                    error={getError('roomId')}
-                    disabled={roomsLoading || (!formData.checkIn || !formData.checkOut)}
-                    options={[
-                      { value: '', label: formData.checkIn && formData.checkOut ? 'Select a room' : 'Select dates first' },
-                      ...(availableRooms?.map((room: any) => ({
-                        value: room.id,
-                        label: `Room ${room.roomNumber} - ${room.roomType} (₹${room.basePrice}/day, Floor ${room.floor})`,
-                      })) || []),
-                    ]}
-                  />
-                  {selectedRoom && (
-                    <p className="text-xs text-slate-400 mt-1">
-                      Selected: Room {selectedRoom.roomNumber} ({selectedRoom.roomType}) - ₹{selectedRoom.basePrice}/day
-                    </p>
-                  )}
-                  {roomsLoading && (
-                    <div className="flex items-center mt-1">
-                      <LoadingSpinner size="sm" className="mr-2" />
-                      <p className="text-xs text-slate-500">Loading available rooms...</p>
-                    </div>
-                  )}
-                  {!roomsLoading && formData.checkIn && formData.checkOut && availableRooms && availableRooms.length === 0 && (
-                    <p className="text-xs text-yellow-400 mt-1">No rooms available for selected dates. Try different dates.</p>
-                  )}
-                </div>
-                <div>
-                  <FormInput
-                    label="Slot ID (Optional)"
-                    type="text"
-                    value={formData.slotId}
-                    onChange={(e) => updateField('slotId', e.target.value)}
-                    placeholder="Slot ID (optional)"
-                  />
-                </div>
                 <FormInput
                   label="Check-in Date & Time *"
                   type="datetime-local"
@@ -360,9 +315,9 @@ function NewBookingContent() {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     updateField('checkIn', e.target.value)
                     // Clear room selection when dates change
-                    if (formData.roomId) {
-                      updateField('roomId', '')
-                      setSelectedRoom(null)
+                    if (formData.roomIds.length > 0) {
+                      updateField('roomIds', [])
+                      setSelectedRooms([])
                     }
                     // Re-validate checkOut when checkIn changes
                     if (formData.checkOut) {
@@ -379,19 +334,158 @@ function NewBookingContent() {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     updateField('checkOut', e.target.value)
                     // Clear room selection when dates change
-                    if (formData.roomId) {
-                      updateField('roomId', '')
-                      setSelectedRoom(null)
+                    if (formData.roomIds.length > 0) {
+                      updateField('roomIds', [])
+                      setSelectedRooms([])
                     }
                     // Clear error when user starts typing
                     if (errors.checkOut) {
-                      // Re-validate after a short delay
                       setTimeout(() => handleBlur('checkOut'), 100)
                     }
                   }}
                   onBlur={() => handleBlur('checkOut')}
                   error={getError('checkOut')}
                 />
+              </div>
+            </div>
+
+            {/* Step 2: Select Room */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-100 mb-4 flex items-center">
+                <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold mr-2 ${formData.checkIn && formData.checkOut ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-400'}`}>2</span>
+                Select Room
+                {formData.checkIn && formData.checkOut && (
+                  <span className="ml-auto text-xs font-normal text-emerald-400">
+                    {roomsLoading ? 'Loading...' : `${availableRooms?.length || 0} available`}
+                  </span>
+                )}
+              </h3>
+              
+              {!formData.checkIn || !formData.checkOut ? (
+                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 text-center">
+                  <p className="text-sm text-slate-400">Select check-in and check-out dates first</p>
+                </div>
+              ) : roomsLoading ? (
+                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 flex items-center justify-center">
+                  <LoadingSpinner size="md" />
+                </div>
+              ) : availableRooms?.length === 0 ? (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-6 text-center">
+                  <p className="text-sm text-yellow-400">No rooms available for selected dates. Try different dates.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Selected rooms count */}
+                  {formData.roomIds.length > 0 && (
+                    <div className="mb-3 p-2 bg-sky-500/10 border border-sky-500/20 rounded-lg">
+                      <p className="text-sm text-sky-400 font-medium">
+                        {formData.roomIds.length} room{formData.roomIds.length > 1 ? 's' : ''} selected
+                      </p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {availableRooms?.map((room: any) => {
+                      const isSelected = formData.roomIds.includes(room.id)
+                      return (
+                        <button
+                          key={room.id}
+                          type="button"
+                          onClick={() => {
+                            // Toggle selection - add or remove from array
+                            if (isSelected) {
+                              const newRoomIds = formData.roomIds.filter((id) => id !== room.id)
+                              updateField('roomIds', newRoomIds)
+                            } else {
+                              updateField('roomIds', [...formData.roomIds, room.id])
+                            }
+                          }}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            isSelected
+                              ? 'border-sky-500 bg-sky-500/10 ring-2 ring-sky-500/30'
+                              : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-slate-100">Room {room.roomNumber}</span>
+                            {/* Checkbox-style indicator for multi-select */}
+                            <span className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                              isSelected ? 'border-sky-500 bg-sky-500' : 'border-slate-500'
+                            }`}>
+                              {isSelected && (
+                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-400 space-y-1">
+                            <p>{room.roomType} • Floor {room.floor}</p>
+                            <p className="text-sky-400 font-semibold">₹{room.basePrice}/day</p>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+              {formData.roomIds.length === 0 && formData.checkIn && formData.checkOut && availableRooms?.length > 0 && (
+                <p className="text-xs text-yellow-400 mt-2">Please select at least one room</p>
+              )}
+            </div>
+
+            {/* Extra Bed Option */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-100 mb-4 flex items-center">
+                <FaTag className="mr-2 w-4 h-4" />
+                Additional Services
+              </h3>
+              <div className="bg-slate-800/40 rounded-xl p-4 border border-white/5">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center space-x-3">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.extraBed}
+                        onChange={(e) => setFormData({ ...formData, extraBed: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-sky-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+                    </label>
+                    <span className="text-sm font-medium text-slate-100">Extra Bed</span>
+                  </div>
+                  {formData.extraBed && (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <label className="text-xs text-slate-400">Qty:</label>
+                        <select
+                          value={formData.extraBedCount}
+                          onChange={(e) => setFormData({ ...formData, extraBedCount: e.target.value })}
+                          className="form-select w-16 py-1 text-sm"
+                        >
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                          <option value="5">5</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <label className="text-xs text-slate-400">Price/bed/day:</label>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={formData.extraBedPrice}
+                            onChange={(e) => setFormData({ ...formData, extraBedPrice: e.target.value })}
+                            className="form-input w-24 py-1 pl-6 text-sm"
+                            placeholder="500"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -445,12 +539,19 @@ function NewBookingContent() {
                   Booking Overview
                 </h3>
                 <div className="bg-slate-800/40 rounded-xl p-4 space-y-3 border border-white/5">
-                  {selectedRoom && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Room</span>
-                      <span className="text-slate-200 font-medium">
-                        Room {selectedRoom.roomNumber} ({selectedRoom.roomType})
+                  {/* Show all selected rooms */}
+                  {selectedRooms.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-slate-400 text-sm">
+                        {selectedRooms.length === 1 ? 'Room' : `Rooms (${selectedRooms.length})`}
                       </span>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedRooms.map((room) => (
+                          <span key={room.id} className="px-2 py-1 bg-slate-700/50 rounded text-xs text-slate-200">
+                            Room {room.roomNumber} ({room.roomType}) - ₹{room.basePrice}/day
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {selectedSlot && (
@@ -466,11 +567,19 @@ function NewBookingContent() {
                     <span className="text-slate-200 font-medium">{overview.days} day(s)</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Base Amount</span>
+                    <span className="text-slate-400">Base Amount ({selectedRooms.length} room{selectedRooms.length > 1 ? 's' : ''} × {overview.days} day{overview.days > 1 ? 's' : ''})</span>
                     <span className="text-slate-200 font-medium">
                       ₹{overview.baseAmount.toLocaleString()}
                     </span>
                   </div>
+                  {overview.extraBedAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Extra Bed ({overview.extraBedCount} × {overview.days} day{overview.days > 1 ? 's' : ''} × ₹{overview.extraBedPrice})</span>
+                      <span className="text-sky-400 font-medium">
+                        +₹{overview.extraBedAmount.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   {overview.discountAmount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-400">Discount</span>
@@ -520,20 +629,16 @@ function NewBookingContent() {
             </div>
           </form>
         </div>
-        </div>
       </div>
-    </div>
+    </>
   )
 }
 
 export default function NewBookingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <PageLoader />
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner size="lg" />
       </div>
     }>
       <NewBookingContent />

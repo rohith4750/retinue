@@ -1,15 +1,13 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { FaHistory, FaFilter, FaSearch, FaCalendarAlt, FaUser, FaHome, FaChevronLeft, FaChevronRight, FaTimes } from 'react-icons/fa'
-import { PageLoader } from '@/components/LoadingSpinner'
+import { useState } from 'react'
+import Link from 'next/link'
+import { FaHistory, FaFilter, FaCalendarAlt, FaUser, FaHome, FaChevronLeft, FaChevronRight, FaTimes } from 'react-icons/fa'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 
 export default function BookingHistoryPage() {
-  const router = useRouter()
   const [page, setPage] = useState(1)
   const [filters, setFilters] = useState({
     bookingId: '',
@@ -19,12 +17,7 @@ export default function BookingHistoryPage() {
   })
   const [showFilters, setShowFilters] = useState(false)
 
-  useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-    }
-  }, [router])
+  // Auth is handled by root layout
 
   // Build query string
   const queryParams = new URLSearchParams()
@@ -88,30 +81,19 @@ export default function BookingHistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <PageLoader />
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-100 mb-1 flex items-center">
-              <FaHistory className="mr-2 w-6 h-6" />
-              Booking History
-            </h1>
-            <p className="text-sm text-slate-400">View all booking changes and audit trail</p>
-          </div>
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-sm text-slate-400">View all booking changes and audit trail</p>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="btn-secondary flex items-center space-x-2"
@@ -181,106 +163,106 @@ export default function BookingHistoryPage() {
           </div>
         )}
 
-        {/* History List */}
+        {/* History Table */}
         {history && history.length > 0 ? (
-          <>
-            <div className="space-y-3">
-              {history.map((entry: any) => (
-                <div
-                  key={entry.id}
-                  className="card group hover:scale-[1.01] transition-transform duration-200"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <span
-                        className={`badge ${getActionColor(entry.action)} text-[10px] px-2 py-1`}
-                      >
-                        {entry.action.replace('_', ' ')}
-                      </span>
-                      <div>
-                        <p className="text-xs text-slate-400">
-                          Booking ID: <span className="text-slate-200 font-mono">{entry.bookingId}</span>
-                        </p>
-                        {entry.booking && (
-                          <div className="flex items-center space-x-4 mt-1">
-                            <div className="flex items-center space-x-1 text-xs">
-                              <FaUser className="w-3 h-3 text-slate-400" />
-                              <span className="text-slate-300">{entry.booking.guest.name}</span>
-                            </div>
-                            <div className="flex items-center space-x-1 text-xs">
-                              <FaHome className="w-3 h-3 text-slate-400" />
-                              <span className="text-slate-300">
-                                Room {entry.booking.room.roomNumber}
-                              </span>
-                            </div>
+          <div className="card">
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Booking ID</th>
+                    <th>Guest</th>
+                    <th>Room</th>
+                    <th>Changes</th>
+                    <th>Date & Time</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((entry: any) => (
+                    <tr key={entry.id}>
+                      <td>
+                        <span className={`badge ${getActionColor(entry.action)} text-[10px] px-2 py-1`}>
+                          {entry.action.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-slate-200 font-mono text-xs">{entry.bookingId}</span>
+                      </td>
+                      <td>
+                        {entry.booking ? (
+                          <div className="flex items-center space-x-1">
+                            <FaUser className="w-3 h-3 text-slate-400" />
+                            <span className="text-slate-300">{entry.booking.guest.name}</span>
                           </div>
+                        ) : (
+                          <span className="text-slate-500">-</span>
                         )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-400 flex items-center space-x-1">
-                        <FaCalendarAlt className="w-3 h-3" />
-                        <span>{new Date(entry.timestamp).toLocaleString()}</span>
-                      </p>
-                      {entry.changedBy && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          By: {entry.changedBy}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {entry.notes && (
-                    <div className="mb-3">
-                      <p className="text-xs text-slate-300">{entry.notes}</p>
-                    </div>
-                  )}
-
-                  {entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/5">
-                      <p className="text-xs font-semibold text-slate-400 mb-2">Changes:</p>
-                      <div className="space-y-1">
-                        {entry.changes.map((change: any, index: number) => (
-                          <div
-                            key={index}
-                            className="text-xs bg-slate-800/40 rounded p-2 border border-white/5"
-                          >
-                            <span className="text-slate-400 font-medium">{change.field}:</span>{' '}
-                            <span className="text-red-400 line-through">
-                              {change.oldValue !== null && change.oldValue !== undefined
-                                ? String(change.oldValue)
-                                : 'N/A'}
-                            </span>{' '}
-                            <span className="text-slate-300">→</span>{' '}
-                            <span className="text-emerald-400">
-                              {change.newValue !== null && change.newValue !== undefined
-                                ? String(change.newValue)
-                                : 'N/A'}
-                            </span>
+                      </td>
+                      <td>
+                        {entry.booking ? (
+                          <div className="flex items-center space-x-1">
+                            <FaHome className="w-3 h-3 text-slate-400" />
+                            <span className="text-slate-300">{entry.booking.room.roomType} {entry.booking.room.roomNumber}</span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {entry.booking && (
-                    <div className="mt-3 pt-3 border-t border-white/5">
-                      <button
-                        onClick={() => router.push(`/bookings/${entry.bookingId}`)}
-                        className="text-xs text-sky-400 hover:text-sky-300 flex items-center space-x-1"
-                      >
-                        <span>View Booking Details</span>
-                        <FaChevronLeft className="w-2 h-2 rotate-180" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
+                      </td>
+                      <td>
+                        {entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0 ? (
+                          <div className="space-y-1 max-w-xs">
+                            {entry.changes.map((change: any, index: number) => (
+                              <div key={index} className="text-xs">
+                                <span className="text-slate-400">{change.field}:</span>{' '}
+                                <span className="text-red-400">{change.oldValue || 'N/A'}</span>
+                                <span className="text-slate-500"> → </span>
+                                <span className="text-emerald-400">{change.newValue || 'N/A'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : entry.notes ? (
+                          <span className="text-xs text-slate-400">{entry.notes}</span>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="text-xs text-slate-400">
+                          {new Date(entry.timestamp).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                          <br />
+                          <span className="text-slate-500">
+                            {new Date(entry.timestamp).toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        {entry.booking && (
+                          <Link
+                            href={`/bookings/${entry.bookingId}`}
+                            className="text-xs text-sky-400 hover:text-sky-300 whitespace-nowrap"
+                          >
+                            View Details →
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            {/* Pagination */}
+            {/* Pagination inside card */}
             {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/5">
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
                 <div className="text-xs text-slate-400">
                   Showing {((page - 1) * pagination.limit) + 1} to{' '}
                   {Math.min(page * pagination.limit, pagination.total)} of {pagination.total} entries
@@ -308,7 +290,7 @@ export default function BookingHistoryPage() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         ) : (
           <div className="card text-center py-12">
             <div className="flex flex-col items-center">
@@ -320,8 +302,7 @@ export default function BookingHistoryPage() {
             </div>
           </div>
         )}
-        </div>
       </div>
-    </div>
+    </>
   )
 }

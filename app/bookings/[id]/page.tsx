@@ -1,13 +1,12 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaCalendarAlt, FaArrowLeft, FaEdit, FaHistory, FaUser, FaHome, FaClock, FaMoneyBillWave } from 'react-icons/fa'
-import { PageLoader } from '@/components/LoadingSpinner'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 
@@ -17,12 +16,7 @@ export default function BookingDetailPage() {
   const bookingId = params.id as string
   const [showEditModal, setShowEditModal] = useState(false)
 
-  useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-    }
-  }, [router])
+  // Auth is handled by root layout
 
   const queryClient = useQueryClient()
 
@@ -47,36 +41,28 @@ export default function BookingDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <PageLoader />
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   if (!booking) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Booking not found</div>
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <div className="text-slate-300 text-lg">Booking not found</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full max-w-4xl px-4 lg:px-6 py-4 relative z-10">
         <button
           onClick={() => router.back()}
-          className="mb-6 flex items-center space-x-2 text-slate-400 hover:text-slate-200 transition-colors"
+          className="mb-4 flex items-center space-x-2 text-slate-400 hover:text-slate-200 transition-colors"
         >
           <FaArrowLeft className="w-4 h-4" />
           <span className="text-sm">Back to Bookings</span>
@@ -230,9 +216,8 @@ export default function BookingDetailPage() {
             isLoading={updateBookingMutation.isPending}
           />
         )}
-        </div>
       </div>
-    </div>
+    </>
   )
 }
 

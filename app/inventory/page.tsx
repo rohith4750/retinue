@@ -1,25 +1,14 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { FaBox, FaPlus, FaExclamationTriangle } from 'react-icons/fa'
-import { PageLoader } from '@/components/LoadingSpinner'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 
 export default function InventoryPage() {
-  const router = useRouter()
   const [showModal, setShowModal] = useState(false)
-
-  useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-    }
-  }, [router])
-
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -32,22 +21,17 @@ export default function InventoryPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <PageLoader />
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-1">Inventory Management</h1>
@@ -125,9 +109,8 @@ export default function InventoryPage() {
         </div>
 
         {showModal && <InventoryModal onClose={() => setShowModal(false)} />}
-        </div>
       </div>
-    </div>
+    </>
   )
 }
 

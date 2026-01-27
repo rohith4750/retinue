@@ -1,13 +1,12 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaFileInvoice, FaMoneyBillWave, FaDownload, FaPrint } from 'react-icons/fa'
-import { PageLoader } from '@/components/LoadingSpinner'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { pdf } from '@react-pdf/renderer'
 import { BillPDF } from '@/components/BillPDF'
@@ -23,12 +22,7 @@ export default function BillPage({ params }: { params: { id: string } }) {
     amount: null,
   })
 
-  useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-    }
-  }, [router])
+  // Auth is handled by root layout
 
   const billId = params.id
   const { data: bill, isLoading } = useQuery({
@@ -54,22 +48,16 @@ export default function BillPage({ params }: { params: { id: string } }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <PageLoader />
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   if (!bill) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Bill not found</div>
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <div className="text-slate-300 text-lg">Bill not found</div>
       </div>
     )
   }
@@ -97,12 +85,10 @@ export default function BillPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full max-w-4xl px-4 lg:px-6 py-4 relative z-10">
         <div className="card">
           {/* Hotel Header */}
           <div className="border-b border-white/10 pb-6 mb-6 relative z-10">
@@ -314,9 +300,8 @@ export default function BillPage({ params }: { params: { id: string } }) {
           isLoading={updatePaymentMutation.isPending}
           confirmText="Record Payment"
         />
-        </div>
       </div>
-    </div>
+    </>
   )
 }
 

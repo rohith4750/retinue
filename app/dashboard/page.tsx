@@ -1,11 +1,9 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { FaHome, FaCheckCircle, FaCalendarAlt, FaDollarSign, FaExclamationTriangle, FaBox } from 'react-icons/fa'
 import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
@@ -14,12 +12,6 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-      return
-    }
-
     // Setup session timeout
     const handleTimeout = () => {
       localStorage.removeItem('accessToken')
@@ -45,31 +37,14 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="mb-6">
-              <div className="h-8 w-48 bg-slate-700/50 rounded-lg animate-pulse mb-2" />
-              <div className="h-4 w-64 bg-slate-700/50 rounded animate-pulse" />
+      <div className="w-full px-4 lg:px-6 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-slate-800/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+              <div className="h-4 w-24 bg-slate-700/50 rounded animate-pulse mb-3" />
+              <div className="h-10 w-32 bg-slate-700/50 rounded animate-pulse" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-slate-800/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-                  <div className="h-4 w-24 bg-slate-700/50 rounded animate-pulse mb-3" />
-                  <div className="h-10 w-32 bg-slate-700/50 rounded animate-pulse" />
-                </div>
-              ))}
-            </div>
-            <div className="card">
-              <div className="h-6 w-40 bg-slate-700/50 rounded animate-pulse mb-4" />
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-12 bg-slate-700/50 rounded animate-pulse" />
-                ))}
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     )
@@ -114,44 +89,36 @@ export default function DashboardPage() {
     },
   ]
 
-  return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-100 mb-1">Dashboard</h1>
-          <p className="text-sm text-slate-400">Overview of The Retinue operations</p>
-        </div>
+  const colorClasses: Record<string, string> = {
+    'bg-blue-500': 'bg-sky-600/30 backdrop-blur-xl border border-sky-500/20',
+    'bg-green-500': 'bg-emerald-500/30 backdrop-blur-xl border border-emerald-500/20',
+    'bg-purple-500': 'bg-fuchsia-600/30 backdrop-blur-xl border border-fuchsia-500/20',
+    'bg-yellow-500': 'bg-yellow-500/30 backdrop-blur-xl border border-yellow-500/20',
+    'bg-red-500': 'bg-red-600/30 backdrop-blur-xl border border-red-500/20',
+    'bg-orange-500': 'bg-orange-500/30 backdrop-blur-xl border border-orange-500/20',
+  }
 
+  return (
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {statCards.map((card, index) => {
-            const colorClasses: Record<string, string> = {
-              'bg-blue-500': 'bg-sky-600/30 backdrop-blur-xl border border-sky-500/20',
-              'bg-green-500': 'bg-emerald-500/30 backdrop-blur-xl border border-emerald-500/20',
-              'bg-purple-500': 'bg-fuchsia-600/30 backdrop-blur-xl border border-fuchsia-500/20',
-              'bg-yellow-500': 'bg-yellow-500/30 backdrop-blur-xl border border-yellow-500/20',
-              'bg-red-500': 'bg-red-600/30 backdrop-blur-xl border border-red-500/20',
-              'bg-orange-500': 'bg-orange-500/30 backdrop-blur-xl border border-orange-500/20',
-            }
-            return (
-              <div
-                key={index}
-                className={`${colorClasses[card.color] || 'bg-slate-900/60 backdrop-blur-xl border border-white/5'} rounded-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-4 text-slate-100 transform transition-all duration-200 hover:scale-105 hover:shadow-[0_25px_80px_rgba(15,23,42,0.95)] relative overflow-hidden`}
-              >
-                <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full blur-2xl"></div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div>
-                    <p className="text-slate-300 text-xs font-semibold uppercase tracking-wider">{card.title}</p>
-                    <p className="text-4xl font-bold mt-3 text-slate-50">{card.value}</p>
-                  </div>
-                  <card.icon className="text-6xl opacity-80" />
+          {statCards.map((card, index) => (
+            <div
+              key={index}
+              className={`${colorClasses[card.color] || 'bg-slate-900/60 backdrop-blur-xl border border-white/5'} rounded-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-4 text-slate-100 transform transition-all duration-200 hover:scale-105 hover:shadow-[0_25px_80px_rgba(15,23,42,0.95)] relative overflow-hidden`}
+            >
+              <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full blur-2xl"></div>
+              <div className="flex items-center justify-between relative z-10">
+                <div>
+                  <p className="text-slate-300 text-xs font-semibold uppercase tracking-wider">{card.title}</p>
+                  <p className="text-4xl font-bold mt-3 text-slate-50">{card.value}</p>
                 </div>
+                <card.icon className="text-6xl opacity-80" />
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
 
         <div className="card">
@@ -204,8 +171,7 @@ export default function DashboardPage() {
             </table>
           </div>
         </div>
-        </div>
       </div>
-    </div>
+    </>
   )
 }

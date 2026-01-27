@@ -1,12 +1,12 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Navbar } from '@/components/Navbar'
 import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaUser, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory, FaDownload, FaSearch } from 'react-icons/fa'
+import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaUser, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory, FaDownload, FaPlus } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { SearchInput } from '@/components/SearchInput'
@@ -36,13 +36,15 @@ export default function BookingsPage() {
     show: false,
     bookingId: null,
   })
+  const [deleteModal, setDeleteModal] = useState<{
+    show: boolean
+    bookingId: string | null
+  }>({
+    show: false,
+    bookingId: null,
+  })
 
-  useEffect(() => {
-    const user = localStorage.getItem('user')
-    if (!user) {
-      router.push('/login')
-    }
-  }, [router])
+  // Auth is handled by root layout
 
   const queryClient = useQueryClient()
 
@@ -118,6 +120,20 @@ export default function BookingsPage() {
     },
   })
 
+  // Permanent delete booking (Admin only)
+  const deleteBookingMutation = useMutationWithInvalidation({
+    mutationFn: (id: string) => api.delete(`/bookings/${id}?permanent=true`),
+    endpoint: '/bookings/',
+    onSuccess: () => {
+      setDeleteModal({ show: false, bookingId: null })
+      toast.success('Booking deleted permanently')
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete booking'
+      toast.error(errorMessage)
+    },
+  })
+
   const handleExportCSV = () => {
     if (!bookings || bookings.length === 0) {
       toast.error('No bookings to export')
@@ -176,89 +192,64 @@ export default function BookingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen relative flex">
-        <Navbar />
-        <div className="flex-1 lg:ml-64">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <div className="h-8 w-32 bg-slate-700/50 rounded-lg animate-pulse mb-2" />
-                <div className="h-4 w-64 bg-slate-700/50 rounded animate-pulse" />
-              </div>
-              <div className="flex space-x-2">
-                <div className="h-10 w-32 bg-slate-700/50 rounded-lg animate-pulse" />
-                <div className="h-10 w-32 bg-slate-700/50 rounded-lg animate-pulse" />
+      <div className="w-full px-4 lg:px-6 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="card">
+              <div className="h-6 w-32 bg-slate-700/50 rounded animate-pulse mb-4" />
+              <div className="space-y-2 mb-4">
+                <div className="h-3 w-full bg-slate-700/50 rounded animate-pulse" />
+                <div className="h-3 w-3/4 bg-slate-700/50 rounded animate-pulse" />
+                <div className="h-3 w-2/3 bg-slate-700/50 rounded animate-pulse" />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="card">
-                  <div className="h-6 w-32 bg-slate-700/50 rounded animate-pulse mb-4" />
-                  <div className="space-y-2 mb-4">
-                    <div className="h-3 w-full bg-slate-700/50 rounded animate-pulse" />
-                    <div className="h-3 w-3/4 bg-slate-700/50 rounded animate-pulse" />
-                    <div className="h-3 w-2/3 bg-slate-700/50 rounded animate-pulse" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
-                    <div className="h-8 bg-slate-700/50 rounded-lg animate-pulse" />
-                    <div className="h-8 bg-slate-700/50 rounded-lg animate-pulse" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen relative flex">
-      <Navbar />
-      <div className="flex-1 lg:ml-64">
-        <div className="glow-sky top-20 right-20"></div>
-        <div className="glow-emerald bottom-20 left-20"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-100 mb-1">Bookings</h1>
-              <p className="text-sm text-slate-400">Manage guest bookings and reservations</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => router.push('/bookings/history')}
-                className="btn-secondary flex items-center space-x-2"
-              >
-                <FaHistory className="w-4 h-4" />
-                <span>View History</span>
-              </button>
-              <button
-                onClick={() => router.push('/bookings/new')}
-                className="btn-primary flex items-center space-x-2"
-              >
-                <FaCalendarAlt className="w-4 h-4" />
-                <span>New Booking</span>
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="flex-1 max-w-md">
-              <SearchInput
-                placeholder="Search by guest name, phone, or booking ID..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
-            </div>
+    <>
+      <div className="glow-sky top-20 right-20"></div>
+      <div className="glow-emerald bottom-20 left-20"></div>
+      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
+        {/* Header with action buttons */}
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center space-x-2">
             <button
-              onClick={handleExportCSV}
-              className="btn-secondary flex items-center space-x-2"
-              title="Export to CSV"
+              onClick={() => router.push('/bookings/history')}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
             >
-              <FaDownload className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
+              <FaHistory className="w-3 h-3" />
+              <span className="hidden sm:inline">History</span>
             </button>
           </div>
+          <Link
+            href="/bookings/new"
+            className="flex items-center space-x-2 px-3 py-1.5 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+          >
+            <FaPlus className="w-3 h-3" />
+            <span>New Booking</span>
+          </Link>
+        </div>
+
+        <div className="mb-4 flex items-center space-x-3">
+          <div className="flex-1 max-w-md">
+            <SearchInput
+              placeholder="Search by guest name, phone, or booking ID..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
+          </div>
+          <button
+            onClick={handleExportCSV}
+            className="btn-secondary flex items-center space-x-2"
+            title="Export to CSV"
+          >
+            <FaDownload className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
         </div>
 
         {bookings && bookings.length > 0 ? (
@@ -367,6 +358,16 @@ export default function BookingsPage() {
                       <span>Bill</span>
                     </a>
                   )}
+                  {/* Delete button for checked-out bookings */}
+                  {booking.status === 'CHECKED_OUT' && (
+                    <button
+                      onClick={() => setDeleteModal({ show: true, bookingId: booking.id })}
+                      className="text-red-400 hover:text-red-300 font-medium text-xs px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1 whitespace-nowrap"
+                    >
+                      <FaTrash className="w-3 h-3 flex-shrink-0" />
+                      <span>Delete</span>
+                    </button>
+                  )}
                 </div>
               </div>
               ))}
@@ -445,9 +446,25 @@ export default function BookingsPage() {
           isLoading={cancelBookingMutation.isPending}
           confirmText="Cancel Booking"
         />
-        </div>
+
+        {/* Delete Booking Modal (Permanent) */}
+        <ConfirmationModal
+          show={deleteModal.show}
+          title="Delete Booking"
+          message="Are you sure you want to permanently delete this booking? This will remove all booking records including history and bills. This action cannot be undone."
+          action="Delete"
+          type="delete"
+          onConfirm={() => {
+            if (deleteModal.bookingId) {
+              deleteBookingMutation.mutate(deleteModal.bookingId)
+            }
+          }}
+          onCancel={() => setDeleteModal({ show: false, bookingId: null })}
+          isLoading={deleteBookingMutation.isPending}
+          confirmText="Delete Permanently"
+        />
       </div>
-    </div>
+    </>
   )
 }
 

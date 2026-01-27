@@ -23,8 +23,12 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
-    const where: any = {}
-    if (status) where.status = status
+    const where: any = {
+      // By default, exclude CANCELLED bookings from the list
+      // They can still be accessed via history or with explicit status filter
+      status: { notIn: ['CANCELLED'] }
+    }
+    if (status) where.status = status  // Override if specific status requested
     if (date) {
       const startOfDay = new Date(date)
       startOfDay.setHours(0, 0, 0, 0)
@@ -80,6 +84,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/bookings - Create new booking with all Phase 1-3 improvements
+// Supports both single room (roomId) and multiple rooms (roomIds)
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth('RECEPTIONIST')(request)
@@ -89,9 +94,20 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json()
 
-    // Phase 1: Input validation with Zod
+    // Handle both roomId (single) and roomIds (multiple) - convert to array
+    const roomIds: string[] = data.roomIds || (data.roomId ? [data.roomId] : [])
+    
+    if (roomIds.length === 0) {
+      return Response.json(
+        errorResponse('VALIDATION_ERROR', 'At least one room must be selected'),
+        { status: 400 }
+      )
+    }
+
+    // Phase 1: Input validation with Zod (use first roomId for schema validation)
     const validationResult = createBookingSchema.safeParse({
       ...data,
+      roomId: roomIds[0], // For schema validation
       totalAmount: parseFloat(data.totalAmount) || 0,
       discount: parseFloat(data.discount) || 0,
     })
@@ -134,59 +150,7 @@ export async function POST(request: NextRequest) {
 
     // Phase 1: Transaction management - All operations in one transaction
     const result = await prisma.$transaction(async (tx: any) => {
-      // Phase 1: Check room availability
-      const room = await tx.room.findUnique({
-        where: { id: validatedData.roomId },
-      })
-
-      if (!room) {
-        throw new RoomUnavailableError(validatedData.roomId, 'Room not found')
-      }
-
-      if (room.status === 'MAINTENANCE') {
-        throw new RoomUnavailableError(validatedData.roomId, 'Room is under maintenance')
-      }
-
-      // Phase 1: Check for date conflicts
-      const conflictCheck = await checkDateConflicts(
-        validatedData.roomId,
-        checkInDate,
-        checkOutDate
-      )
-
-      if (conflictCheck.hasConflict) {
-        throw new DateConflictError(
-          `Room is already booked from ${conflictCheck.conflictingBooking?.checkIn} to ${conflictCheck.conflictingBooking?.checkOut}`
-        )
-      }
-
-      // Handle slot - create one if not provided
-      let slot = null
-      if (validatedData.slotId) {
-        slot = await tx.roomSlot.findUnique({
-          where: { id: validatedData.slotId },
-        })
-
-        if (!slot || !slot.isAvailable) {
-          throw new RoomUnavailableError(validatedData.roomId, 'Selected slot is not available')
-        }
-      } else {
-        // Create a default FULL_DAY slot if none provided
-        const checkInDateOnly = new Date(checkInDate)
-        checkInDateOnly.setHours(0, 0, 0, 0)
-
-        slot = await tx.roomSlot.create({
-          data: {
-            roomId: validatedData.roomId,
-            date: checkInDateOnly,
-            slotType: 'FULL_DAY',
-            price: room.basePrice,
-            isAvailable: false,
-          },
-        })
-      }
-
-      // Create or find guest
+      // Create or find guest first (shared across all bookings)
       let guest = await tx.guest.findFirst({
         where: { phone: validatedData.guestPhone },
       })
@@ -212,85 +176,153 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Phase 1: Calculate price using centralized function
-      const priceCalculation = calculateBookingPrice(
-        room.basePrice,
-        checkInDate,
-        checkOutDate,
-        validatedData.discount
-      )
+      const bookings: any[] = []
+      const bills: any[] = []
+      
+      // Calculate discount per room (distribute evenly)
+      const discountPerRoom = (parseFloat(String(validatedData.discount)) || 0) / roomIds.length
 
-      // Generate custom booking ID (RETINU0123 format) inside transaction
-      const bookingId = await generateBookingId(tx)
+      // Create bookings for each room
+      for (const roomId of roomIds) {
+        // Check room availability
+        const room = await tx.room.findUnique({
+          where: { id: roomId },
+        })
 
-      // Create booking with custom ID
-      const booking = await tx.booking.create({
-        data: {
-          id: bookingId,
-          roomId: validatedData.roomId,
-          slotId: slot.id,
-          guestId: guest.id,
-          checkIn: checkInDate,
-          checkOut: checkOutDate,
-          totalAmount: priceCalculation.totalAmount,
-          status: 'CONFIRMED',
-        },
-        include: {
-          room: true,
-          slot: true,
-          guest: true,
-        },
-      })
+        if (!room) {
+          throw new RoomUnavailableError(roomId, 'Room not found')
+        }
 
-      // Mark slot as unavailable
-      await tx.roomSlot.update({
-        where: { id: slot.id },
-        data: { isAvailable: false },
-      })
+        if (room.status === 'MAINTENANCE') {
+          throw new RoomUnavailableError(roomId, `Room ${room.roomNumber} is under maintenance`)
+        }
 
-      // Update room status
-      await tx.room.update({
-        where: { id: validatedData.roomId },
-        data: { status: 'BOOKED' },
-      })
+        // Check for date conflicts
+        const conflictCheck = await checkDateConflicts(
+          roomId,
+          checkInDate,
+          checkOutDate
+        )
 
-      // Generate bill
-      const billNumber = `BILL-${Date.now()}`
+        if (conflictCheck.hasConflict) {
+          throw new DateConflictError(
+            `Room ${room.roomNumber} is already booked from ${conflictCheck.conflictingBooking?.checkIn} to ${conflictCheck.conflictingBooking?.checkOut}`
+          )
+        }
 
-      const bill = await tx.bill.create({
-        data: {
-          bookingId: booking.id,
-          billNumber,
-          subtotal: priceCalculation.subtotal,
-          tax: priceCalculation.tax,
-          discount: priceCalculation.discountAmount,
-          totalAmount: priceCalculation.totalAmount,
-          balanceAmount: priceCalculation.totalAmount,
-          paymentStatus: 'PENDING',
-        },
-      })
+        // Create a default FULL_DAY slot
+        const checkInDateOnly = new Date(checkInDate)
+        checkInDateOnly.setHours(0, 0, 0, 0)
 
-      // Phase 3: Log booking creation to audit trail
-      await logBookingChange(
-        booking.id,
-        'CREATED',
-        userId,
-        [
-          { field: 'status', oldValue: null, newValue: 'CONFIRMED' },
-          { field: 'roomId', oldValue: null, newValue: validatedData.roomId },
-          { field: 'checkIn', oldValue: null, newValue: checkInDate },
-          { field: 'checkOut', oldValue: null, newValue: checkOutDate },
-        ],
-        'Booking created successfully'
-      )
+        const slot = await tx.roomSlot.create({
+          data: {
+            roomId: roomId,
+            date: checkInDateOnly,
+            slotType: 'FULL_DAY',
+            price: room.basePrice,
+            isAvailable: false,
+          },
+        })
 
-      return { booking, bill }
+        // Calculate price for this room
+        const priceCalculation = calculateBookingPrice(
+          room.basePrice,
+          checkInDate,
+          checkOutDate,
+          discountPerRoom
+        )
+
+        // Generate custom booking ID
+        const bookingId = await generateBookingId(tx)
+
+        // Create booking
+        const booking = await tx.booking.create({
+          data: {
+            id: bookingId,
+            roomId: roomId,
+            slotId: slot.id,
+            guestId: guest.id,
+            checkIn: checkInDate,
+            checkOut: checkOutDate,
+            totalAmount: priceCalculation.totalAmount,
+            status: 'CONFIRMED',
+          },
+          include: {
+            room: true,
+            slot: true,
+            guest: true,
+          },
+        })
+
+        // Update room status only if check-in is today or in the past
+        // For future bookings, room remains AVAILABLE until check-in
+        const now = new Date()
+        const isCurrentOrPastBooking = checkInDate <= now
+        if (isCurrentOrPastBooking) {
+          await tx.room.update({
+            where: { id: roomId },
+            data: { status: 'BOOKED' },
+          })
+        }
+
+        // Generate bill
+        const billNumber = `BILL-${Date.now()}-${roomId.slice(-4)}`
+
+        const bill = await tx.bill.create({
+          data: {
+            bookingId: booking.id,
+            billNumber,
+            subtotal: priceCalculation.subtotal,
+            tax: priceCalculation.tax,
+            discount: priceCalculation.discountAmount,
+            totalAmount: priceCalculation.totalAmount,
+            balanceAmount: priceCalculation.totalAmount,
+            paymentStatus: 'PENDING',
+          },
+        })
+
+        // Log booking creation
+        await logBookingChange(
+          booking.id,
+          'CREATED',
+          userId,
+          [
+            { field: 'status', oldValue: null, newValue: 'CONFIRMED' },
+            { field: 'roomId', oldValue: null, newValue: roomId },
+            { field: 'checkIn', oldValue: null, newValue: checkInDate },
+            { field: 'checkOut', oldValue: null, newValue: checkOutDate },
+          ],
+          `Booking created for Room ${room.roomNumber}`
+        )
+
+        bookings.push({ ...booking, bill })
+        bills.push(bill)
+      }
+
+      return { bookings, bills, guest }
     })
 
+    // Return response based on number of rooms
+    if (result.bookings.length === 1) {
+      return Response.json(
+        successResponse(
+          result.bookings[0],
+          'Booking created and bill generated successfully'
+        )
+      )
+    }
+
+    // Multiple rooms booked
+    const totalAmount = result.bills.reduce((sum: number, bill: any) => sum + bill.totalAmount, 0)
     return Response.json(
       successResponse(
-        { ...result.booking, bill: result.bill },
-        'Booking created and bill generated successfully'
+        {
+          bookings: result.bookings,
+          totalRooms: result.bookings.length,
+          totalAmount,
+          guest: result.guest,
+        },
+        `${result.bookings.length} rooms booked successfully`
       )
     )
   } catch (error: any) {

@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google'
 import './globals.css'
 import { ReactQueryProvider } from '@/lib/react-query'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AuthenticatedLayout } from '@/components/AuthenticatedLayout'
 
 const poppins = Poppins({ 
   subsets: ['latin'],
@@ -30,7 +31,11 @@ export default function RootLayout({
     <html lang="en" className={poppins.variable}>
       <body className={`${poppins.className} antialiased`}>
         <ErrorBoundary>
-          <ReactQueryProvider>{children}</ReactQueryProvider>
+          <ReactQueryProvider>
+            <AuthenticatedLayout>
+              {children}
+            </AuthenticatedLayout>
+          </ReactQueryProvider>
         </ErrorBoundary>
       </body>
     </html>

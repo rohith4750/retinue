@@ -177,8 +177,14 @@ export const bookingValidationRules: ValidationRules = {
       return null
     },
   },
-  roomId: {
+  roomIds: {
     required: true,
+    custom: (value) => {
+      if (!value || !Array.isArray(value) || value.length === 0) {
+        return 'Please select at least one room'
+      }
+      return null
+    },
   },
   discount: {
     number: true,
