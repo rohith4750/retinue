@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api-client'
 import toast from 'react-hot-toast'
-import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaConciergeBell, FaStar } from 'react-icons/fa'
+import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaConciergeBell, FaStar, FaBuilding, FaHotel } from 'react-icons/fa'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -138,84 +138,105 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden">
-      {/* Left Side - Hotel Image/Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-amber-900 via-amber-800 to-stone-900">
-        {/* Decorative Pattern Overlay */}
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+    <div className="min-h-screen flex relative overflow-hidden bg-slate-950">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        {/* Gradient Orbs */}
+        <div className="absolute top-0 -left-40 w-80 h-80 bg-purple-600/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+        <div className="absolute top-0 -right-40 w-80 h-80 bg-amber-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-40 left-20 w-80 h-80 bg-sky-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-emerald-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-6000"></div>
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
         }}></div>
-        
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-center">
-          {/* Hotel Logo */}
-          <div className="mb-8">
-            <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-2xl shadow-amber-500/30 mb-6">
-              <FaConciergeBell className="text-4xl text-white" />
-            </div>
-            <div className="flex items-center justify-center gap-1 mb-2">
-              {[...Array(5)].map((_, i) => (
-                <FaStar key={i} className="w-4 h-4 text-amber-400" />
-              ))}
-            </div>
-          </div>
-          
-          {/* Hotel Name */}
-          <h1 className="text-5xl font-bold text-white mb-4 tracking-wide">
-            The Retinue
-          </h1>
-          <p className="text-amber-200/80 text-lg mb-8 font-light tracking-wider uppercase">
-            Luxury Hotel & Resorts
-          </p>
-          
-          {/* Decorative Line */}
-          <div className="w-32 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent mb-8"></div>
-          
-          {/* Tagline */}
-          <p className="text-amber-100/70 text-base max-w-md leading-relaxed">
-            Experience unparalleled hospitality with our world-class management system. 
-            Streamline operations, delight guests, and elevate your service.
-          </p>
-          
-          {/* Features */}
-          <div className="mt-12 grid grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-3xl font-bold text-amber-400">24/7</div>
-              <div className="text-xs text-amber-200/60 uppercase tracking-wider mt-1">Support</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-amber-400">100%</div>
-              <div className="text-xs text-amber-200/60 uppercase tracking-wider mt-1">Secure</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-amber-400">Fast</div>
-              <div className="text-xs text-amber-200/60 uppercase tracking-wider mt-1">Reliable</div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Bottom Gradient */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/30 to-transparent"></div>
       </div>
 
-      {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative">
-        {/* Subtle glow effects */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl"></div>
-        
-        <div className="max-w-md w-full relative z-10">
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full mb-4 shadow-lg shadow-amber-500/20">
-              <FaConciergeBell className="text-2xl text-white" />
+      {/* Main Content */}
+      <div className="w-full flex items-center justify-center p-4 sm:p-8 relative z-10">
+        <div className="max-w-5xl w-full flex flex-col lg:flex-row items-center lg:items-stretch gap-8 lg:gap-0">
+          
+          {/* Left Side - Branding (Hidden on mobile, shown on lg) */}
+          <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-12 relative">
+            {/* Logo Stack */}
+            <div className="flex flex-col items-center space-y-6">
+              {/* Combined Logo */}
+              <div className="relative">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-amber-500/40 transform -rotate-6">
+                    <FaHotel className="text-2xl text-white" />
+                  </div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-sky-500/40 transform rotate-6">
+                    <FaBuilding className="text-2xl text-white" />
+                  </div>
+                </div>
+                {/* Connecting Element */}
+                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-700 shadow-lg">
+                  <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-sky-400">&</span>
+                </div>
+              </div>
+
+              {/* Brand Names */}
+              <div className="text-center mt-4">
+                <h1 className="text-3xl font-bold text-white mb-1">
+                  The Retinue
+                </h1>
+                <div className="flex items-center justify-center gap-2 text-slate-400 text-sm mb-4">
+                  <div className="h-px w-8 bg-gradient-to-r from-transparent to-slate-600"></div>
+                  <span>and</span>
+                  <div className="h-px w-8 bg-gradient-to-l from-transparent to-slate-600"></div>
+                </div>
+                <h1 className="text-3xl font-bold text-white mb-2">
+                  Buchirajuu
+                </h1>
+                <p className="text-slate-500 text-sm tracking-wider uppercase">
+                  Hotel & Convention Center
+                </p>
+              </div>
+
+              {/* Star Rating */}
+              <div className="flex items-center gap-1 mt-2">
+                {[...Array(5)].map((_, i) => (
+                  <FaStar key={i} className="w-4 h-4 text-amber-400" />
+                ))}
+              </div>
+
+              {/* Tagline */}
+              <p className="text-slate-500 text-center text-sm max-w-xs mt-4 leading-relaxed">
+                Where luxury meets celebration. Your destination for unforgettable stays and extraordinary events.
+              </p>
             </div>
-            <h1 className="text-2xl font-bold text-white">The Retinue</h1>
-            <p className="text-amber-400/80 text-sm tracking-wider uppercase">Luxury Hotel & Resorts</p>
           </div>
 
+          {/* Divider */}
+          <div className="hidden lg:flex items-center px-4">
+            <div className="w-px h-96 bg-gradient-to-b from-transparent via-slate-700 to-transparent"></div>
+          </div>
+
+          {/* Right Side - Login Form */}
+          <div className="w-full lg:flex-1 flex items-center justify-center">
+            <div className="max-w-md w-full">
+              {/* Mobile Logo */}
+              <div className="lg:hidden text-center mb-8">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
+                    <FaHotel className="text-lg text-white" />
+                  </div>
+                  <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
+                    <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-sky-400">&</span>
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
+                    <FaBuilding className="text-lg text-white" />
+                  </div>
+                </div>
+                <h1 className="text-xl font-bold text-white">The Retinue & Buchirajuu</h1>
+                <p className="text-slate-500 text-xs">Hotel & Convention Center</p>
+              </div>
+
           {/* Login Card */}
-          <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-8 border border-white/5 shadow-2xl">
+          <div className="bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5)]">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-white mb-2">
                 Welcome Back
@@ -324,8 +345,11 @@ export default function LoginPage() {
           
           {/* Copyright */}
           <p className="text-center text-xs text-slate-600 mt-6">
-            © 2026 The Retinue. All rights reserved.
+            © 2026 The Retinue & Buchirajuu. All rights reserved.
           </p>
+            </div>
+          </div>
+          
         </div>
       </div>
 

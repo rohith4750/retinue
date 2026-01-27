@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { Footer } from './Footer'
+import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
+import toast from 'react-hot-toast'
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode
@@ -20,9 +22,20 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const publicPaths = ['/login', '/forgot-password', '/reset-password']
   const isPublicPath = publicPaths.some(path => pathname?.startsWith(path))
 
+  // Session timeout handler
+  const handleSessionTimeout = useCallback(() => {
+    toast.error('Session expired. Please login again.')
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('user')
+    localStorage.removeItem('rememberMe')
+    clearSessionTimeout()
+    router.push('/login')
+  }, [router])
+
   useEffect(() => {
     if (isPublicPath) {
       setIsLoading(false)
+      clearSessionTimeout() // Clear any existing timeout on public pages
       return
     }
 
@@ -31,9 +44,22 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       router.push('/login')
     } else {
       setIsAuthenticated(true)
+      // Initialize session timeout after authentication is confirmed
+      initSessionTimeout(handleSessionTimeout)
     }
     setIsLoading(false)
-  }, [router, isPublicPath])
+  }, [router, isPublicPath, handleSessionTimeout])
+
+  // Setup session listeners when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isPublicPath) {
+      const cleanup = setupSessionListeners(handleSessionTimeout)
+      return () => {
+        cleanup()
+        clearSessionTimeout()
+      }
+    }
+  }, [isAuthenticated, isPublicPath, handleSessionTimeout])
 
   // For public pages, just render children
   if (isPublicPath) {

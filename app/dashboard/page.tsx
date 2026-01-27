@@ -2,34 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import toast from 'react-hot-toast'
 import { FaHome, FaCheckCircle, FaCalendarAlt, FaDollarSign, FaExclamationTriangle, FaBox } from 'react-icons/fa'
-import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
 
 export default function DashboardPage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    // Setup session timeout
-    const handleTimeout = () => {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
-      localStorage.removeItem('rememberMe')
-      toast.error('Session expired. Please login again.')
-      router.push('/login')
-    }
-
-    initSessionTimeout(handleTimeout)
-    const cleanup = setupSessionListeners(handleTimeout)
-
-    return () => {
-      clearSessionTimeout()
-      cleanup()
-    }
-  }, [router])
-
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api.get('/dashboard'),
