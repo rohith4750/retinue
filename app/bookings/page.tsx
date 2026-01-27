@@ -214,42 +214,43 @@ export default function BookingsPage() {
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
-        {/* Header with action buttons */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => router.push('/bookings/history')}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
-            >
-              <FaHistory className="w-3 h-3" />
-              <span className="hidden sm:inline">History</span>
-            </button>
-          </div>
-          <Link
-            href="/bookings/new"
-            className="flex items-center space-x-2 px-3 py-1.5 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
-          >
-            <FaPlus className="w-3 h-3" />
-            <span>New Booking</span>
-          </Link>
-        </div>
-
-        <div className="mb-4 flex items-center space-x-3">
-          <div className="flex-1 max-w-md">
+        {/* Header: Search/Export on left, History/New Booking on right */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          {/* Left: Search and Export */}
+          <div className="flex items-center gap-3">
             <SearchInput
-              placeholder="Search by guest name, phone, or booking ID..."
+              placeholder="Search bookings..."
               value={searchQuery}
               onChange={setSearchQuery}
+              className="w-48"
             />
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center space-x-2 px-3 py-2 bg-slate-800/60 text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors border border-white/5"
+              title="Export to CSV"
+            >
+              <FaDownload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
           </div>
-          <button
-            onClick={handleExportCSV}
-            className="btn-secondary flex items-center space-x-2"
-            title="Export to CSV"
-          >
-            <FaDownload className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
+
+          {/* Right: History and New Booking */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push('/bookings/history')}
+              className="flex items-center space-x-2 px-3 py-2 bg-slate-800 text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
+            >
+              <FaHistory className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">History</span>
+            </button>
+            <Link
+              href="/bookings/new"
+              className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+            >
+              <FaPlus className="w-3 h-3" />
+              <span>New Booking</span>
+            </Link>
+          </div>
         </div>
 
         {bookings && bookings.length > 0 ? (
@@ -314,57 +315,56 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5 relative z-10">
+                <div className="flex flex-wrap gap-2 pt-3 border-t border-white/5 relative z-10">
                   <a
                     href={`/bookings/${booking.id}`}
-                    className="text-sky-400 hover:text-sky-300 font-medium text-xs px-3 py-1.5 rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1 whitespace-nowrap"
+                    className="flex-1 min-w-[80px] h-8 text-sky-400 hover:text-sky-300 font-medium text-xs rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1"
                   >
-                    <FaEdit className="w-3 h-3 flex-shrink-0" />
+                    <FaEdit className="w-3 h-3" />
                     <span>View</span>
                   </a>
                   {booking.status === 'CONFIRMED' && (
                     <button
                       onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')}
-                      className="text-sky-400 hover:text-sky-300 font-medium text-xs px-3 py-1.5 rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1 whitespace-nowrap"
+                      className="flex-1 min-w-[80px] h-8 text-sky-400 hover:text-sky-300 font-medium text-xs rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1"
                     >
-                      <FaCheckCircle className="w-3 h-3 flex-shrink-0" />
+                      <FaCheckCircle className="w-3 h-3" />
                       <span>Check In</span>
                     </button>
                   )}
                   {booking.status === 'CHECKED_IN' && (
                     <button
                       onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')}
-                      className="text-sky-400 hover:text-sky-300 font-medium text-xs px-3 py-1.5 rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1 whitespace-nowrap"
+                      className="flex-1 min-w-[80px] h-8 text-sky-400 hover:text-sky-300 font-medium text-xs rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1"
                     >
-                      <FaDoorOpen className="w-3 h-3 flex-shrink-0" />
+                      <FaDoorOpen className="w-3 h-3" />
                       <span>Check Out</span>
                     </button>
                   )}
                   {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
                     <button
                       onClick={() => setCancelModal({ show: true, bookingId: booking.id })}
-                      className="text-red-400 hover:text-red-300 font-medium text-xs px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1 whitespace-nowrap"
+                      className="flex-1 min-w-[80px] h-8 text-red-400 hover:text-red-300 font-medium text-xs rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1"
                     >
-                      <FaTrash className="w-3 h-3 flex-shrink-0" />
+                      <FaTrash className="w-3 h-3" />
                       <span>Cancel</span>
                     </button>
                   )}
                   {booking.bill && (
                     <a
                       href={`/bills/${booking.bill.id}`}
-                      className="text-emerald-400 hover:text-emerald-300 font-medium text-xs px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 transition-colors border border-emerald-500/20 flex items-center justify-center space-x-1 whitespace-nowrap"
+                      className="flex-1 min-w-[80px] h-8 text-emerald-400 hover:text-emerald-300 font-medium text-xs rounded-lg hover:bg-emerald-500/10 transition-colors border border-emerald-500/20 flex items-center justify-center space-x-1"
                     >
-                      <FaMoneyBillWave className="w-3 h-3 flex-shrink-0" />
+                      <FaMoneyBillWave className="w-3 h-3" />
                       <span>Bill</span>
                     </a>
                   )}
-                  {/* Delete button for checked-out bookings */}
                   {booking.status === 'CHECKED_OUT' && (
                     <button
                       onClick={() => setDeleteModal({ show: true, bookingId: booking.id })}
-                      className="text-red-400 hover:text-red-300 font-medium text-xs px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1 whitespace-nowrap"
+                      className="flex-1 min-w-[80px] h-8 text-red-400 hover:text-red-300 font-medium text-xs rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1"
                     >
-                      <FaTrash className="w-3 h-3 flex-shrink-0" />
+                      <FaTrash className="w-3 h-3" />
                       <span>Delete</span>
                     </button>
                   )}

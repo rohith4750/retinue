@@ -123,16 +123,53 @@ export default function RoomsPage() {
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
-        {/* Header with Add Room button */}
-        <div className="flex justify-between items-center mb-4">
-          <div></div>
+        {/* Header: Search/Filter on left, Add Room on right */}
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+          {/* Left: Search and Date Filter */}
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchInput
+              placeholder="Search rooms..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+              className="w-48"
+            />
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 rounded-lg border border-white/5">
+              <FaCalendarAlt className="w-3.5 h-3.5 text-sky-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value)
+                  if (e.target.value) {
+                    setIsCheckingAvailability(true)
+                  }
+                }}
+                className="bg-transparent text-sm text-slate-200 border-none outline-none w-32"
+              />
+            </div>
+            {isCheckingAvailability && (
+              <button
+                onClick={handleClearDate}
+                className="px-3 py-1.5 bg-slate-700 text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+            {isCheckingAvailability && selectedDate && (
+              <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                {filteredRooms.length} available
+              </span>
+            )}
+          </div>
+
+          {/* Right: Add Room button */}
           {canManageRooms && (
             <button
               onClick={() => {
                 setEditingRoom(null)
                 setShowModal(true)
               }}
-              className="flex items-center space-x-2 px-3 py-1.5 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
             >
               <FaPlus className="w-3 h-3" />
               <span>Add Room</span>
@@ -140,115 +177,104 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {/* Date-based Availability Check */}
-        <div className="mb-4 p-4 bg-slate-800/40 rounded-xl border border-white/5">
-          <div className="flex flex-wrap items-center gap-3">
-            <FaCalendarAlt className="w-4 h-4 text-sky-400" />
-            <span className="text-sm font-medium text-slate-200">Check Availability on:</span>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value)
-                if (e.target.value) {
-                  setIsCheckingAvailability(true)
-                }
-              }}
-              className="form-input text-sm py-1.5 w-auto"
-            />
-            {isCheckingAvailability && (
-              <button
-                onClick={handleClearDate}
-                className="px-3 py-1.5 bg-slate-700 text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-600 transition-colors"
-              >
-                Show All
-              </button>
-            )}
-            {isCheckingAvailability && selectedDate && (
-              <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
-                {filteredRooms.length} available on {new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <SearchInput
-            placeholder="Search by room number, type, or status..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            className="max-w-md"
-          />
-        </div>
-
         {filteredRooms && filteredRooms.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {filteredRooms.map((room: any) => (
-              <div
-                key={room.id}
-                className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border-2 cursor-pointer transition-all hover:scale-105 ${
-                  room.status === 'AVAILABLE' 
-                    ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30' 
-                    : room.status === 'BOOKED' 
-                    ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30' 
-                    : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
-                }`}
-                onClick={() => {
-                  if (canManageRooms) {
-                    setEditingRoom(room)
-                    setShowModal(true)
-                  }
-                }}
-              >
-                {/* Room Number */}
-                <span className={`text-sm font-bold ${
-                  room.status === 'AVAILABLE' ? 'text-emerald-300' :
-                  room.status === 'BOOKED' ? 'text-red-300' :
-                  'text-yellow-300'
-                }`}>{room.roomNumber}</span>
-                
-                {/* Divider */}
-                <span className={`w-px h-4 ${
-                  room.status === 'AVAILABLE' ? 'bg-emerald-500/50' :
-                  room.status === 'BOOKED' ? 'bg-red-500/50' :
-                  'bg-yellow-500/50'
-                }`}></span>
-                
-                {/* Type */}
-                <span className="text-xs text-slate-300">{room.roomType}</span>
-                
-                {/* Divider */}
-                <span className={`w-px h-4 ${
-                  room.status === 'AVAILABLE' ? 'bg-emerald-500/50' :
-                  room.status === 'BOOKED' ? 'bg-red-500/50' :
-                  'bg-yellow-500/50'
-                }`}></span>
-                
-                {/* Price */}
-                <span className="text-sm font-semibold text-white">₹{room.basePrice.toLocaleString()}</span>
-                
-                {/* Status Text */}
-                <span className={`text-[10px] font-semibold uppercase ${
-                  room.status === 'AVAILABLE' ? 'text-emerald-400' :
-                  room.status === 'BOOKED' ? 'text-red-400' :
-                  'text-yellow-400'
-                }`}>{room.status}</span>
+          <div className="flex flex-col">
+            {/* Group rooms into pairs and render with divider lines */}
+            {Array.from({ length: Math.ceil(filteredRooms.length / 2) }, (_, rowIndex) => {
+              const roomsInRow = filteredRooms.slice(rowIndex * 2, rowIndex * 2 + 2)
+              const isLastRow = rowIndex === Math.ceil(filteredRooms.length / 2) - 1
+              return (
+                <div key={rowIndex}>
+                  {/* Row with 2 chips */}
+                  <div className="flex flex-wrap gap-4 py-3">
+                    {roomsInRow.map((room: any) => (
+                      <div
+                        key={room.id}
+                        className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${
+                          room.status === 'AVAILABLE' 
+                            ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30' 
+                            : room.status === 'BOOKED' 
+                            ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30' 
+                            : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
+                        }`}
+                        onClick={() => {
+                          if (canManageRooms) {
+                            setEditingRoom(room)
+                            setShowModal(true)
+                          }
+                        }}
+                      >
+                        {/* Room Number */}
+                        <span className={`text-sm font-bold ${
+                          room.status === 'AVAILABLE' ? 'text-emerald-300' :
+                          room.status === 'BOOKED' ? 'text-red-300' :
+                          'text-yellow-300'
+                        }`}>{room.roomNumber}</span>
+                        
+                        {/* Divider */}
+                        <span className={`w-px h-5 mx-3 ${
+                          room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                          room.status === 'BOOKED' ? 'bg-red-400' :
+                          'bg-yellow-400'
+                        }`}></span>
+                        
+                        {/* Type */}
+                        <span className="text-xs text-slate-300 uppercase">{room.roomType}</span>
+                        
+                        {/* Divider */}
+                        <span className={`w-px h-5 mx-3 ${
+                          room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                          room.status === 'BOOKED' ? 'bg-red-400' :
+                          'bg-yellow-400'
+                        }`}></span>
+                        
+                        {/* Price */}
+                        <span className="text-sm font-semibold text-white">₹{room.basePrice.toLocaleString()}</span>
+                        
+                        {/* Divider */}
+                        <span className={`w-px h-5 mx-3 ${
+                          room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                          room.status === 'BOOKED' ? 'bg-red-400' :
+                          'bg-yellow-400'
+                        }`}></span>
+                        
+                        {/* Status Text */}
+                        <span className={`text-[10px] font-semibold uppercase ${
+                          room.status === 'AVAILABLE' ? 'text-emerald-400' :
+                          room.status === 'BOOKED' ? 'text-red-400' :
+                          'text-yellow-400'
+                        }`}>{room.status}</span>
 
-                {/* Delete Button - only show for admins */}
-                {canManageRooms && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete(room.id)
-                    }}
-                    className="ml-1 p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
-                    title="Delete"
-                  >
-                    <FaTrash className="w-2.5 h-2.5" />
-                  </button>
-                )}
-              </div>
-            ))}
+                        {/* Delete Button - only show for admins */}
+                        {canManageRooms && (
+                          <>
+                            <span className={`w-px h-5 mx-3 ${
+                              room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                              room.status === 'BOOKED' ? 'bg-red-400' :
+                              'bg-yellow-400'
+                            }`}></span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDelete(room.id)
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
+                              title="Delete"
+                            >
+                              <FaTrash className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Divider line after each row (except last) */}
+                  {!isLastRow && (
+                    <div className="border-b border-slate-700/50"></div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div className="card text-center py-12">

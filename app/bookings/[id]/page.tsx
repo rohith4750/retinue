@@ -188,7 +188,7 @@ export default function BookingDetailPage() {
               {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="btn-secondary flex items-center space-x-2"
+                  className="flex-1 h-10 bg-slate-700 text-slate-200 font-medium text-sm rounded-lg flex items-center justify-center space-x-2"
                 >
                   <FaEdit className="w-4 h-4" />
                   <span>Edit Booking</span>
@@ -197,7 +197,7 @@ export default function BookingDetailPage() {
               {booking.bill && (
                 <a
                   href={`/bills/${booking.bill.id}`}
-                  className="btn-primary flex items-center space-x-2"
+                  className="flex-1 h-10 bg-sky-600 text-white font-medium text-sm rounded-lg flex items-center justify-center space-x-2"
                 >
                   <FaMoneyBillWave className="w-4 h-4" />
                   <span>View Bill</span>
