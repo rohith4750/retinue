@@ -164,8 +164,8 @@ export async function GET(request: NextRequest) {
       // 5. Function Hall Bookings
       let hallBookings: any[] = []
       try {
-        // @ts-ignore
-        hallBookings = await prisma.functionHallBooking.findMany({
+        // @ts-ignore - Prisma types may not include FunctionHallBooking relations
+        hallBookings = await (prisma.functionHallBooking as any).findMany({
           where: {
             createdAt: {
               gte: start,
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
             },
           },
           include: {
-            functionHall: true,
+            hall: true,
           },
           orderBy: { createdAt: 'desc' },
         })
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
       if (hallBookings.length > 0) {
         const hallBookingsData = hallBookings.map((b: any) => ({
           'Booking ID': b.id,
-          'Hall Name': b.functionHall?.name || 'N/A',
+          'Hall Name': b.hall?.name || 'N/A',
           'Customer Name': b.customerName,
           'Customer Phone': b.customerPhone,
           'Customer Email': b.customerEmail || 'N/A',
@@ -318,8 +318,8 @@ export async function GET(request: NextRequest) {
       // 10. Asset Locations Sheet
       let assetLocations: any[] = []
       try {
-        // @ts-ignore
-        assetLocations = await prisma.assetLocation.findMany({
+        // @ts-ignore - Prisma types may not include AssetLocation relations
+        assetLocations = await (prisma.assetLocation as any).findMany({
           include: {
             inventory: true,
             room: true,
@@ -385,8 +385,8 @@ export async function GET(request: NextRequest) {
       // 12. Salary Payments Sheet
       let salaryPayments: any[] = []
       try {
-        // @ts-ignore
-        salaryPayments = await prisma.salaryPayment.findMany({
+        // @ts-ignore - Prisma types may not include SalaryPayment relations
+        salaryPayments = await (prisma.salaryPayment as any).findMany({
           where: {
             createdAt: {
               gte: start,

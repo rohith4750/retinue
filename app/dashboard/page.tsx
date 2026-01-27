@@ -569,7 +569,7 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-white">{booking.customerName || 'Customer'}</p>
-                        <p className="text-xs text-slate-400">{booking.functionHall?.name || 'Hall'} • {booking.eventType}</p>
+                        <p className="text-xs text-slate-400">{booking.hall?.name || 'Hall'} • {booking.eventType}</p>
                       </div>
                     </div>
                     <div className="text-right">

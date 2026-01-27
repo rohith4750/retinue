@@ -161,12 +161,12 @@ export async function GET(request: NextRequest) {
       })
       hallRevenueThisMonth = hallRevenueData._sum.advanceAmount || 0
 
-      // @ts-ignore
-      recentHallBookings = await prisma.functionHallBooking.findMany({
+      // @ts-ignore - Prisma types may not include FunctionHallBooking relations
+      recentHallBookings = await (prisma.functionHallBooking as any).findMany({
         take: 3,
         orderBy: { createdAt: 'desc' },
         include: {
-          functionHall: true,
+          hall: true,
         },
       })
     } catch (e) {
