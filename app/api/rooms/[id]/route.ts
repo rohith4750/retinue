@@ -92,8 +92,73 @@ export async function DELETE(
     const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
-    await prisma.room.delete({
-      where: { id: params.id },
+    // Check if room has any active bookings
+    const activeBookings = await prisma.booking.count({
+      where: {
+        roomId: params.id,
+        status: {
+          in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'],
+        },
+      },
+    })
+
+    if (activeBookings > 0) {
+      return Response.json(
+        errorResponse(
+          'ROOM_HAS_ACTIVE_BOOKINGS',
+          `Cannot delete room with ${activeBookings} active booking(s). Cancel or check-out all bookings first.`
+        ),
+        { status: 400 }
+      )
+    }
+
+    // Check if room has any historical bookings (completed/cancelled)
+    const historicalBookings = await prisma.booking.count({
+      where: {
+        roomId: params.id,
+        status: {
+          in: ['CHECKED_OUT', 'CANCELLED'],
+        },
+      },
+    })
+
+    // Use transaction to handle deletion
+    await prisma.$transaction(async (tx: any) => {
+      // If there are historical bookings, delete them first (to maintain referential integrity)
+      if (historicalBookings > 0) {
+        // Delete booking history for these bookings
+        const bookingIds = await tx.booking.findMany({
+          where: { roomId: params.id },
+          select: { id: true },
+        })
+        
+        const ids = bookingIds.map((b: any) => b.id)
+        
+        // Delete booking history
+        await tx.bookingHistory.deleteMany({
+          where: { bookingId: { in: ids } },
+        })
+        
+        // Delete bills
+        await tx.bill.deleteMany({
+          where: { bookingId: { in: ids } },
+        })
+        
+        // Delete bookings
+        await tx.booking.deleteMany({
+          where: { roomId: params.id },
+        })
+      }
+
+      // Delete room slots
+      await tx.roomSlot.deleteMany({
+        where: { roomId: params.id },
+      })
+
+      // Delete the room
+      await tx.room.delete({
+        where: { id: params.id },
+      })
     })
 
     return Response.json(successResponse(null, 'Room deleted successfully'))
@@ -104,6 +169,18 @@ export async function DELETE(
         { status: 404 }
       )
     }
+    
+    // Handle foreign key constraint errors
+    if (error.code === 'P2003') {
+      return Response.json(
+        errorResponse(
+          'ROOM_HAS_DEPENDENCIES',
+          'Cannot delete room. It has associated records. Contact administrator.'
+        ),
+        { status: 400 }
+      )
+    }
+    
     console.error('Error deleting room:', error)
     return Response.json(
       errorResponse('Server error', 'Failed to delete room'),

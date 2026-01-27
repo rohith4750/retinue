@@ -215,17 +215,72 @@ export async function PUT(
   }
 }
 
-// DELETE /api/bookings/[id] - Cancel booking (Phase 3)
+// DELETE /api/bookings/[id] - Cancel or permanently delete booking
+// Query param: ?permanent=true for hard delete (Admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireAuth('RECEPTIONIST')(request)
+    const { searchParams } = new URL(request.url)
+    const permanent = searchParams.get('permanent') === 'true'
+
+    // Permanent delete requires Admin, cancel requires Receptionist
+    const authResult = permanent 
+      ? await requireAuth('ADMIN')(request)
+      : await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const userId = (authResult as any).userId
 
+    // Permanent delete - completely remove booking and related records
+    if (permanent) {
+      await prisma.$transaction(async (tx: any) => {
+        const booking = await tx.booking.findUnique({
+          where: { id: params.id },
+          include: { room: true, slot: true },
+        })
+
+        if (!booking) {
+          throw new Error('Booking not found')
+        }
+
+        // Delete booking history
+        await tx.bookingHistory.deleteMany({
+          where: { bookingId: params.id },
+        })
+
+        // Delete bill if exists
+        await tx.bill.deleteMany({
+          where: { bookingId: params.id },
+        })
+
+        // Delete the booking
+        await tx.booking.delete({
+          where: { id: params.id },
+        })
+
+        // Make slot available again if it exists
+        if (booking.slotId) {
+          await tx.roomSlot.update({
+            where: { id: booking.slotId },
+            data: { isAvailable: true },
+          }).catch(() => {}) // Ignore if slot doesn't exist
+        }
+
+        // Update room status if it was booked for this booking
+        if (booking.status === 'CHECKED_IN' || booking.status === 'CONFIRMED') {
+          await tx.room.update({
+            where: { id: booking.roomId },
+            data: { status: 'AVAILABLE' },
+          })
+        }
+      })
+
+      return Response.json(successResponse(null, 'Booking permanently deleted'))
+    }
+
+    // Soft delete (cancel) - keep booking record but change status
     const result = await prisma.$transaction(async (tx: any) => {
       const booking = await tx.booking.findUnique({
         where: { id: params.id },
@@ -299,9 +354,9 @@ export async function DELETE(
       )
     }
 
-    console.error('Error cancelling booking:', error)
+    console.error('Error deleting booking:', error)
     return Response.json(
-      errorResponse('INTERNAL_ERROR', error.message || 'Failed to cancel booking'),
+      errorResponse('INTERNAL_ERROR', error.message || 'Failed to delete booking'),
       { status: 500 }
     )
   }

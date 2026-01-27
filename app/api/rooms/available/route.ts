@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const checkOut = searchParams.get('checkOut')
     const roomType = searchParams.get('roomType')
 
-    // If no dates provided, return all available rooms (status = AVAILABLE)
+    // If no dates provided, return all available rooms (not in MAINTENANCE)
     if (!checkIn || !checkOut) {
       const rooms = await prisma.room.findMany({
         where: {
@@ -21,7 +21,14 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { roomNumber: 'asc' },
       })
-      return Response.json(successResponse(rooms))
+      return Response.json(
+        successResponse({
+          rooms: rooms,
+          dateRange: null,
+          bookedRoomCount: 0,
+          availableRoomCount: rooms.length,
+        })
+      )
     }
 
     // Parse dates
@@ -44,33 +51,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Find rooms that have overlapping bookings for the selected dates
+    // Two date ranges overlap if: startA < endB AND startB < endA
     const bookedRoomIds = await prisma.booking.findMany({
       where: {
         status: {
           in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'],
         },
-        // Check for date overlap
-        OR: [
-          {
-            // New booking starts during an existing booking
-            checkIn: { lte: checkInDate },
-            checkOut: { gt: checkInDate },
-          },
-          {
-            // New booking ends during an existing booking
-            checkIn: { lt: checkOutDate },
-            checkOut: { gte: checkOutDate },
-          },
-          {
-            // New booking completely contains an existing booking
-            checkIn: { gte: checkInDate },
-            checkOut: { lte: checkOutDate },
-          },
+        // Date overlap: existing.checkIn < newCheckOut AND newCheckIn < existing.checkOut
+        AND: [
+          { checkIn: { lt: checkOutDate } },
+          { checkOut: { gt: checkInDate } },
         ],
       },
       select: {
         roomId: true,
       },
+      distinct: ['roomId'], // Ensure unique room IDs
     })
 
     const bookedIds = bookedRoomIds.map((b) => b.roomId)

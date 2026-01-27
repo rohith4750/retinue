@@ -24,9 +24,9 @@ export const QUERY_INVALIDATION_MAP: QueryInvalidationMap = {
   '/inventory': ['inventory', 'dashboard'],
   '/inventory/': ['inventory', 'dashboard'],
   
-  // Staff
+  // Staff - affects dashboard counts
   '/staff': ['staff', 'dashboard'],
-  '/staff/': ['staff', 'dashboard'],
+  '/staff/': ['staff', 'dashboard'], // Matches /staff/{id}
   
   // Bills - affects bookings and dashboard
   '/bills': ['bills', 'bill', 'bookings', 'dashboard'],
