@@ -57,6 +57,19 @@ enum InventoryTransactionType {
   OUT
 }
 
+enum FunctionHallStatus {
+  AVAILABLE
+  BOOKED
+  MAINTENANCE
+}
+
+enum FunctionHallBookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -252,4 +265,47 @@ model PasswordReset {
   @@index([email])
   @@index([code])
   @@index([expiresAt])
+}
+
+// Function Hall
+model FunctionHall {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  capacity    Int                // Max guests
+  pricePerDay Float
+  pricePerHour Float?
+  amenities   String?            // JSON string of amenities (AC, Projector, Stage, etc.)
+  description String?
+  status      FunctionHallStatus @default(AVAILABLE)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  bookings    FunctionHallBooking[]
+}
+
+// Function Hall Booking
+model FunctionHallBooking {
+  id              String                   @id @default(cuid())
+  hallId          String
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  eventType       String                   // Wedding, Birthday, Conference, etc.
+  eventDate       DateTime
+  startTime       String                   // e.g., "09:00"
+  endTime         String                   // e.g., "21:00"
+  expectedGuests  Int
+  totalAmount     Float
+  advanceAmount   Float                    @default(0)
+  balanceAmount   Float
+  specialRequests String?
+  status          FunctionHallBookingStatus @default(PENDING)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  hall            FunctionHall             @relation(fields: [hallId], references: [id])
+
+  @@index([hallId, status])
+  @@index([eventDate])
+  @@index([status])
 }

@@ -62,11 +62,11 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       
       {/* Main content area */}
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
-        {/* Toolbar */}
+        {/* Toolbar - Fixed */}
         <Toolbar />
         
-        {/* Page content - with padding for fixed footer */}
-        <main className="flex-1 pb-12">
+        {/* Page content - with padding for fixed toolbar and footer */}
+        <main className="flex-1 pt-16 pb-12">
           {children}
         </main>
         

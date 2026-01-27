@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes } from 'react-icons/fa'
+import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding } from 'react-icons/fa'
 
 export function Sidebar() {
   const router = useRouter()
@@ -27,19 +27,31 @@ export function Sidebar() {
 
   if (!user) return null
 
-  // Define all menu items with required roles
-  const allMenuItems = [
+  // Hotel menu items
+  const hotelMenuItems = [
     { href: '/dashboard', icon: FaChartLine, label: 'Dashboard', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'STAFF'] },
     { href: '/rooms', icon: FaHome, label: 'Rooms', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bookings', icon: FaCalendarAlt, label: 'Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'STAFF'] },
     { href: '/bookings/history', icon: FaHistory, label: 'History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+  ]
+
+  // Convention center menu items
+  const conventionMenuItems = [
+    { href: '/function-halls', icon: FaBuilding, label: 'Halls', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/function-halls/bookings', icon: FaCalendarAlt, label: 'Hall Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+  ]
+
+  // Admin menu items
+  const adminMenuItems = [
     { href: '/inventory', icon: FaBox, label: 'Inventory', roles: ['SUPER_ADMIN', 'ADMIN'] },
     { href: '/staff', icon: FaUsers, label: 'Staff', roles: ['SUPER_ADMIN', 'ADMIN'] },
     { href: '/auth/users', icon: FaUserShield, label: 'Users', roles: ['SUPER_ADMIN', 'ADMIN'] },
   ]
 
   // Filter menu items based on user role
-  const menuItems = allMenuItems.filter(item => item.roles.includes(user.role))
+  const filteredHotelItems = hotelMenuItems.filter(item => item.roles.includes(user.role))
+  const filteredConventionItems = conventionMenuItems.filter(item => item.roles.includes(user.role))
+  const filteredAdminItems = adminMenuItems.filter(item => item.roles.includes(user.role))
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
@@ -60,7 +72,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 bg-slate-900/80 backdrop-blur-xl border-r border-white/5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] z-40 transition-transform duration-300 overflow-y-auto ${
+        className={`fixed left-0 top-0 h-full w-64 bg-slate-900/80 backdrop-blur-xl border-r border-white/5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] z-40 transition-transform duration-300 overflow-y-auto sidebar-scrollbar ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -69,34 +81,114 @@ export function Sidebar() {
           <div className="p-4 border-b border-white/5">
             <Link
               href="/dashboard"
-              className="flex items-center space-x-2 text-base font-bold text-slate-100 hover:text-sky-400 transition-colors"
+              className="flex flex-col space-y-1"
             >
-              <FaHotel className="w-5 h-5" />
-              <span>The Retinue</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
+                  <FaHotel className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-white">The Retinue</span>
+                  <p className="text-[9px] text-slate-400">& Buchirajuu Convention</p>
+                </div>
+              </div>
             </Link>
           </div>
 
           {/* Navigation Menu */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon
-              const active = isActive(item.href)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileOpen(false)}
-                  className={`flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    active
-                      ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
-                      : 'text-slate-300 hover:bg-slate-800/60 hover:text-sky-400'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              )
-            })}
+          <nav className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Hotel Section */}
+            {filteredHotelItems.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-2 mb-2">
+                  <FaHotel className="w-3 h-3 text-amber-400" />
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">The Retinue</span>
+                </div>
+                <div className="space-y-1">
+                  {filteredHotelItems.map((item) => {
+                    const Icon = item.icon
+                    const active = isActive(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          active
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'text-slate-300 hover:bg-slate-800/60 hover:text-amber-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Convention Center Section */}
+            {filteredConventionItems.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-2 mb-2 pt-2 border-t border-white/5">
+                  <FaBuilding className="w-3 h-3 text-sky-400" />
+                  <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Buchirajuu Convention</span>
+                </div>
+                <div className="space-y-1">
+                  {filteredConventionItems.map((item) => {
+                    const Icon = item.icon
+                    const active = isActive(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          active
+                            ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                            : 'text-slate-300 hover:bg-slate-800/60 hover:text-sky-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Admin Section */}
+            {filteredAdminItems.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-2 mb-2 pt-2 border-t border-white/5">
+                  <FaUserShield className="w-3 h-3 text-emerald-400" />
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Management</span>
+                </div>
+                <div className="space-y-1">
+                  {filteredAdminItems.map((item) => {
+                    const Icon = item.icon
+                    const active = isActive(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          active
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'text-slate-300 hover:bg-slate-800/60 hover:text-emerald-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </nav>
 
           {/* User Info & Logout */}

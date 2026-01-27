@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { FaBell, FaSearch, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield } from 'react-icons/fa'
+import { FaBell, FaSearch, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield, FaBuilding } from 'react-icons/fa'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 
@@ -33,6 +33,9 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
   const getPageInfo = () => {
     if (pathname?.startsWith('/dashboard')) return { title: 'Dashboard', icon: FaChartLine }
     if (pathname?.startsWith('/rooms')) return { title: 'Rooms', icon: FaHome }
+    if (pathname?.startsWith('/function-halls/bookings/new')) return { title: 'New Hall Booking', icon: FaPlus }
+    if (pathname?.startsWith('/function-halls/bookings')) return { title: 'Hall Bookings', icon: FaCalendarAlt }
+    if (pathname?.startsWith('/function-halls')) return { title: 'Function Hall', icon: FaBuilding }
     if (pathname?.startsWith('/bookings/new')) return { title: 'New Booking', icon: FaPlus }
     if (pathname?.startsWith('/bookings/history')) return { title: 'Booking History', icon: FaHistory }
     if (pathname?.startsWith('/bookings')) return { title: 'Bookings', icon: FaCalendarAlt }
@@ -75,7 +78,7 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 bg-slate-900/80 backdrop-blur-xl border-b border-white/5">
+    <header className="fixed top-0 right-0 left-0 lg:left-64 z-20 bg-slate-900/95 backdrop-blur-xl border-b border-white/5">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Left: Page title */}
         <div className="flex items-center space-x-3 ml-12 lg:ml-0">
