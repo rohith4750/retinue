@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 
 // GET - List all expenses with filters
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAuth(request)
-    if (authResult instanceof NextResponse) {
-      return authResult
-    }
-
-    // Only SUPER_ADMIN can access expenses
-    if (authResult.role !== 'SUPER_ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized. Only Super Admin can access expenses.' },
-        { status: 403 }
-      )
-    }
+    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    if (authResult instanceof Response) return authResult
 
     const searchParams = request.nextUrl.searchParams
     const businessUnit = searchParams.get('businessUnit')
@@ -77,18 +67,8 @@ export async function GET(request: NextRequest) {
 // POST - Create new expense
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth(request)
-    if (authResult instanceof NextResponse) {
-      return authResult
-    }
-
-    // Only SUPER_ADMIN can create expenses
-    if (authResult.role !== 'SUPER_ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized. Only Super Admin can create expenses.' },
-        { status: 403 }
-      )
-    }
+    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    if (authResult instanceof Response) return authResult
 
     const body = await request.json()
     const {
@@ -126,7 +106,7 @@ export async function POST(request: NextRequest) {
         vendor: vendor || null,
         invoiceNumber: invoiceNumber || null,
         notes: notes || null,
-        createdBy: authResult.userId,
+        createdBy: authResult.id,
       },
     })
 

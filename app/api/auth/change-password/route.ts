@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth } from '@/lib/api-helpers'
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth(request)
-    if (authResult instanceof NextResponse) {
-      return authResult
-    }
+    const authResult = await requireAuth()(request)
+    if (authResult instanceof Response) return authResult
 
     const { currentPassword, newPassword } = await request.json()
 
@@ -29,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Get user from database
     const user = await prisma.user.findUnique({
-      where: { id: authResult.userId },
+      where: { id: authResult.id },
     })
 
     if (!user) {
@@ -62,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Update password
     await prisma.user.update({
-      where: { id: authResult.userId },
+      where: { id: authResult.id },
       data: { password: hashedPassword },
     })
 

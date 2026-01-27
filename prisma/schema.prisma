@@ -196,16 +196,42 @@ model InventoryTransaction {
 
 // Staff
 model Staff {
-  id          String            @id @default(cuid())
-  name        String
-  role        String
-  phone       String
-  salary      Float?
-  status      String            @default("ACTIVE")
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id            String            @id @default(cuid())
+  name          String
+  role          String
+  phone         String
+  salary        Float?
+  businessUnit  BusinessUnit      @default(HOTEL)  // Which business they work for
+  status        String            @default("ACTIVE")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  attendance  Attendance[]
+  attendance    Attendance[]
+  salaryPayments SalaryPayment[]
+}
+
+// Salary Payment - Track monthly salary payments
+model SalaryPayment {
+  id            String        @id @default(cuid())
+  staffId       String
+  month         Int           // 1-12
+  year          Int
+  amount        Float
+  bonus         Float         @default(0)
+  deductions    Float         @default(0)
+  netAmount     Float         // amount + bonus - deductions
+  paymentDate   DateTime
+  paymentMethod String?       // Cash, Bank Transfer, etc.
+  notes         String?
+  createdBy     String?       // User ID who processed this
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  staff         Staff         @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, month, year])  // One payment per staff per month
+  @@index([month, year])
+  @@index([staffId])
 }
 
 // Attendance

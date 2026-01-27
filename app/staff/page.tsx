@@ -46,6 +46,7 @@ export default function StaffPage() {
               <tr>
                 <th>Name</th>
                 <th>Role</th>
+                <th>Business Unit</th>
                 <th>Phone</th>
                 <th>Salary</th>
                 <th>Status</th>
@@ -59,6 +60,15 @@ export default function StaffPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                     {member.role}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`badge text-xs ${
+                      member.businessUnit === 'CONVENTION'
+                        ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+                        : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                    }`}>
+                      {member.businessUnit === 'CONVENTION' ? 'Convention' : 'Hotel'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                     {member.phone}
@@ -79,7 +89,7 @@ export default function StaffPage() {
               ))}
               {(!staff || staff.length === 0) && (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-slate-400">
+                  <td colSpan={6} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center">
                       <FaUsers className="text-4xl mb-2 text-slate-500" />
                       <p className="text-lg font-medium text-slate-300">No staff members found</p>
@@ -104,6 +114,7 @@ function StaffModal({ onClose }: { onClose: () => void }) {
     role: '',
     phone: '',
     salary: '',
+    businessUnit: 'HOTEL',
     status: 'ACTIVE',
   })
 
@@ -190,18 +201,33 @@ function StaffModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
             </div>
-            <div>
-              <label className="form-label">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
-                }
-                className="form-select"
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Business Unit *</label>
+                <select
+                  value={formData.businessUnit}
+                  onChange={(e) =>
+                    setFormData({ ...formData, businessUnit: e.target.value })
+                  }
+                  className="form-select"
+                >
+                  <option value="HOTEL">The Retinue (Hotel)</option>
+                  <option value="CONVENTION">Buchirajuu Convention</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  className="form-select"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
             </div>
             <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">
               <button
