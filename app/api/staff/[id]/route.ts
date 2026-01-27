@@ -1,107 +1,136 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
+import { requireAuth } from '@/lib/api-helpers'
 
 // GET /api/staff/[id] - Get single staff member
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuth()(request)
-    if (authResult instanceof Response) return authResult
+    if (authResult instanceof Response) {
+      return authResult
+    }
+
+    const { id } = await params
 
     const staff = await prisma.staff.findUnique({
-      where: { id: params.id },
-      include: {
-        attendance: {
-          take: 30,
-          orderBy: { date: 'desc' },
-        },
-      },
+      where: { id }
     })
 
     if (!staff) {
-      return Response.json(
-        errorResponse('Not found', 'Staff member not found'),
+      return NextResponse.json(
+        { success: false, error: 'Staff member not found' },
         { status: 404 }
       )
     }
 
-    return Response.json(successResponse(staff))
+    return NextResponse.json({ success: true, data: staff })
   } catch (error) {
-    console.error('Error fetching staff:', error)
-    return Response.json(
-      errorResponse('Server error', 'Failed to fetch staff member'),
+    console.error('Error fetching staff member:', error)
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch staff member' },
       { status: 500 }
     )
   }
 }
 
-// PUT /api/staff/[id] - Update staff member (Admin only)
+// PUT /api/staff/[id] - Update staff member (SUPER_ADMIN only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await requireAuth('ADMIN')(request)
-    if (authResult instanceof Response) return authResult
+    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    if (authResult instanceof Response) {
+      return authResult
+    }
 
-    const data = await request.json()
-    const { name, role, phone, salary, status } = data
+    const { id } = await params
+    const body = await request.json()
+    const { name, role, phone, salary, businessUnit, status } = body
 
-    const staff = await prisma.staff.update({
-      where: { id: params.id },
-      data: {
-        ...(name && { name }),
-        ...(role && { role }),
-        ...(phone && { phone }),
-        ...(salary !== undefined && { salary: salary ? parseFloat(salary) : null }),
-        ...(status && { status }),
-      },
+    // Check if staff exists
+    const existingStaff = await prisma.staff.findUnique({
+      where: { id }
     })
 
-    return Response.json(successResponse(staff, 'Staff member updated successfully'))
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return Response.json(
-        errorResponse('Not found', 'Staff member not found'),
+    if (!existingStaff) {
+      return NextResponse.json(
+        { success: false, error: 'Staff member not found' },
         { status: 404 }
       )
     }
-    console.error('Error updating staff:', error)
-    return Response.json(
-      errorResponse('Server error', 'Failed to update staff member'),
+
+    const updateData: any = {}
+    if (name) updateData.name = name
+    if (role) updateData.role = role
+    if (phone) updateData.phone = phone
+    if (salary !== undefined && salary !== '') updateData.salary = parseFloat(salary)
+    if (businessUnit) updateData.businessUnit = businessUnit
+    if (status) updateData.status = status
+
+    const updatedStaff = await prisma.staff.update({
+      where: { id },
+      data: updateData
+    })
+
+    return NextResponse.json({ success: true, data: updatedStaff })
+  } catch (error) {
+    console.error('Error updating staff member:', error)
+    return NextResponse.json(
+      { success: false, error: 'Failed to update staff member' },
       { status: 500 }
     )
   }
 }
 
-// DELETE /api/staff/[id] - Delete staff member (Admin only)
+// DELETE /api/staff/[id] - Delete staff member (SUPER_ADMIN only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await requireAuth('ADMIN')(request)
-    if (authResult instanceof Response) return authResult
+    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    if (authResult instanceof Response) {
+      return authResult
+    }
 
-    // Delete staff member (attendance records will cascade delete)
-    await prisma.staff.delete({
-      where: { id: params.id },
+    const { id } = await params
+
+    // Check if staff exists
+    const existingStaff = await prisma.staff.findUnique({
+      where: { id }
     })
 
-    return Response.json(successResponse(null, 'Staff member deleted successfully'))
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return Response.json(
-        errorResponse('Not found', 'Staff member not found'),
+    if (!existingStaff) {
+      return NextResponse.json(
+        { success: false, error: 'Staff member not found' },
         { status: 404 }
       )
     }
-    console.error('Error deleting staff:', error)
-    return Response.json(
-      errorResponse('Server error', 'Failed to delete staff member'),
+
+    // Delete associated salary payments first (cascade delete)
+    // Using raw query to avoid TypeScript issues with generated types
+    try {
+      await prisma.$executeRawUnsafe(
+        `DELETE FROM "SalaryPayment" WHERE "staffId" = $1`,
+        id
+      )
+    } catch (e) {
+      // Ignore if no salary payments exist
+    }
+
+    await prisma.staff.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ success: true, message: 'Staff member deleted successfully' })
+  } catch (error) {
+    console.error('Error deleting staff member:', error)
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete staff member' },
       { status: 500 }
     )
   }

@@ -1,15 +1,33 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { FaBox, FaPlus, FaExclamationTriangle } from 'react-icons/fa'
+import { FaBox, FaPlus, FaExclamationTriangle, FaEdit, FaTrash } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
+import { ConfirmationModal } from '@/components/ConfirmationModal'
 
 export default function InventoryPage() {
   const [showModal, setShowModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<any>(null)
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; itemId: string | null }>({
+    show: false,
+    itemId: null
+  })
   const queryClient = useQueryClient()
+
+  // Check user role
+  const [user, setUser] = useState<any>(null)
+  useEffect(() => {
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    }
+  }, [])
+
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
   const { data, isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -18,6 +36,28 @@ export default function InventoryPage() {
 
   const items = data?.items || []
   const lowStockItems = data?.lowStockItems || []
+
+  // Delete mutation
+  const deleteMutation = useMutationWithInvalidation({
+    mutationFn: (id: string) => api.delete(`/inventory/${id}`),
+    endpoint: '/inventory',
+    onSuccess: () => {
+      setDeleteModal({ show: false, itemId: null })
+      toast.success('Inventory item deleted successfully')
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to delete inventory item')
+    }
+  })
+
+  const handleEdit = (item: any) => {
+    setEditingItem(item)
+    setShowModal(true)
+  }
+
+  const handleDelete = (id: string) => {
+    setDeleteModal({ show: true, itemId: id })
+  }
 
   if (isLoading) {
     return (
@@ -38,7 +78,10 @@ export default function InventoryPage() {
             <p className="text-sm text-slate-400">Track and manage inventory items</p>
           </div>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditingItem(null)
+              setShowModal(true)
+            }}
             className="btn-primary flex items-center space-x-2"
           >
             <FaPlus className="w-4 h-4" />
@@ -68,6 +111,7 @@ export default function InventoryPage() {
                 <th>Unit</th>
                 <th>Min Stock</th>
                 <th>Status</th>
+                {isSuperAdmin && <th className="text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -101,39 +145,101 @@ export default function InventoryPage() {
                         </span>
                       )}
                     </td>
+                    {isSuperAdmin && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={isSuperAdmin ? 7 : 6} className="text-center py-12 text-slate-400">
+                    <div className="flex flex-col items-center">
+                      <FaBox className="text-4xl mb-2 text-slate-500" />
+                      <p className="text-lg font-medium text-slate-300">No inventory items found</p>
+                      <p className="text-sm text-slate-500">Click &quot;Add Item&quot; to add your first inventory item</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {showModal && <InventoryModal onClose={() => setShowModal(false)} />}
+        {showModal && (
+          <InventoryModal 
+            onClose={() => {
+              setShowModal(false)
+              setEditingItem(null)
+            }} 
+            editingItem={editingItem}
+          />
+        )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        show={deleteModal.show}
+        title="Delete Inventory Item"
+        message="Are you sure you want to delete this inventory item? This action cannot be undone."
+        action="Delete"
+        type="delete"
+        onConfirm={() => {
+          if (deleteModal.itemId) {
+            deleteMutation.mutate(deleteModal.itemId)
+          }
+        }}
+        onCancel={() => setDeleteModal({ show: false, itemId: null })}
+        isLoading={deleteMutation.isPending}
+        confirmText="Delete Item"
+      />
     </>
   )
 }
 
-function InventoryModal({ onClose }: { onClose: () => void }) {
+function InventoryModal({ onClose, editingItem }: { onClose: () => void; editingItem?: any }) {
   const [formData, setFormData] = useState({
-    itemName: '',
-    category: '',
-    quantity: '',
-    unit: '',
-    minStock: '',
+    itemName: editingItem?.itemName || '',
+    category: editingItem?.category || '',
+    quantity: editingItem?.quantity?.toString() || '',
+    unit: editingItem?.unit || '',
+    minStock: editingItem?.minStock?.toString() || '',
   })
 
   const queryClient = useQueryClient()
 
-  const createMutation = useMutation({
-    mutationFn: (data: any) => api.post('/inventory', data),
+  const createMutation = useMutationWithInvalidation({
+    mutationFn: (data: any) => {
+      if (editingItem) {
+        return api.put(`/inventory/${editingItem.id}`, data)
+      }
+      return api.post('/inventory', data)
+    },
+    endpoint: '/inventory',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] })
       onClose()
-      toast.success('Inventory item created successfully')
+      toast.success(editingItem ? 'Inventory item updated successfully' : 'Inventory item created successfully')
     },
     onError: () => {
-      toast.error('Failed to create inventory item')
+      toast.error(editingItem ? 'Failed to update inventory item' : 'Failed to create inventory item')
     },
   })
 
@@ -149,7 +255,7 @@ function InventoryModal({ onClose }: { onClose: () => void }) {
           <div className="card-header">
             <h2 className="text-lg font-bold text-slate-100 flex items-center">
               <FaBox className="mr-2 w-4 h-4" />
-              Add Inventory Item
+              {editingItem ? 'Edit Inventory Item' : 'Add Inventory Item'}
             </h2>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -228,9 +334,10 @@ function InventoryModal({ onClose }: { onClose: () => void }) {
               </button>
               <button
                 type="submit"
+                disabled={createMutation.isPending}
                 className="btn-primary"
               >
-                <span>Create</span>
+                <span>{createMutation.isPending ? 'Saving...' : (editingItem ? 'Update' : 'Create')}</span>
               </button>
             </div>
           </form>

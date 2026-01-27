@@ -1,31 +1,148 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { FaPlus, FaBox, FaHome, FaBuilding, FaEdit, FaTrash, FaMapMarkerAlt } from 'react-icons/fa'
+import { 
+  FaPlus, FaBox, FaHome, FaBuilding, FaEdit, FaTrash, FaMapMarkerAlt,
+  FaChevronRight, FaChevronDown, FaFolder, FaFolderOpen, FaCubes
+} from 'react-icons/fa'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 
+// Tree Node Component for Location
+function LocationNode({ 
+  location, 
+  assets, 
+  type, 
+  onDelete, 
+  getConditionColor 
+}: { 
+  location: any
+  assets: any[]
+  type: 'room' | 'hall'
+  onDelete: (id: string) => void
+  getConditionColor: (condition: string) => string
+}) {
+  const [isExpanded, setIsExpanded] = useState(true)
+  const totalQuantity = assets.reduce((sum, a) => sum + (a.quantity || 0), 0)
+
+  return (
+    <div className="select-none">
+      {/* Location Header */}
+      <div 
+        className="flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer hover:bg-slate-800/50 transition-colors group"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {/* Expand/Collapse Icon */}
+        <span className="text-slate-500 w-4">
+          {isExpanded ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
+        </span>
+        
+        {/* Folder Icon */}
+        {isExpanded ? (
+          <FaFolderOpen className={`w-4 h-4 ${type === 'room' ? 'text-amber-400' : 'text-purple-400'}`} />
+        ) : (
+          <FaFolder className={`w-4 h-4 ${type === 'room' ? 'text-amber-400' : 'text-purple-400'}`} />
+        )}
+        
+        {/* Location Name */}
+        <span className="text-white font-medium flex-1">
+          {type === 'room' ? location.roomNumber : location.name}
+        </span>
+        
+        {/* Item Count Badge */}
+        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
+          {assets.length} {assets.length === 1 ? 'item' : 'items'} • {totalQuantity} qty
+        </span>
+        
+        {/* Location Type Badge */}
+        <span className={`text-[10px] px-2 py-0.5 rounded ${
+          type === 'room' 
+            ? 'bg-amber-500/20 text-amber-400' 
+            : 'bg-purple-500/20 text-purple-400'
+        }`}>
+          {type === 'room' ? `Floor ${location.floor}` : `${location.capacity} guests`}
+        </span>
+      </div>
+
+      {/* Assets List (Children) */}
+      {isExpanded && (
+        <div className="ml-6 border-l-2 border-slate-700/50 pl-4 mt-1 space-y-1">
+          {assets.map((asset: any) => (
+            <div 
+              key={asset.id} 
+              className="flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-slate-800/30 transition-colors group"
+            >
+              {/* Tree Branch */}
+              <span className="text-slate-600">└</span>
+              
+              {/* Asset Icon */}
+              <FaCubes className="w-3.5 h-3.5 text-sky-400" />
+              
+              {/* Asset Name */}
+              <span className="text-slate-200 flex-1">{asset.inventory?.itemName || 'Unknown'}</span>
+              
+              {/* Quantity */}
+              <span className="text-xs bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded font-medium">
+                ×{asset.quantity}
+              </span>
+              
+              {/* Condition */}
+              <span className={`text-[10px] px-2 py-0.5 rounded border ${getConditionColor(asset.condition)}`}>
+                {asset.condition}
+              </span>
+              
+              {/* Actions */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Link
+                  href={`/assets/assign?edit=${asset.id}`}
+                  className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <FaEdit className="w-3 h-3" />
+                </Link>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete(asset.id)
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                >
+                  <FaTrash className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AssetsPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
-  const [filterRoom, setFilterRoom] = useState('')
-  const [filterHall, setFilterHall] = useState('')
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; assetId: string | null }>({
     show: false,
     assetId: null
   })
+  const [expandRooms, setExpandRooms] = useState(true)
+  const [expandHalls, setExpandHalls] = useState(true)
 
   // Check user role
   const [user, setUser] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
+  
   useEffect(() => {
+    setMounted(true)
     const userData = localStorage.getItem('user')
     if (userData) {
       const parsed = JSON.parse(userData)
@@ -38,67 +155,89 @@ export default function AssetsPage() {
 
   // Fetch asset locations
   const { data: assetsData, isLoading } = useQuery({
-    queryKey: ['asset-locations', filterRoom, filterHall],
-    queryFn: () => {
-      const params = new URLSearchParams()
-      if (filterRoom) params.append('roomId', filterRoom)
-      if (filterHall) params.append('functionHallId', filterHall)
-      return api.get(`/asset-locations?${params.toString()}`)
-    },
-    enabled: user?.role === 'SUPER_ADMIN'
+    queryKey: ['asset-locations'],
+    queryFn: () => api.get('/asset-locations'),
+    enabled: mounted && user?.role === 'SUPER_ADMIN',
   })
 
-  // Fetch rooms for filter
+  // Fetch rooms
   const { data: roomsData } = useQuery({
-    queryKey: ['rooms-list'],
+    queryKey: ['rooms'],
     queryFn: () => api.get('/rooms'),
-    enabled: user?.role === 'SUPER_ADMIN'
+    enabled: mounted && user?.role === 'SUPER_ADMIN'
   })
 
-  // Fetch function halls for filter
+  // Fetch function halls
   const { data: hallsData } = useQuery({
-    queryKey: ['function-halls-list'],
+    queryKey: ['function-halls'],
     queryFn: () => api.get('/function-halls'),
-    enabled: user?.role === 'SUPER_ADMIN'
+    enabled: mounted && user?.role === 'SUPER_ADMIN'
   })
 
-  const assets = assetsData?.data || []
-  const rooms = roomsData || []
-  const halls = hallsData || []
-  const summary = assetsData?.summary || {}
+  // Process data
+  const assets = useMemo(() => {
+    if (!assetsData) return []
+    if (Array.isArray(assetsData)) return assetsData
+    if (Array.isArray(assetsData?.data)) return assetsData.data
+    return []
+  }, [assetsData])
+  
+  const rooms = useMemo(() => roomsData || [], [roomsData])
+  const halls = useMemo(() => hallsData || [], [hallsData])
 
   // Filter assets by search
-  const filteredAssets = assets.filter((asset: any) => {
-    if (!debouncedSearch) return true
+  const filteredAssets = useMemo(() => {
+    if (!debouncedSearch) return assets
     const searchLower = debouncedSearch.toLowerCase()
-    return (
+    return assets.filter((asset: any) => 
       asset.inventory?.itemName?.toLowerCase().includes(searchLower) ||
       asset.room?.roomNumber?.toLowerCase().includes(searchLower) ||
       asset.functionHall?.name?.toLowerCase().includes(searchLower)
     )
-  })
+  }, [assets, debouncedSearch])
 
-  // Group assets by location
-  const assetsByRoom: Record<string, any[]> = {}
-  const assetsByHall: Record<string, any[]> = {}
+  // Group assets by room
+  const assetsByRoom = useMemo(() => {
+    const grouped: Record<string, any[]> = {}
+    filteredAssets.forEach((asset: any) => {
+      if (asset.roomId && asset.room) {
+        if (!grouped[asset.roomId]) grouped[asset.roomId] = []
+        grouped[asset.roomId].push(asset)
+      }
+    })
+    return grouped
+  }, [filteredAssets])
 
-  filteredAssets.forEach((asset: any) => {
-    if (asset.roomId) {
-      const key = asset.room?.roomNumber || asset.roomId
-      if (!assetsByRoom[key]) assetsByRoom[key] = []
-      assetsByRoom[key].push(asset)
-    } else if (asset.functionHallId) {
-      const key = asset.functionHall?.name || asset.functionHallId
-      if (!assetsByHall[key]) assetsByHall[key] = []
-      assetsByHall[key].push(asset)
-    }
-  })
+  // Group assets by hall
+  const assetsByHall = useMemo(() => {
+    const grouped: Record<string, any[]> = {}
+    filteredAssets.forEach((asset: any) => {
+      if (asset.functionHallId && asset.functionHall) {
+        if (!grouped[asset.functionHallId]) grouped[asset.functionHallId] = []
+        grouped[asset.functionHallId].push(asset)
+      }
+    })
+    return grouped
+  }, [filteredAssets])
+
+  // Get room/hall by ID
+  const getRoomById = (id: string) => rooms.find((r: any) => r.id === id) || filteredAssets.find((a: any) => a.roomId === id)?.room
+  const getHallById = (id: string) => halls.find((h: any) => h.id === id) || filteredAssets.find((a: any) => a.functionHallId === id)?.functionHall
+
+  // Calculate summary
+  const summary = useMemo(() => ({
+    totalAssets: assets.length,
+    totalQuantity: assets.reduce((sum: number, a: any) => sum + (a.quantity || 0), 0),
+    roomsWithAssets: Object.keys(assetsByRoom).length,
+    hallsWithAssets: Object.keys(assetsByHall).length
+  }), [assets, assetsByRoom, assetsByHall])
 
   // Delete mutation
   const deleteMutation = useMutationWithInvalidation({
     mutationFn: (id: string) => api.delete(`/asset-locations/${id}`),
     endpoint: '/asset-locations',
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['asset-locations'] })
       setDeleteModal({ show: false, assetId: null })
       toast.success('Asset removed from location')
     },
@@ -117,21 +256,25 @@ export default function AssetsPage() {
     }
   }
 
-  if (user?.role !== 'SUPER_ADMIN') {
-    return null
-  }
-
-  if (isLoading) {
+  // Loading state
+  if (!mounted || !user || (isLoading && !assetsData)) {
     return (
       <div className="w-full px-4 lg:px-6 py-4">
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-20 bg-slate-800/50 rounded-xl animate-pulse" />
+            <div key={i} className="h-16 bg-slate-800/50 rounded-xl animate-pulse" />
           ))}
         </div>
       </div>
     )
   }
+
+  if (user?.role !== 'SUPER_ADMIN') {
+    return null
+  }
+
+  const hasRoomAssets = Object.keys(assetsByRoom).length > 0
+  const hasHallAssets = Object.keys(assetsByHall).length > 0
 
   return (
     <>
@@ -143,34 +286,8 @@ export default function AssetsPage() {
               placeholder="Search assets..."
               value={searchQuery}
               onChange={setSearchQuery}
-              className="w-48"
+              className="w-64"
             />
-            <select
-              value={filterRoom}
-              onChange={(e) => {
-                setFilterRoom(e.target.value)
-                setFilterHall('')
-              }}
-              className="form-input text-sm w-40"
-            >
-              <option value="">All Rooms</option>
-              {rooms.map((room: any) => (
-                <option key={room.id} value={room.id}>{room.roomNumber}</option>
-              ))}
-            </select>
-            <select
-              value={filterHall}
-              onChange={(e) => {
-                setFilterHall(e.target.value)
-                setFilterRoom('')
-              }}
-              className="form-input text-sm w-40"
-            >
-              <option value="">All Halls</option>
-              {halls.map((hall: any) => (
-                <option key={hall.id} value={hall.id}>{hall.name}</option>
-              ))}
-            </select>
           </div>
 
           <Link
@@ -190,8 +307,8 @@ export default function AssetsPage() {
                 <FaBox className="text-sky-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{summary.totalAssets || 0}</p>
-                <p className="text-xs text-slate-400">Total Assignments</p>
+                <p className="text-2xl font-bold text-white">{summary.totalAssets}</p>
+                <p className="text-xs text-slate-400">Assignments</p>
               </div>
             </div>
           </div>
@@ -201,7 +318,7 @@ export default function AssetsPage() {
                 <FaMapMarkerAlt className="text-emerald-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{summary.totalQuantity || 0}</p>
+                <p className="text-2xl font-bold text-white">{summary.totalQuantity}</p>
                 <p className="text-xs text-slate-400">Total Items</p>
               </div>
             </div>
@@ -212,8 +329,8 @@ export default function AssetsPage() {
                 <FaHome className="text-amber-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{summary.roomsWithAssets || 0}</p>
-                <p className="text-xs text-slate-400">Rooms with Assets</p>
+                <p className="text-2xl font-bold text-white">{summary.roomsWithAssets}</p>
+                <p className="text-xs text-slate-400">Rooms</p>
               </div>
             </div>
           </div>
@@ -223,115 +340,104 @@ export default function AssetsPage() {
                 <FaBuilding className="text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{summary.hallsWithAssets || 0}</p>
-                <p className="text-xs text-slate-400">Halls with Assets</p>
+                <p className="text-2xl font-bold text-white">{summary.hallsWithAssets}</p>
+                <p className="text-xs text-slate-400">Halls</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Assets by Room */}
-        {Object.keys(assetsByRoom).length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <FaHome className="text-amber-400" />
-              Hotel Rooms
-            </h2>
-            <div className="space-y-3">
-              {Object.entries(assetsByRoom).map(([roomNumber, roomAssets]) => (
-                <div key={roomNumber} className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-semibold text-amber-400">Room {roomNumber}</h3>
-                    <span className="text-xs text-slate-400">{roomAssets.length} item types</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {roomAssets.map((asset: any) => (
-                      <div
-                        key={asset.id}
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-slate-800/60 rounded-lg border border-white/5 group"
-                      >
-                        <span className="text-sm text-white">{asset.inventory?.itemName}</span>
-                        <span className="text-xs bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded">×{asset.quantity}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getConditionColor(asset.condition)}`}>
-                          {asset.condition}
-                        </span>
-                        <div className="hidden group-hover:flex items-center gap-1 ml-1">
-                          <Link
-                            href={`/assets/assign?edit=${asset.id}`}
-                            className="p-1 text-slate-400 hover:text-sky-400 transition-colors"
-                          >
-                            <FaEdit className="w-3 h-3" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal({ show: true, assetId: asset.id })}
-                            className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                          >
-                            <FaTrash className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+        {/* Tree View */}
+        <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl border border-white/5 overflow-hidden">
+          {/* Hotel Rooms Section */}
+          {(hasRoomAssets || !hasHallAssets) && (
+            <div className="border-b border-white/5">
+              <div 
+                className="flex items-center gap-3 px-4 py-3 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-colors"
+                onClick={() => setExpandRooms(!expandRooms)}
+              >
+                <span className="text-amber-400">
+                  {expandRooms ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
+                </span>
+                <FaHome className="w-4 h-4 text-amber-400" />
+                <span className="text-white font-semibold flex-1">Hotel Rooms</span>
+                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full">
+                  {Object.keys(assetsByRoom).length} locations
+                </span>
+              </div>
+              
+              {expandRooms && (
+                <div className="px-4 py-2 space-y-1">
+                  {hasRoomAssets ? (
+                    Object.entries(assetsByRoom).map(([roomId, roomAssets]) => {
+                      const room = getRoomById(roomId)
+                      if (!room) return null
+                      return (
+                        <LocationNode
+                          key={roomId}
+                          location={room}
+                          assets={roomAssets}
+                          type="room"
+                          onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
+                          getConditionColor={getConditionColor}
+                        />
+                      )
+                    })
+                  ) : (
+                    <p className="text-sm text-slate-500 py-4 text-center">No assets assigned to rooms</p>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Assets by Hall */}
-        {Object.keys(assetsByHall).length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <FaBuilding className="text-purple-400" />
-              Function Halls
-            </h2>
-            <div className="space-y-3">
-              {Object.entries(assetsByHall).map(([hallName, hallAssets]) => (
-                <div key={hallName} className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-semibold text-purple-400">{hallName}</h3>
-                    <span className="text-xs text-slate-400">{hallAssets.length} item types</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {hallAssets.map((asset: any) => (
-                      <div
-                        key={asset.id}
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-slate-800/60 rounded-lg border border-white/5 group"
-                      >
-                        <span className="text-sm text-white">{asset.inventory?.itemName}</span>
-                        <span className="text-xs bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded">×{asset.quantity}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getConditionColor(asset.condition)}`}>
-                          {asset.condition}
-                        </span>
-                        <div className="hidden group-hover:flex items-center gap-1 ml-1">
-                          <Link
-                            href={`/assets/assign?edit=${asset.id}`}
-                            className="p-1 text-slate-400 hover:text-sky-400 transition-colors"
-                          >
-                            <FaEdit className="w-3 h-3" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal({ show: true, assetId: asset.id })}
-                            className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                          >
-                            <FaTrash className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+          {/* Function Halls Section */}
+          <div>
+            <div 
+              className="flex items-center gap-3 px-4 py-3 bg-purple-500/5 cursor-pointer hover:bg-purple-500/10 transition-colors"
+              onClick={() => setExpandHalls(!expandHalls)}
+            >
+              <span className="text-purple-400">
+                {expandHalls ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
+              </span>
+              <FaBuilding className="w-4 h-4 text-purple-400" />
+              <span className="text-white font-semibold flex-1">Function Halls</span>
+              <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">
+                {Object.keys(assetsByHall).length} locations
+              </span>
             </div>
+            
+            {expandHalls && (
+              <div className="px-4 py-2 space-y-1">
+                {hasHallAssets ? (
+                  Object.entries(assetsByHall).map(([hallId, hallAssets]) => {
+                    const hall = getHallById(hallId)
+                    if (!hall) return null
+                    return (
+                      <LocationNode
+                        key={hallId}
+                        location={hall}
+                        assets={hallAssets}
+                        type="hall"
+                        onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
+                        getConditionColor={getConditionColor}
+                      />
+                    )
+                  })
+                ) : (
+                  <p className="text-sm text-slate-500 py-4 text-center">No assets assigned to function halls</p>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Empty State */}
         {filteredAssets.length === 0 && (
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-12 border border-white/5 text-center">
+          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-12 border border-white/5 text-center mt-6">
             <FaBox className="text-4xl text-slate-500 mx-auto mb-3" />
             <p className="text-base font-semibold text-slate-300 mb-1.5">No assets assigned yet</p>
-            <p className="text-xs text-slate-500 mb-4">Click "Assign Asset" to track where your inventory items are located</p>
+            <p className="text-xs text-slate-500 mb-4">Click &quot;Assign Asset&quot; to track where your inventory items are located</p>
             <Link
               href="/assets/assign"
               className="inline-block px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"

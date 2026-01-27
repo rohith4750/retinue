@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -11,6 +11,7 @@ import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidatio
 
 export default function AssignAssetPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const editId = searchParams.get('edit')
 
@@ -43,10 +44,10 @@ export default function AssignAssetPage() {
     enabled: !!editId && user?.role === 'SUPER_ADMIN'
   })
 
-  // Pre-fill form when editing
+  // Pre-fill form when editing - handle both wrapped and unwrapped responses
   useEffect(() => {
-    if (existingAsset?.data) {
-      const asset = existingAsset.data
+    const asset = existingAsset?.data || existingAsset
+    if (asset && asset.id) {
       setFormData({
         inventoryId: asset.inventoryId || '',
         roomId: asset.roomId || '',
@@ -61,28 +62,28 @@ export default function AssignAssetPage() {
 
   // Fetch rooms
   const { data: roomsData } = useQuery({
-    queryKey: ['rooms-list'],
+    queryKey: ['rooms'],
     queryFn: () => api.get('/rooms'),
     enabled: user?.role === 'SUPER_ADMIN'
   })
 
   // Fetch function halls
   const { data: hallsData } = useQuery({
-    queryKey: ['function-halls-list'],
+    queryKey: ['function-halls'],
     queryFn: () => api.get('/function-halls'),
     enabled: user?.role === 'SUPER_ADMIN'
   })
 
   // Fetch inventory items
   const { data: inventoryData } = useQuery({
-    queryKey: ['inventory-list'],
+    queryKey: ['inventory'],
     queryFn: () => api.get('/inventory'),
     enabled: user?.role === 'SUPER_ADMIN'
   })
 
   const rooms = roomsData || []
   const halls = hallsData || []
-  const inventoryItems = inventoryData?.data?.items || []
+  const inventoryItems = inventoryData?.items || []
 
   // Mutation
   const mutation = useMutationWithInvalidation({
@@ -94,6 +95,8 @@ export default function AssignAssetPage() {
     },
     endpoint: '/asset-locations',
     onSuccess: () => {
+      // Force invalidate all asset-locations queries
+      queryClient.invalidateQueries({ queryKey: ['asset-locations'] })
       toast.success(editId ? 'Asset location updated!' : 'Asset assigned successfully!')
       router.push('/assets')
     },

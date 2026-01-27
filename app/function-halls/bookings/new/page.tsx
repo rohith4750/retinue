@@ -167,25 +167,44 @@ function NewFunctionHallBookingContent() {
                 {/* Function Hall Selection */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Function Hall *</label>
-                  <select
-                    name="hallId"
-                    value={formData.hallId}
-                    onChange={handleChange}
-                    required
-                    className="form-input"
-                  >
-                    <option value="">Select a hall</option>
-                    {halls.map((hall: any) => (
-                      <option key={hall.id} value={hall.id} disabled={hall.status !== 'AVAILABLE'}>
-                        {hall.name} - {hall.capacity} guests - ₹{hall.pricePerDay.toLocaleString()}/day
-                        {hall.status !== 'AVAILABLE' && ' (Unavailable)'}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedHall && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      {selectedHall.amenities && `Amenities: ${selectedHall.amenities}`}
-                    </p>
+                  {preselectedHallId && selectedHall ? (
+                    // Show locked hall info when pre-selected from "Book Now"
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <FaBuilding className="text-emerald-400 w-4 h-4" />
+                        <span className="text-emerald-300 font-semibold">{selectedHall.name}</span>
+                      </div>
+                      <p className="text-sm text-slate-400 mt-1">
+                        {selectedHall.capacity} guests • ₹{selectedHall.pricePerDay.toLocaleString()}/day
+                      </p>
+                      {selectedHall.amenities && (
+                        <p className="text-xs text-slate-500 mt-1">Amenities: {selectedHall.amenities}</p>
+                      )}
+                    </div>
+                  ) : (
+                    // Show dropdown when no hall is pre-selected
+                    <>
+                      <select
+                        name="hallId"
+                        value={formData.hallId}
+                        onChange={handleChange}
+                        required
+                        className="form-input"
+                      >
+                        <option value="">Select a hall</option>
+                        {halls.map((hall: any) => (
+                          <option key={hall.id} value={hall.id} disabled={hall.status !== 'AVAILABLE'}>
+                            {hall.name} - {hall.capacity} guests - ₹{hall.pricePerDay.toLocaleString()}/day
+                            {hall.status !== 'AVAILABLE' && ' (Unavailable)'}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedHall && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          {selectedHall.amenities && `Amenities: ${selectedHall.amenities}`}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 
