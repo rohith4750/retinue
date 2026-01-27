@@ -44,6 +44,7 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
     if (pathname?.startsWith('/auth/users')) return { title: 'User Management', icon: FaUserShield }
     if (pathname?.startsWith('/expenses')) return { title: 'Revenue & Expenses', icon: FaMoneyBillWave }
     if (pathname?.startsWith('/workforce')) return { title: 'Workforce & Salary', icon: FaUsers }
+    if (pathname?.startsWith('/assets')) return { title: 'Asset Locator', icon: FaBox }
     if (pathname?.startsWith('/profile')) return { title: 'My Profile', icon: FaUser }
     if (pathname?.startsWith('/bills')) return { title: 'Bill Details', icon: FaCalendarAlt }
     return { title: 'The Retinue', icon: FaChartLine }

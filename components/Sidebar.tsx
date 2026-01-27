@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave } from 'react-icons/fa'
+import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt } from 'react-icons/fa'
 
 export function Sidebar() {
   const router = useRouter()
@@ -45,6 +45,7 @@ export function Sidebar() {
   const adminMenuItems = [
     { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', roles: ['SUPER_ADMIN'] },
     { href: '/workforce', icon: FaUsers, label: 'Workforce', roles: ['SUPER_ADMIN'] },
+    { href: '/assets', icon: FaMapMarkerAlt, label: 'Asset Locator', roles: ['SUPER_ADMIN'] },
     { href: '/inventory', icon: FaBox, label: 'Inventory', roles: ['SUPER_ADMIN', 'ADMIN'] },
     { href: '/staff', icon: FaUsers, label: 'Staff', roles: ['SUPER_ADMIN', 'ADMIN'] },
     { href: '/auth/users', icon: FaUserShield, label: 'Users', roles: ['SUPER_ADMIN'] },

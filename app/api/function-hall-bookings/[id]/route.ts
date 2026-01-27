@@ -57,7 +57,15 @@ export async function PUT(
       totalAmount,
       advanceAmount,
       specialRequests,
-      status
+      status,
+      // Electricity meter readings
+      meterReadingBefore,
+      meterReadingAfter,
+      electricityUnitPrice,
+      // Additional charges
+      maintenanceCharges,
+      otherCharges,
+      otherChargesNote,
     } = data
 
     // Check if booking exists
@@ -72,13 +80,28 @@ export async function PUT(
       )
     }
 
-    // Calculate balance if amounts changed
-    let balanceAmount = existingBooking.balanceAmount
-    if (totalAmount !== undefined || advanceAmount !== undefined) {
-      const total = totalAmount !== undefined ? parseFloat(totalAmount) : existingBooking.totalAmount
-      const advance = advanceAmount !== undefined ? parseFloat(advanceAmount) : existingBooking.advanceAmount
-      balanceAmount = total - advance
+    // Calculate electricity charges if meter readings provided
+    let unitsConsumed = existingBooking.unitsConsumed
+    let electricityCharges = existingBooking.electricityCharges
+    
+    const meterBefore = meterReadingBefore !== undefined ? parseFloat(meterReadingBefore) : existingBooking.meterReadingBefore
+    const meterAfter = meterReadingAfter !== undefined ? parseFloat(meterReadingAfter) : existingBooking.meterReadingAfter
+    const unitPrice = electricityUnitPrice !== undefined ? parseFloat(electricityUnitPrice) : existingBooking.electricityUnitPrice
+    
+    if (meterBefore !== null && meterAfter !== null && unitPrice !== null) {
+      unitsConsumed = meterAfter - meterBefore
+      electricityCharges = unitsConsumed * unitPrice
     }
+
+    // Calculate balance and grand total
+    const hallAmount = totalAmount !== undefined ? parseFloat(totalAmount) : existingBooking.totalAmount
+    const advance = advanceAmount !== undefined ? parseFloat(advanceAmount) : existingBooking.advanceAmount
+    const maintenance = maintenanceCharges !== undefined ? parseFloat(maintenanceCharges) : (existingBooking.maintenanceCharges || 0)
+    const other = otherCharges !== undefined ? parseFloat(otherCharges) : (existingBooking.otherCharges || 0)
+    
+    // Grand total = hall charges + electricity + maintenance + other
+    const grandTotal = hallAmount + (electricityCharges || 0) + maintenance + other
+    const balanceAmount = grandTotal - advance
 
     const booking = await prisma.functionHallBooking.update({
       where: { id: params.id },
@@ -96,6 +119,17 @@ export async function PUT(
         balanceAmount,
         ...(specialRequests !== undefined && { specialRequests }),
         ...(status && { status }),
+        // Electricity fields
+        ...(meterReadingBefore !== undefined && { meterReadingBefore: parseFloat(meterReadingBefore) }),
+        ...(meterReadingAfter !== undefined && { meterReadingAfter: parseFloat(meterReadingAfter) }),
+        ...(electricityUnitPrice !== undefined && { electricityUnitPrice: parseFloat(electricityUnitPrice) }),
+        ...(unitsConsumed !== null && { unitsConsumed }),
+        ...(electricityCharges !== null && { electricityCharges }),
+        // Additional charges
+        ...(maintenanceCharges !== undefined && { maintenanceCharges: parseFloat(maintenanceCharges) }),
+        ...(otherCharges !== undefined && { otherCharges: parseFloat(otherCharges) }),
+        ...(otherChargesNote !== undefined && { otherChargesNote }),
+        grandTotal,
       },
       include: {
         hall: true

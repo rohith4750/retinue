@@ -31,6 +31,26 @@ export const QUERY_INVALIDATION_MAP: QueryInvalidationMap = {
   // Bills - affects bookings and dashboard
   '/bills': ['bills', 'bill', 'bookings', 'dashboard'],
   '/bills/': ['bills', 'bill', 'bookings', 'dashboard'], // Matches /bills/{id}
+  
+  // Function Halls
+  '/function-halls': ['function-halls', 'function-halls-available', 'dashboard'],
+  '/function-halls/': ['function-halls', 'function-halls-available', 'dashboard'], // Matches /function-halls/{id}
+  
+  // Function Hall Bookings
+  '/function-hall-bookings': ['function-hall-bookings', 'function-halls', 'dashboard'],
+  '/function-hall-bookings/': ['function-hall-bookings', 'function-halls', 'dashboard'], // Matches /function-hall-bookings/{id}
+  
+  // Expenses
+  '/expenses': ['expenses', 'expenses-summary', 'dashboard'],
+  '/expenses/': ['expenses', 'expenses-summary', 'dashboard'],
+  
+  // Salary Payments
+  '/salary-payments': ['salary-payments', 'expenses', 'staff', 'dashboard'],
+  '/salary-payments/': ['salary-payments', 'expenses', 'staff', 'dashboard'],
+  
+  // Asset Locations
+  '/asset-locations': ['asset-locations', 'inventory', 'rooms', 'function-halls'],
+  '/asset-locations/': ['asset-locations', 'inventory', 'rooms', 'function-halls'],
 }
 
 /**

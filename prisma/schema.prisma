@@ -91,6 +91,7 @@ model Room {
 
   slots       RoomSlot[]
   bookings    Booking[]
+  assetLocations AssetLocation[]
 }
 
 // Room Slot / Availability
@@ -175,10 +176,34 @@ model Inventory {
   quantity    Int
   unit        String
   minStock    Int
+  isAsset     Boolean                 @default(false) // True for trackable assets like beds, AC, etc.
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
 
   transactions InventoryTransaction[]
+  assetLocations AssetLocation[]
+}
+
+// Asset Location - Track where inventory assets are located
+model AssetLocation {
+  id            String      @id @default(cuid())
+  inventoryId   String
+  roomId        String?     // Can be null for storage/unassigned
+  functionHallId String?    // For convention hall assets
+  quantity      Int         // How many of this item in this location
+  condition     String      @default("GOOD") // GOOD, FAIR, POOR, DAMAGED
+  notes         String?
+  assignedDate  DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  inventory     Inventory   @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  room          Room?       @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  functionHall  FunctionHall? @relation(fields: [functionHallId], references: [id], onDelete: SetNull)
+
+  @@index([inventoryId])
+  @@index([roomId])
+  @@index([functionHallId])
 }
 
 // Inventory Transaction
@@ -307,6 +332,7 @@ model FunctionHall {
   updatedAt   DateTime           @updatedAt
 
   bookings    FunctionHallBooking[]
+  assetLocations AssetLocation[]
 }
 
 // Function Hall Booking
@@ -326,6 +352,22 @@ model FunctionHallBooking {
   balanceAmount   Float
   specialRequests String?
   status          FunctionHallBookingStatus @default(PENDING)
+  
+  // Electricity Meter Readings
+  meterReadingBefore  Float?              // Reading before event
+  meterReadingAfter   Float?              // Reading after event
+  unitsConsumed       Float?              // Calculated: after - before
+  electricityUnitPrice Float?             // Price per unit (kWh)
+  electricityCharges  Float?              // Calculated: units × price
+  
+  // Maintenance/Other charges
+  maintenanceCharges  Float?              // Any maintenance charges
+  otherCharges        Float?              // Any other charges
+  otherChargesNote    String?             // Description of other charges
+  
+  // Grand total (hall + electricity + maintenance + other)
+  grandTotal          Float?
+  
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
@@ -375,4 +417,56 @@ model Expense {
   @@index([category])
   @@index([date])
   @@index([month, year])
+}
+
+// Utility Type Enum
+enum UtilityType {
+  ELECTRICITY
+  WATER
+  GAS
+  INTERNET
+  OTHER
+}
+
+// Utility Bills - Track meter readings and calculate costs
+model UtilityBill {
+  id              String        @id @default(cuid())
+  businessUnit    BusinessUnit  // HOTEL, CONVENTION, or BOTH
+  utilityType     UtilityType
+  
+  // Meter readings
+  previousReading Float
+  currentReading  Float
+  unitsConsumed   Float         // Calculated: currentReading - previousReading
+  
+  // Pricing
+  unitPrice       Float         // Price per unit (e.g., ₹8 per kWh)
+  fixedCharges    Float         @default(0) // Any fixed charges
+  taxes           Float         @default(0) // Tax amount
+  totalAmount     Float         // Calculated: (unitsConsumed * unitPrice) + fixedCharges + taxes
+  
+  // Billing period
+  billingMonth    Int           // 1-12
+  billingYear     Int
+  billDate        DateTime
+  dueDate         DateTime?
+  
+  // Payment tracking
+  isPaid          Boolean       @default(false)
+  paidDate        DateTime?
+  paidAmount      Float?
+  
+  // Additional info
+  meterNumber     String?
+  billNumber      String?
+  provider        String?       // Electricity board name, etc.
+  notes           String?
+  
+  createdBy       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([businessUnit, billingMonth, billingYear])
+  @@index([utilityType])
+  @@index([isPaid])
 }

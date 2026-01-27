@@ -86,7 +86,14 @@ export async function POST(request: NextRequest) {
       expectedGuests,
       totalAmount,
       advanceAmount,
-      specialRequests
+      specialRequests,
+      // Electricity meter readings
+      meterReadingBefore,
+      electricityUnitPrice,
+      // Additional charges
+      maintenanceCharges,
+      otherCharges,
+      otherChargesNote,
     } = data
 
     // Validation
@@ -144,6 +151,11 @@ export async function POST(request: NextRequest) {
 
     const advance = parseFloat(advanceAmount) || 0
     const total = parseFloat(totalAmount)
+    const maintenance = maintenanceCharges ? parseFloat(maintenanceCharges) : 0
+    const other = otherCharges ? parseFloat(otherCharges) : 0
+    
+    // Grand total at creation = hall amount + maintenance + other (electricity calculated later)
+    const grandTotal = total + maintenance + other
 
     const booking = await prisma.functionHallBooking.create({
       data: {
@@ -158,9 +170,17 @@ export async function POST(request: NextRequest) {
         expectedGuests: parseInt(expectedGuests),
         totalAmount: total,
         advanceAmount: advance,
-        balanceAmount: total - advance,
+        balanceAmount: grandTotal - advance,
         specialRequests: specialRequests || null,
-        status: 'CONFIRMED'
+        status: 'CONFIRMED',
+        // Electricity - before reading captured at booking time
+        meterReadingBefore: meterReadingBefore ? parseFloat(meterReadingBefore) : null,
+        electricityUnitPrice: electricityUnitPrice ? parseFloat(electricityUnitPrice) : null,
+        // Additional charges
+        maintenanceCharges: maintenance || null,
+        otherCharges: other || null,
+        otherChargesNote: otherChargesNote || null,
+        grandTotal,
       },
       include: {
         hall: true
