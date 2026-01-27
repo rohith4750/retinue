@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { FaBell, FaSearch, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield, FaBuilding } from 'react-icons/fa'
+import { FaBell, FaSearch, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield, FaBuilding, FaUser } from 'react-icons/fa'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 
@@ -42,6 +42,7 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
     if (pathname?.startsWith('/staff')) return { title: 'Staff Management', icon: FaUsers }
     if (pathname?.startsWith('/inventory')) return { title: 'Inventory', icon: FaBox }
     if (pathname?.startsWith('/auth/users')) return { title: 'User Management', icon: FaUserShield }
+    if (pathname?.startsWith('/profile')) return { title: 'My Profile', icon: FaUser }
     if (pathname?.startsWith('/bills')) return { title: 'Bill Details', icon: FaCalendarAlt }
     return { title: 'The Retinue', icon: FaChartLine }
   }

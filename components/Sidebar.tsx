@@ -45,7 +45,7 @@ export function Sidebar() {
   const adminMenuItems = [
     { href: '/inventory', icon: FaBox, label: 'Inventory', roles: ['SUPER_ADMIN', 'ADMIN'] },
     { href: '/staff', icon: FaUsers, label: 'Staff', roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { href: '/auth/users', icon: FaUserShield, label: 'Users', roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { href: '/auth/users', icon: FaUserShield, label: 'Users', roles: ['SUPER_ADMIN'] },
   ]
 
   // Filter menu items based on user role
@@ -193,7 +193,15 @@ export function Sidebar() {
 
           {/* User Info & Logout */}
           <div className="p-4 border-t border-white/5 space-y-3">
-            <div className="flex items-center space-x-2 bg-slate-800/40 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/5">
+            <Link
+              href="/profile"
+              onClick={() => setIsMobileOpen(false)}
+              className={`flex items-center space-x-2 bg-slate-800/40 backdrop-blur-sm px-3 py-2 rounded-lg border transition-all duration-200 ${
+                pathname === '/profile'
+                  ? 'border-sky-500/30 bg-sky-500/10'
+                  : 'border-white/5 hover:bg-slate-800/60 hover:border-white/10'
+              }`}
+            >
               <div className="w-8 h-8 bg-gradient-to-br from-sky-500 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-xs font-semibold text-white">{user.username.charAt(0).toUpperCase()}</span>
               </div>
@@ -201,7 +209,7 @@ export function Sidebar() {
                 <p className="text-xs font-medium text-slate-200 truncate">{user.username}</p>
                 <p className="text-[10px] text-slate-400 truncate">{user.role.replace('_', ' ')}</p>
               </div>
-            </div>
+            </Link>
             <button
               onClick={handleLogout}
               className="w-full bg-slate-800/60 hover:bg-slate-700/60 backdrop-blur-sm px-3 py-2 rounded-lg text-xs font-semibold text-slate-200 transition-all duration-200 border border-white/5 hover:border-white/10 flex items-center justify-center space-x-2"

@@ -309,3 +309,44 @@ model FunctionHallBooking {
   @@index([eventDate])
   @@index([status])
 }
+
+// Expense Category Enum
+enum ExpenseCategory {
+  MAINTENANCE
+  UTILITIES
+  SALARY
+  SUPPLIES
+  REPAIRS
+  MARKETING
+  MISCELLANEOUS
+}
+
+// Business Unit Enum
+enum BusinessUnit {
+  HOTEL        // The Retinue
+  CONVENTION   // Buchirajuu Convention
+  BOTH         // Shared expenses
+}
+
+// Expense/Maintenance Records
+model Expense {
+  id            String          @id @default(cuid())
+  businessUnit  BusinessUnit    // HOTEL, CONVENTION, or BOTH
+  category      ExpenseCategory
+  description   String
+  amount        Float
+  date          DateTime
+  month         Int             // 1-12 for easy monthly filtering
+  year          Int
+  vendor        String?         // Vendor/Supplier name
+  invoiceNumber String?
+  notes         String?
+  createdBy     String?         // User ID who created this
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([businessUnit, month, year])
+  @@index([category])
+  @@index([date])
+  @@index([month, year])
+}

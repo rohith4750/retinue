@@ -487,7 +487,7 @@ function CreateUserModal({
   )
 }
 
-// Edit User Modal Component
+// Edit User Modal Component (Only email, username, role - no password)
 function EditUserModal({
   user,
   onClose,
@@ -502,8 +502,6 @@ function EditUserModal({
   const [formData, setFormData] = useState({
     username: user.username || '',
     email: user.email || '',
-    password: '',
-    confirmPassword: '',
     role: user.role || 'STAFF',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -525,14 +523,6 @@ function EditUserModal({
       }
     }
 
-    if (formData.password && formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
-    }
-
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
-    }
-
     if (!formData.role) {
       newErrors.role = 'Please select a role'
     }
@@ -544,18 +534,11 @@ function EditUserModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (validate()) {
-      const updateData: any = {
+      onUpdate({
         username: formData.username,
         email: formData.email.trim(),
         role: formData.role,
-      }
-      
-      // Only include password if it's provided
-      if (formData.password && formData.password.trim() !== '') {
-        updateData.password = formData.password
-      }
-
-      onUpdate(updateData)
+      })
     }
   }
 
@@ -599,32 +582,6 @@ function EditUserModal({
               placeholder="user@example.com (required for login)"
               required
             />
-
-            <FormInput
-              label="New Password"
-              type="password"
-              value={formData.password}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setFormData({ ...formData, password: e.target.value })
-                if (errors.password) setErrors({ ...errors, password: '' })
-              }}
-              error={errors.password}
-              placeholder="Leave blank to keep current password"
-            />
-
-            {formData.password && (
-              <FormInput
-                label="Confirm New Password"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setFormData({ ...formData, confirmPassword: e.target.value })
-                  if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' })
-                }}
-                error={errors.confirmPassword}
-                placeholder="Re-enter new password"
-              />
-            )}
 
             <FormSelect
               label="Role *"
