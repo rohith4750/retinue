@@ -38,16 +38,18 @@ JWT_REFRESH_SECRET=your-refresh-secret-key-change-in-production
 
 ### 3. **Token Expiry Settings** (Optional - has defaults)
 ```
-ACCESS_TOKEN_EXPIRY=15m
+ACCESS_TOKEN_EXPIRY=1h
 REFRESH_TOKEN_EXPIRY=7d
 ```
-- **Description**: Token expiration times
-- **Required**: ❌ No (defaults: 15m for access, 7d for refresh)
+- **Description**: Token expiration times (session timeout)
+- **Required**: ❌ No (defaults: **1 hour** for access, 7 days for refresh)
 - **Format**: 
   - `15m` = 15 minutes
+  - `1h` = 1 hour (default for session)
   - `7d` = 7 days
-  - `1h` = 1 hour
   - `30d` = 30 days
+
+**Note:** Session timeout is now **1 hour** by default. Users stay logged in for 1 hour without activity.
 
 ---
 
@@ -142,7 +144,7 @@ JWT_SECRET=your-64-character-random-secret-key
 JWT_REFRESH_SECRET=your-different-64-character-random-secret-key
 
 # Token Expiry (Optional - has defaults)
-ACCESS_TOKEN_EXPIRY=15m
+ACCESS_TOKEN_EXPIRY=1h
 REFRESH_TOKEN_EXPIRY=7d
 
 # Email Configuration (REQUIRED for Forgot Password)

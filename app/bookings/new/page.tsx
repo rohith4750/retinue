@@ -52,11 +52,23 @@ function NewBookingContent() {
     }
   }, [router])
 
-  // Fetch available rooms
-  const { data: availableRooms, isLoading: roomsLoading } = useQuery({
-    queryKey: ['available-rooms'],
-    queryFn: () => api.get('/rooms?status=AVAILABLE'),
+  // Fetch available rooms based on selected dates
+  const { data: availableRoomsData, isLoading: roomsLoading, refetch: refetchRooms } = useQuery({
+    queryKey: ['available-rooms', formData.checkIn, formData.checkOut],
+    queryFn: () => {
+      // If dates are selected, fetch rooms available for those dates
+      if (formData.checkIn && formData.checkOut) {
+        const checkInDate = new Date(formData.checkIn).toISOString()
+        const checkOutDate = new Date(formData.checkOut).toISOString()
+        return api.get(`/rooms/available?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}`)
+      }
+      // Otherwise, fetch all non-maintenance rooms
+      return api.get('/rooms/available')
+    },
   })
+
+  // Extract rooms array from response
+  const availableRooms = availableRoomsData?.rooms || availableRoomsData || []
 
   // Fetch room details if roomId is provided
   const { data: room } = useQuery({
@@ -278,6 +290,22 @@ function NewBookingContent() {
             {/* Booking Details */}
             <div>
               <h3 className="text-sm font-semibold text-slate-100 mb-4">Booking Details</h3>
+              
+              {/* Date selection hint */}
+              {!formData.checkIn || !formData.checkOut ? (
+                <div className="bg-sky-500/10 border border-sky-500/20 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-sky-400">
+                    💡 Select check-in and check-out dates first to see available rooms for those dates.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-emerald-400">
+                    ✓ Showing {availableRooms?.length || 0} room(s) available for selected dates
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <FormSelect
@@ -291,9 +319,9 @@ function NewBookingContent() {
                     }}
                     onBlur={() => handleBlur('roomId')}
                     error={getError('roomId')}
-                    disabled={roomsLoading}
+                    disabled={roomsLoading || (!formData.checkIn || !formData.checkOut)}
                     options={[
-                      { value: '', label: 'Select a room' },
+                      { value: '', label: formData.checkIn && formData.checkOut ? 'Select a room' : 'Select dates first' },
                       ...(availableRooms?.map((room: any) => ({
                         value: room.id,
                         label: `Room ${room.roomNumber} - ${room.roomType} (₹${room.basePrice}/day, Floor ${room.floor})`,
@@ -306,10 +334,10 @@ function NewBookingContent() {
                     </p>
                   )}
                   {roomsLoading && (
-                    <p className="text-xs text-slate-500 mt-1">Loading rooms...</p>
+                    <p className="text-xs text-slate-500 mt-1">Loading available rooms...</p>
                   )}
-                  {!roomsLoading && availableRooms && availableRooms.length === 0 && (
-                    <p className="text-xs text-yellow-400 mt-1">No available rooms</p>
+                  {!roomsLoading && formData.checkIn && formData.checkOut && availableRooms && availableRooms.length === 0 && (
+                    <p className="text-xs text-yellow-400 mt-1">No rooms available for selected dates. Try different dates.</p>
                   )}
                 </div>
                 <div>
@@ -327,6 +355,11 @@ function NewBookingContent() {
                   value={formData.checkIn}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     updateField('checkIn', e.target.value)
+                    // Clear room selection when dates change
+                    if (formData.roomId) {
+                      updateField('roomId', '')
+                      setSelectedRoom(null)
+                    }
                     // Re-validate checkOut when checkIn changes
                     if (formData.checkOut) {
                       setTimeout(() => handleBlur('checkOut'), 100)
@@ -341,6 +374,11 @@ function NewBookingContent() {
                   value={formData.checkOut}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     updateField('checkOut', e.target.value)
+                    // Clear room selection when dates change
+                    if (formData.roomId) {
+                      updateField('roomId', '')
+                      setSelectedRoom(null)
+                    }
                     // Clear error when user starts typing
                     if (errors.checkOut) {
                       // Re-validate after a short delay
