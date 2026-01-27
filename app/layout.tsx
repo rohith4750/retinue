@@ -14,6 +14,11 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'The Retinue - Hotel Management',
   description: 'The Retinue - Luxury Hotel & Hospitality Management System',
+  applicationName: 'The Retinue',
+  authors: [{ name: 'The Retinue' }],
+  keywords: ['hotel', 'management', 'booking', 'hospitality', 'rooms'],
+  themeColor: '#0284c7',
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
