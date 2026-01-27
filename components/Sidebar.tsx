@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt } from 'react-icons/fa'
+import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt, FaFileExcel, FaBrain, FaCog, FaWallet, FaClipboardList } from 'react-icons/fa'
 
 export function Sidebar() {
   const router = useRouter()
@@ -41,20 +41,37 @@ export function Sidebar() {
     { href: '/function-halls/bookings', icon: FaCalendarAlt, label: 'Hall Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
   ]
 
-  // Admin menu items
-  const adminMenuItems = [
+  // Analytics & Reports menu items
+  const analyticsMenuItems = [
+    { href: '/analytics', icon: FaBrain, label: 'Predictions', roles: ['SUPER_ADMIN'] },
+    { href: '/reports', icon: FaFileExcel, label: 'Reports', roles: ['SUPER_ADMIN'] },
+  ]
+
+  // Finance menu items
+  const financeMenuItems = [
     { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', roles: ['SUPER_ADMIN'] },
-    { href: '/workforce', icon: FaUsers, label: 'Workforce', roles: ['SUPER_ADMIN'] },
-    { href: '/assets', icon: FaMapMarkerAlt, label: 'Asset Locator', roles: ['SUPER_ADMIN'] },
+    { href: '/workforce', icon: FaWallet, label: 'Workforce', roles: ['SUPER_ADMIN'] },
+  ]
+
+  // Operations menu items
+  const operationsMenuItems = [
     { href: '/inventory', icon: FaBox, label: 'Inventory', roles: ['SUPER_ADMIN', 'ADMIN'] },
     { href: '/staff', icon: FaUsers, label: 'Staff', roles: ['SUPER_ADMIN', 'ADMIN'] },
-    { href: '/auth/users', icon: FaUserShield, label: 'Users', roles: ['SUPER_ADMIN'] },
+    { href: '/assets', icon: FaMapMarkerAlt, label: 'Asset Locator', roles: ['SUPER_ADMIN'] },
+  ]
+
+  // Settings menu items
+  const settingsMenuItems = [
+    { href: '/auth/users', icon: FaUserShield, label: 'User Management', roles: ['SUPER_ADMIN'] },
   ]
 
   // Filter menu items based on user role
   const filteredHotelItems = hotelMenuItems.filter(item => item.roles.includes(user.role))
   const filteredConventionItems = conventionMenuItems.filter(item => item.roles.includes(user.role))
-  const filteredAdminItems = adminMenuItems.filter(item => item.roles.includes(user.role))
+  const filteredAnalyticsItems = analyticsMenuItems.filter(item => item.roles.includes(user.role))
+  const filteredFinanceItems = financeMenuItems.filter(item => item.roles.includes(user.role))
+  const filteredOperationsItems = operationsMenuItems.filter(item => item.roles.includes(user.role))
+  const filteredSettingsItems = settingsMenuItems.filter(item => item.roles.includes(user.role))
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
@@ -162,15 +179,46 @@ export function Sidebar() {
               </div>
             )}
 
-            {/* Admin Section */}
-            {filteredAdminItems.length > 0 && (
+            {/* Analytics & Reports Section */}
+            {filteredAnalyticsItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-2 mb-2 pt-2 border-t border-white/5">
-                  <FaUserShield className="w-3 h-3 text-emerald-400" />
-                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Management</span>
+                  <FaChartLine className="w-3 h-3 text-purple-400" />
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Analytics</span>
                 </div>
                 <div className="space-y-1">
-                  {filteredAdminItems.map((item) => {
+                  {filteredAnalyticsItems.map((item) => {
+                    const Icon = item.icon
+                    const active = isActive(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          active
+                            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                            : 'text-slate-300 hover:bg-slate-800/60 hover:text-purple-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Finance Section */}
+            {filteredFinanceItems.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-2 mb-2 pt-2 border-t border-white/5">
+                  <FaWallet className="w-3 h-3 text-emerald-400" />
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Finance</span>
+                </div>
+                <div className="space-y-1">
+                  {filteredFinanceItems.map((item) => {
                     const Icon = item.icon
                     const active = isActive(item.href)
                     return (
@@ -182,6 +230,68 @@ export function Sidebar() {
                           active
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-emerald-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Operations Section */}
+            {filteredOperationsItems.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-2 mb-2 pt-2 border-t border-white/5">
+                  <FaClipboardList className="w-3 h-3 text-orange-400" />
+                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Operations</span>
+                </div>
+                <div className="space-y-1">
+                  {filteredOperationsItems.map((item) => {
+                    const Icon = item.icon
+                    const active = isActive(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          active
+                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                            : 'text-slate-300 hover:bg-slate-800/60 hover:text-orange-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Settings Section */}
+            {filteredSettingsItems.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-2 mb-2 pt-2 border-t border-white/5">
+                  <FaCog className="w-3 h-3 text-slate-400" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Settings</span>
+                </div>
+                <div className="space-y-1">
+                  {filteredSettingsItems.map((item) => {
+                    const Icon = item.icon
+                    const active = isActive(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          active
+                            ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                            : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-200'
                         }`}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
