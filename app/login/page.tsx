@@ -238,11 +238,11 @@ export default function LoginPage() {
           {/* Login Card */}
           <div className="bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5)]">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">
-                Welcome Back
+              <h2 className="text-xl font-bold text-white mb-1">
+                The Hotel Retinue <span className="text-amber-400">&</span> Buchirajuu
               </h2>
-              <p className="text-slate-400 text-sm">
-                Sign in to access your dashboard
+              <p className="text-slate-500 text-xs uppercase tracking-wider">
+                Hotel & Convention Management
               </p>
             </div>
 
