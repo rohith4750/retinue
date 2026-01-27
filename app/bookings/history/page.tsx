@@ -6,6 +6,7 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FaHistory, FaFilter, FaSearch, FaCalendarAlt, FaUser, FaHome, FaChevronLeft, FaChevronRight, FaTimes } from 'react-icons/fa'
+import { PageLoader } from '@/components/LoadingSpinner'
 
 export default function BookingHistoryPage() {
   const router = useRouter()
@@ -89,8 +90,8 @@ export default function BookingHistoryPage() {
     return (
       <div className="min-h-screen relative flex">
         <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Loading...</div>
+        <div className="flex-1 lg:ml-64">
+          <PageLoader />
         </div>
       </div>
     )

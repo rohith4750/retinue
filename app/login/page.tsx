@@ -8,12 +8,12 @@ import { FaHotel, FaSpinner, FaTimes } from 'react-icons/fa'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
@@ -34,7 +34,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // Include cookies for refresh token
-        body: JSON.stringify({ username, password, rememberMe }),
+        body: JSON.stringify({ email, password, rememberMe }),
       })
 
       const data = await response.json()
@@ -48,7 +48,7 @@ export default function LoginPage() {
         localStorage.setItem('accessToken', data.data.accessToken)
       }
       localStorage.setItem('user', JSON.stringify(data.data.user))
-      
+
       // Store remember me preference
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true')
@@ -167,18 +167,18 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="username" className="form-label">
-                  Username
+                <label htmlFor="email" className="form-label">
+                  Email
                 </label>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
+                  id="email"
+                  name="email"
+                  type="email"
                   required
                   className="form-input"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
@@ -237,9 +237,9 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="text-center text-sm text-slate-400">
+            {/* <div className="text-center text-sm text-slate-400">
               <p>Default: <span className="font-semibold text-slate-300">admin</span> / <span className="font-semibold text-slate-300">admin123</span></p>
-            </div>
+            </div> */}
           </form>
         </div>
       </div>

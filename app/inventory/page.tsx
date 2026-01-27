@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaBox, FaPlus, FaExclamationTriangle } from 'react-icons/fa'
+import { PageLoader } from '@/components/LoadingSpinner'
 
 export default function InventoryPage() {
   const router = useRouter()
@@ -33,8 +34,8 @@ export default function InventoryPage() {
     return (
       <div className="min-h-screen relative flex">
         <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Loading...</div>
+        <div className="flex-1 lg:ml-64">
+          <PageLoader />
         </div>
       </div>
     )

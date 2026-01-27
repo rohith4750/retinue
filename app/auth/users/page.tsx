@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaUsers, FaUserShield, FaUserTie, FaUserCheck, FaUser, FaPlus, FaKey, FaUserPlus, FaEdit, FaTrash } from 'react-icons/fa'
+import { LoadingSpinner, PageLoader } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect } from '@/components/FormComponents'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 
@@ -121,8 +122,8 @@ export default function UsersPage() {
     return (
       <div className="min-h-screen relative flex">
         <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Loading...</div>
+        <div className="flex-1 lg:ml-64">
+          <PageLoader />
         </div>
       </div>
     )
@@ -357,7 +358,10 @@ function CreateUserModal({
       newErrors.username = 'Username must be at least 3 characters'
     }
 
-    if (formData.email && formData.email.trim() !== '') {
+    // Email is required for login
+    if (!formData.email || formData.email.trim() === '') {
+      newErrors.email = 'Email is required for login'
+    } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
         newErrors.email = 'Please enter a valid email address'
@@ -385,7 +389,7 @@ function CreateUserModal({
     if (validate()) {
       onCreate({
         username: formData.username,
-        email: formData.email.trim() !== '' ? formData.email : undefined,
+        email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
       })
@@ -421,7 +425,7 @@ function CreateUserModal({
             />
 
             <FormInput
-              label="Email"
+              label="Email *"
               type="email"
               value={formData.email}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -429,7 +433,8 @@ function CreateUserModal({
                 if (errors.email) setErrors({ ...errors, email: '' })
               }}
               error={errors.email}
-              placeholder="user@example.com (optional)"
+              placeholder="user@example.com (required for login)"
+              required
             />
 
             <FormInput
@@ -527,7 +532,10 @@ function EditUserModal({
       newErrors.username = 'Username must be at least 3 characters'
     }
 
-    if (formData.email && formData.email.trim() !== '') {
+    // Email is required for login
+    if (!formData.email || formData.email.trim() === '') {
+      newErrors.email = 'Email is required for login'
+    } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
         newErrors.email = 'Please enter a valid email address'
@@ -555,7 +563,7 @@ function EditUserModal({
     if (validate()) {
       const updateData: any = {
         username: formData.username,
-        email: formData.email.trim() !== '' ? formData.email : undefined,
+        email: formData.email.trim(),
         role: formData.role,
       }
       
@@ -597,7 +605,7 @@ function EditUserModal({
             />
 
             <FormInput
-              label="Email"
+              label="Email *"
               type="email"
               value={formData.email}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -605,7 +613,8 @@ function EditUserModal({
                 if (errors.email) setErrors({ ...errors, email: '' })
               }}
               error={errors.email}
-              placeholder="user@example.com (optional)"
+              placeholder="user@example.com (required for login)"
+              required
             />
 
             <FormInput

@@ -8,10 +8,10 @@ import { z } from 'zod'
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
 type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
-// Validation schema for creating a user
+// Validation schema for creating a user (email is required for login)
 const createUserSchema = z.object({
   username: z.string().min(3).max(50),
-  email: z.union([z.string().email(), z.string().length(0), z.undefined()]).optional(),
+  email: z.string().email('Valid email is required'),
   password: z.string().min(6).max(100),
   role: z.enum(['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'STAFF']),
 })
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createUserSchema.parse(body) as {
       username: string
-      email?: string
+      email: string
       password: string
       role: UserRole
     }
@@ -45,30 +45,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if email already exists (if provided)
-    const emailValue = validatedData.email && typeof validatedData.email === 'string' && validatedData.email.trim() !== '' 
-      ? validatedData.email.trim() 
-      : undefined
-    
-    if (emailValue) {
-      const existingEmail = await prisma.user.findUnique({
-        where: { email: emailValue },
-      })
+    // Check if email already exists
+    const existingEmail = await prisma.user.findUnique({
+      where: { email: validatedData.email },
+    })
 
-      if (existingEmail) {
-        return Response.json(
-          errorResponse('VALIDATION_ERROR', 'Email already exists'),
-          { status: 400 }
-        )
-      }
+    if (existingEmail) {
+      return Response.json(
+        errorResponse('VALIDATION_ERROR', 'Email already exists'),
+        { status: 400 }
+      )
     }
 
-    // Create user
+    // Create user with required email
     const user = await createUser(
       validatedData.username,
       validatedData.password,
       validatedData.role,
-      emailValue as string | undefined
+      validatedData.email
     )
 
     return Response.json(

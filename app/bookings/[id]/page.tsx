@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaCalendarAlt, FaArrowLeft, FaEdit, FaHistory, FaUser, FaHome, FaClock, FaMoneyBillWave } from 'react-icons/fa'
+import { PageLoader } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 
@@ -48,8 +49,8 @@ export default function BookingDetailPage() {
     return (
       <div className="min-h-screen relative flex">
         <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Loading...</div>
+        <div className="flex-1 lg:ml-64">
+          <PageLoader />
         </div>
       </div>
     )

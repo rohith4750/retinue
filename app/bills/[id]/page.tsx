@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaFileInvoice, FaMoneyBillWave, FaDownload, FaPrint } from 'react-icons/fa'
+import { PageLoader } from '@/components/LoadingSpinner'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { pdf } from '@react-pdf/renderer'
 import { BillPDF } from '@/components/BillPDF'
@@ -55,8 +56,8 @@ export default function BillPage({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen relative flex">
         <Navbar />
-        <div className="flex-1 lg:ml-64 flex items-center justify-center h-96">
-          <div className="text-slate-300 text-lg">Loading...</div>
+        <div className="flex-1 lg:ml-64">
+          <PageLoader />
         </div>
       </div>
     )

@@ -12,21 +12,22 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return compare(password, hashedPassword)
 }
 
-export async function createUser(username: string, password: string, role: UserRole, email?: string) {
+export async function createUser(username: string, password: string, role: UserRole, email: string) {
   const hashedPassword = await hashPassword(password)
   return prisma.user.create({
     data: {
       username,
-      email: email || null,
+      email,
       password: hashedPassword,
       role,
     },
   })
 }
 
-export async function authenticateUser(username: string, password: string) {
+export async function authenticateUser(email: string, password: string) {
+  // Find user by email
   const user = await prisma.user.findUnique({
-    where: { username },
+    where: { email },
   })
 
   if (!user) {

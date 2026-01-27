@@ -9,20 +9,20 @@ export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password, rememberMe } = await request.json()
+    const { email, password, rememberMe } = await request.json()
 
-    if (!username || !password) {
+    if (!email || !password) {
       return Response.json(
-        errorResponse('Missing credentials', 'Username and password are required'),
+        errorResponse('Missing credentials', 'Email and password are required'),
         { status: 400 }
       )
     }
 
-    const user = await authenticateUser(username, password)
+    const user = await authenticateUser(email, password)
 
     if (!user) {
       return Response.json(
-        errorResponse('Invalid credentials', 'Username or password is incorrect'),
+        errorResponse('Invalid credentials', 'Email or password is incorrect'),
         { status: 401 }
       )
     }

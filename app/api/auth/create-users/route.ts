@@ -9,25 +9,29 @@ type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 // POST /api/auth/create-users - Create default users for all roles
 export async function POST(request: NextRequest) {
   try {
-    // Default credentials for each role
+    // Default credentials for each role (now with email for login)
     const defaultUsers = [
       {
         username: 'superadmin',
+        email: 'superadmin@theretinue.com',
         password: 'superadmin123',
         role: 'SUPER_ADMIN' as UserRole,
       },
       {
         username: 'admin',
+        email: 'admin@theretinue.com',
         password: 'admin123',
         role: 'ADMIN' as UserRole,
       },
       {
         username: 'receptionist',
+        email: 'receptionist@theretinue.com',
         password: 'receptionist123',
         role: 'RECEPTIONIST' as UserRole,
       },
       {
         username: 'staff',
+        email: 'staff@theretinue.com',
         password: 'staff123',
         role: 'STAFF' as UserRole,
       },
@@ -38,30 +42,36 @@ export async function POST(request: NextRequest) {
 
     for (const userData of defaultUsers) {
       try {
-        // Check if user already exists
-        const existing = await prisma.user.findUnique({
+        // Check if user already exists by email or username
+        const existingByEmail = await prisma.user.findUnique({
+          where: { email: userData.email },
+        })
+        const existingByUsername = await prisma.user.findUnique({
           where: { username: userData.username },
         })
 
-        if (existing) {
+        if (existingByEmail || existingByUsername) {
           skippedUsers.push({
             username: userData.username,
+            email: userData.email,
             role: userData.role,
             reason: 'User already exists',
           })
           continue
         }
 
-        // Create user (default users don't have email)
-        const user = await createUser(userData.username, userData.password, userData.role)
+        // Create user with email
+        const user = await createUser(userData.username, userData.password, userData.role, userData.email)
         createdUsers.push({
           id: user.id,
           username: user.username,
+          email: user.email,
           role: user.role,
         })
       } catch (error: any) {
         skippedUsers.push({
           username: userData.username,
+          email: userData.email,
           role: userData.role,
           reason: error.message || 'Failed to create user',
         })
@@ -96,6 +106,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         username: true,
+        email: true,
         role: true,
         createdAt: true,
       },

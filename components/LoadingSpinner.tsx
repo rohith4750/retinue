@@ -1,24 +1,39 @@
 'use client'
 
-import { FaSpinner } from 'react-icons/fa'
-
 interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
-  text?: string
 }
 
-export function LoadingSpinner({ size = 'md', className = '', text }: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = 'md', className = '' }: LoadingSpinnerProps) {
   const sizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-6 h-6',
-    lg: 'w-8 h-8',
+    sm: 'w-5 h-5',
+    md: 'w-8 h-8',
+    lg: 'w-12 h-12',
+    xl: 'w-16 h-16',
+  }
+
+  const borderClasses = {
+    sm: 'border-2',
+    md: 'border-3',
+    lg: 'border-4',
+    xl: 'border-4',
   }
 
   return (
-    <div className={`flex flex-col items-center justify-center ${className}`}>
-      <FaSpinner className={`${sizeClasses[size]} animate-spin text-sky-400`} />
-      {text && <p className="mt-2 text-sm text-slate-400">{text}</p>}
+    <div className={`flex items-center justify-center ${className}`}>
+      <div
+        className={`${sizeClasses[size]} ${borderClasses[size]} border-slate-700 border-t-sky-500 rounded-full animate-spin`}
+      />
+    </div>
+  )
+}
+
+// Full page loader
+export function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-96">
+      <LoadingSpinner size="lg" />
     </div>
   )
 }
