@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const hotelBills = await prisma.bill.findMany({
+    const hotelBills = await (prisma.bill as any).findMany({
       where: hotelRevenueQuery,
       select: {
         paidAmount: true,
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const conventionBookings = await prisma.functionHallBooking.findMany({
+    const conventionBookings = await (prisma.functionHallBooking as any).findMany({
       where: conventionRevenueQuery,
       select: {
         totalAmount: true,
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       expenseQuery.month = currentMonth
     }
 
-    const expenses = await prisma.expense.findMany({
+    const expenses = await (prisma.expense as any).findMany({
       where: expenseQuery,
     })
 

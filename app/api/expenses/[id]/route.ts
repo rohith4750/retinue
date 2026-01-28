@@ -13,7 +13,7 @@ export async function GET(
 
     const { id } = await params
 
-    const expense = await prisma.expense.findUnique({
+    const expense = await (prisma.expense as any).findUnique({
       where: { id },
     })
 
@@ -49,7 +49,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    const existingExpense = await prisma.expense.findUnique({
+    const existingExpense = await (prisma.expense as any).findUnique({
       where: { id },
     })
 
@@ -88,7 +88,7 @@ export async function PUT(
       updateData.year = expenseDate.getFullYear()
     }
 
-    const expense = await prisma.expense.update({
+    const expense = await (prisma.expense as any).update({
       where: { id },
       data: updateData,
     })
@@ -118,7 +118,7 @@ export async function DELETE(
 
     const { id } = await params
 
-    const existingExpense = await prisma.expense.findUnique({
+    const existingExpense = await (prisma.expense as any).findUnique({
       where: { id },
     })
 
@@ -129,7 +129,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.expense.delete({
+    await (prisma.expense as any).delete({
       where: { id },
     })
 

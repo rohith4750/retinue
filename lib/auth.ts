@@ -46,9 +46,8 @@ export async function authenticateUser(email: string, password: string) {
 export function hasPermission(userRole: UserRole, requiredRole: UserRole): boolean {
   const roleHierarchy: Record<UserRole, number> = {
     RECEPTIONIST: 1,
-    RECEPTIONIST: 2,
-    ADMIN: 3,
-    SUPER_ADMIN: 4,
+    ADMIN: 2,
+    SUPER_ADMIN: 3,
   }
 
   return roleHierarchy[userRole] >= roleHierarchy[requiredRole]

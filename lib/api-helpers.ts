@@ -73,9 +73,8 @@ export function requireAuth(requiredRole?: UserRole) {
     if (requiredRole) {
       const roleHierarchy: Record<UserRole, number> = {
         RECEPTIONIST: 1,
-        RECEPTIONIST: 2,
-        ADMIN: 3,
-        SUPER_ADMIN: 4,
+        ADMIN: 2,
+        SUPER_ADMIN: 3,
       }
 
       if (roleHierarchy[user.role] < roleHierarchy[requiredRole]) {

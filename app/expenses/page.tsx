@@ -154,8 +154,8 @@ export default function ExpensesPage() {
     )
   }
 
-  const summaryData = summary?.data
-  const expensesList = expenses?.data || []
+  const summaryData = summary
+  const expensesList = expenses || []
 
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`
 

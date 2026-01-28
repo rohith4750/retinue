@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       where.year = parseInt(year)
     }
 
-    const expenses = await prisma.expense.findMany({
+    const expenses = await (prisma.expense as any).findMany({
       where,
       orderBy: { date: 'desc' },
     })
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     const month = expenseDate.getMonth() + 1 // 1-12
     const year = expenseDate.getFullYear()
 
-    const expense = await prisma.expense.create({
+    const expense = await (prisma.expense as any).create({
       data: {
         businessUnit,
         category,
