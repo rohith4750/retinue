@@ -5,7 +5,8 @@ import { requireAuth } from '@/lib/api-helpers'
 // GET - List all asset locations with filters
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow RECEPTIONIST, ADMIN, SUPER_ADMIN to view asset locations
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const searchParams = request.nextUrl.searchParams
@@ -74,7 +75,8 @@ export async function GET(request: NextRequest) {
 // POST - Create/Assign asset to location
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow ADMIN and SUPER_ADMIN to assign assets
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const body = await request.json()

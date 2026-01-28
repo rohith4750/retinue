@@ -8,7 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow RECEPTIONIST, ADMIN, SUPER_ADMIN to view
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const { id } = await params
@@ -48,7 +49,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow ADMIN and SUPER_ADMIN to update
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const { id } = await params
@@ -108,7 +110,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow ADMIN and SUPER_ADMIN to delete
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const { id } = await params
