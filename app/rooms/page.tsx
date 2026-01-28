@@ -11,6 +11,27 @@ import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 
+function formatDateTimeLocal(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const y = date.getFullYear()
+  const m = pad(date.getMonth() + 1)
+  const d = pad(date.getDate())
+  const hh = pad(date.getHours())
+  const mm = pad(date.getMinutes())
+  return `${y}-${m}-${d}T${hh}:${mm}`
+}
+
+function getDefaultAvailabilityWindow() {
+  const now = new Date()
+  now.setSeconds(0, 0)
+  const nextDay = new Date(now)
+  nextDay.setDate(nextDay.getDate() + 1)
+  return {
+    checkIn: formatDateTimeLocal(now),
+    checkOut: formatDateTimeLocal(nextDay),
+  }
+}
+
 export default function RoomsPage() {
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
@@ -18,8 +39,9 @@ export default function RoomsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
-  const [filterCheckIn, setFilterCheckIn] = useState('')
-  const [filterCheckOut, setFilterCheckOut] = useState('')
+  // Default date filter should be "today"
+  const [filterCheckIn, setFilterCheckIn] = useState(() => getDefaultAvailabilityWindow().checkIn)
+  const [filterCheckOut, setFilterCheckOut] = useState(() => getDefaultAvailabilityWindow().checkOut)
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
   const [showDateFilter, setShowDateFilter] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{
@@ -133,8 +155,9 @@ export default function RoomsPage() {
   }
 
   const handleClearFilter = () => {
-    setFilterCheckIn('')
-    setFilterCheckOut('')
+    const { checkIn, checkOut } = getDefaultAvailabilityWindow()
+    setFilterCheckIn(checkIn)
+    setFilterCheckOut(checkOut)
     setIsCheckingAvailability(false)
     setShowDateFilter(false)
   }
@@ -293,8 +316,7 @@ export default function RoomsPage() {
                     if (!filterCheckOut && e.target.value) {
                       const checkIn = new Date(e.target.value)
                       checkIn.setDate(checkIn.getDate() + 1)
-                      const formatted = checkIn.toISOString().slice(0, 16)
-                      setFilterCheckOut(formatted)
+                      setFilterCheckOut(formatDateTimeLocal(checkIn))
                     }
                   }}
                   className="w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
