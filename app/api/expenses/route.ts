@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/api-helpers'
 
-// GET - List all expenses with filters
+// GET - List all expenses with filters (includes salary payments)
 export async function GET(request: NextRequest) {
   try {
     // Allow all authenticated users to fetch expenses
@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get('year')
 
     const where: any = {}
+    const salaryWhere: any = {}
 
     if (businessUnit) {
       where.businessUnit = businessUnit
@@ -28,32 +29,92 @@ export async function GET(request: NextRequest) {
     if (month && year) {
       where.month = parseInt(month)
       where.year = parseInt(year)
+      salaryWhere.month = parseInt(month)
+      salaryWhere.year = parseInt(year)
     } else if (year) {
       where.year = parseInt(year)
+      salaryWhere.year = parseInt(year)
     }
 
-    const expenses = await (prisma.expense as any).findMany({
+    // Fetch regular expenses
+    const expenses = await (prisma as any).expense.findMany({
       where,
       orderBy: { date: 'desc' },
     })
 
+    // Fetch salary payments with staff details (only if not filtering by non-SALARY category)
+    let salaryPayments: any[] = []
+    if (!category || category === 'SALARY') {
+      salaryPayments = await (prisma as any).salaryPayment.findMany({
+        where: salaryWhere,
+        include: {
+          staff: {
+            select: {
+              id: true,
+              name: true,
+              role: true,
+              staffType: true,
+              businessUnit: true,
+            }
+          }
+        },
+        orderBy: { paymentDate: 'desc' },
+      })
+
+      // Also filter by businessUnit if specified
+      if (businessUnit) {
+        salaryPayments = salaryPayments.filter((sp: any) => sp.staff?.businessUnit === businessUnit)
+      }
+    }
+
+    // Convert salary payments to expense-like format
+    const salaryExpenses = salaryPayments.map((sp: any) => ({
+      id: `salary-${sp.id}`,
+      businessUnit: sp.staff?.businessUnit || 'HOTEL',
+      category: 'SALARY',
+      description: `Salary - ${sp.staff?.name || 'Unknown'} (${sp.staff?.role || ''})`,
+      amount: sp.netAmount,
+      date: sp.paymentDate,
+      month: sp.month,
+      year: sp.year,
+      vendor: sp.staff?.name,
+      invoiceNumber: null,
+      notes: sp.notes,
+      createdAt: sp.createdAt,
+      isSalaryPayment: true,
+      staffId: sp.staffId,
+      staffName: sp.staff?.name,
+      staffRole: sp.staff?.role,
+      staffType: sp.staff?.staffType,
+      bonus: sp.bonus,
+      deductions: sp.deductions,
+      baseAmount: sp.amount,
+    }))
+
+    // Combine and sort by date
+    const allExpenses = [...expenses, ...salaryExpenses].sort((a: any, b: any) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+
     // Calculate totals
-    const totalExpenses = expenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
-    const hotelExpenses = expenses
+    const totalExpenses = allExpenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
+    const hotelExpenses = allExpenses
       .filter((exp: any) => exp.businessUnit === 'HOTEL' || exp.businessUnit === 'BOTH')
       .reduce((sum: number, exp: any) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
-    const conventionExpenses = expenses
+    const conventionExpenses = allExpenses
       .filter((exp: any) => exp.businessUnit === 'CONVENTION' || exp.businessUnit === 'BOTH')
       .reduce((sum: number, exp: any) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
 
     return NextResponse.json({
       success: true,
-      data: expenses,
+      data: allExpenses,
       summary: {
         total: totalExpenses,
         hotel: hotelExpenses,
         convention: conventionExpenses,
-        count: expenses.length,
+        count: allExpenses.length,
+        salaryCount: salaryExpenses.length,
+        expenseCount: expenses.length,
       },
     })
   } catch (error) {
@@ -96,7 +157,7 @@ export async function POST(request: NextRequest) {
     const month = expenseDate.getMonth() + 1 // 1-12
     const year = expenseDate.getFullYear()
 
-    const expense = await (prisma.expense as any).create({
+    const expense = await (prisma as any).expense.create({
       data: {
         businessUnit,
         category,

@@ -49,6 +49,7 @@ enum UserRole {
   SUPER_ADMIN
   ADMIN
   RECEPTIONIST
+  STAFF
 }
 
 enum InventoryTransactionType {
@@ -224,14 +225,21 @@ model Staff {
   name          String
   role          String
   phone         String
-  salary        Float?
-  businessUnit  BusinessUnit      @default(HOTEL)  // Which business they work for
+  staffType     StaffType         @default(SALARY)  // SALARY = monthly salary, DAILY = daily wage
+  salary        Float?            // Monthly salary for SALARY type
+  dailyWage     Float?            // Daily rate for DAILY type
+  businessUnit  BusinessUnit      @default(HOTEL)   // Which business they work for
   status        String            @default("ACTIVE")
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
   attendance    Attendance[]
   salaryPayments SalaryPayment[]
+}
+
+enum StaffType {
+  SALARY    // Monthly salary employees
+  DAILY     // Daily wage workers
 }
 
 // Salary Payment - Track monthly salary payments
@@ -468,4 +476,59 @@ model UtilityBill {
   @@index([businessUnit, billingMonth, billingYear])
   @@index([utilityType])
   @@index([isPaid])
+}
+
+// Bank Account
+model BankAccount {
+  id            String              @id @default(cuid())
+  accountName   String              // e.g., "Main Business Account", "Petty Cash"
+  bankName      String?             // e.g., "SBI", "HDFC"
+  accountNumber String?             // Last 4 digits or full (masked)
+  accountType   BankAccountType     @default(SAVINGS)
+  currentBalance Float              @default(0)
+  isActive      Boolean             @default(true)
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  transactions  BankTransaction[]
+
+  @@index([isActive])
+}
+
+enum BankAccountType {
+  SAVINGS
+  CURRENT
+  CASH
+  OTHER
+}
+
+// Bank Transaction
+model BankTransaction {
+  id              String                @id @default(cuid())
+  accountId       String
+  type            BankTransactionType
+  amount          Float
+  balanceAfter    Float                 // Balance after this transaction
+  description     String
+  reference       String?               // Cheque number, UPI ref, etc.
+  category        String?               // Salary, Rent, Booking Payment, etc.
+  relatedTo       String?               // booking ID, expense ID, etc.
+  transactionDate DateTime              @default(now())
+  createdBy       String?
+  createdAt       DateTime              @default(now())
+
+  account         BankAccount           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([type])
+  @@index([transactionDate])
+  @@index([category])
+}
+
+enum BankTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER_IN
+  TRANSFER_OUT
 }

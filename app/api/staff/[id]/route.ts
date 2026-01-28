@@ -36,23 +36,23 @@ export async function GET(
   }
 }
 
-// PUT /api/staff/[id] - Update staff member (SUPER_ADMIN only)
+// PUT /api/staff/[id] - Update staff member (ADMIN or SUPER_ADMIN)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) {
       return authResult
     }
 
     const { id } = await params
     const body = await request.json()
-    const { name, role, phone, salary, businessUnit, status } = body
+    const { name, role, phone, staffType, salary, dailyWage, businessUnit, status } = body
 
     // Check if staff exists
-    const existingStaff = await prisma.staff.findUnique({
+    const existingStaff = await (prisma as any).staff.findUnique({
       where: { id }
     })
 
@@ -67,11 +67,13 @@ export async function PUT(
     if (name) updateData.name = name
     if (role) updateData.role = role
     if (phone) updateData.phone = phone
+    if (staffType) updateData.staffType = staffType
     if (salary !== undefined && salary !== '') updateData.salary = parseFloat(salary)
+    if (dailyWage !== undefined && dailyWage !== '') updateData.dailyWage = parseFloat(dailyWage)
     if (businessUnit) updateData.businessUnit = businessUnit
     if (status) updateData.status = status
 
-    const updatedStaff = await prisma.staff.update({
+    const updatedStaff = await (prisma as any).staff.update({
       where: { id },
       data: updateData
     })

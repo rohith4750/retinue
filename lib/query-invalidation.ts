@@ -51,6 +51,10 @@ export const QUERY_INVALIDATION_MAP: QueryInvalidationMap = {
   // Asset Locations
   '/asset-locations': ['asset-locations', 'inventory', 'rooms', 'function-halls'],
   '/asset-locations/': ['asset-locations', 'inventory', 'rooms', 'function-halls'],
+  
+  // Bank Accounts
+  '/bank-accounts': ['bank-accounts', 'bank-account-detail', 'dashboard'],
+  '/bank-accounts/': ['bank-accounts', 'bank-account-detail', 'dashboard'],
 }
 
 /**

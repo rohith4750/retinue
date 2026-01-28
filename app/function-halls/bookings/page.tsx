@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { FaPlus, FaCalendarAlt, FaUser, FaPhone, FaBuilding, FaChevronLeft, FaChevronRight, FaTrash, FaCheck, FaTimes, FaBolt, FaEdit } from 'react-icons/fa'
+import { FaPlus, FaCalendarAlt, FaUser, FaPhone, FaBuilding, FaChevronLeft, FaChevronRight, FaTrash, FaCheck, FaTimes, FaBolt, FaEdit, FaFileInvoiceDollar, FaRupeeSign, FaPrint } from 'react-icons/fa'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
@@ -23,19 +23,23 @@ export default function FunctionHallBookingsPage() {
     show: false,
     bookingId: null
   })
-  const [meterModal, setMeterModal] = useState<{ show: boolean; booking: any | null }>({
-    show: false,
-    booking: null
-  })
+  const [meterBooking, setMeterBooking] = useState<any | null>(null)
   const [meterData, setMeterData] = useState({
+    meterReadingBefore: '',
     meterReadingAfter: '',
+    electricityUnitPrice: '8',
     maintenanceCharges: '0',
     otherCharges: '0',
     otherChargesNote: ''
   })
+  const [billModal, setBillModal] = useState<{ show: boolean; booking: any | null }>({
+    show: false,
+    booking: null
+  })
+  const [paymentAmount, setPaymentAmount] = useState('')
 
   // Fetch bookings
-  const { data: bookingsData, isLoading } = useQuery({
+  const { data: bookingsData, isLoading, refetch: refetchBookings } = useQuery({
     queryKey: ['function-hall-bookings', debouncedSearch, page],
     queryFn: () => {
       const params = new URLSearchParams({
@@ -44,7 +48,10 @@ export default function FunctionHallBookingsPage() {
       })
       if (debouncedSearch) params.append('search', debouncedSearch)
       return api.get(`/function-hall-bookings?${params.toString()}`)
-    }
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   })
 
   const bookings = bookingsData?.data || []
@@ -92,32 +99,54 @@ export default function FunctionHallBookingsPage() {
   const updateMeterMutation = useMutationWithInvalidation({
     mutationFn: ({ id, data }: { id: string; data: any }) => api.put(`/function-hall-bookings/${id}`, data),
     endpoint: '/function-hall-bookings',
-    onSuccess: () => {
-      setMeterModal({ show: false, booking: null })
-      setMeterData({ meterReadingAfter: '', maintenanceCharges: '0', otherCharges: '0', otherChargesNote: '' })
+    onSuccess: async () => {
+      setMeterBooking(null)
+      setMeterData({ meterReadingBefore: '', meterReadingAfter: '', electricityUnitPrice: '8', maintenanceCharges: '0', otherCharges: '0', otherChargesNote: '' })
       toast.success('Meter reading and charges updated successfully')
+      await refetchBookings()
     },
     onError: (error: any) => {
       toast.error(error?.message || 'Failed to update meter reading')
     }
   })
 
+  // Record payment mutation
+  const recordPaymentMutation = useMutationWithInvalidation({
+    mutationFn: ({ id, amount }: { id: string; amount: number }) => 
+      api.put(`/function-hall-bookings/${id}`, { 
+        addPayment: amount 
+      }),
+    endpoint: '/function-hall-bookings',
+    onSuccess: async () => {
+      setPaymentAmount('')
+      toast.success('Payment recorded successfully')
+      // Close bill modal and refresh data
+      setBillModal({ show: false, booking: null })
+      await refetchBookings()
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to record payment')
+    }
+  })
+
   const handleMeterSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!meterModal.booking) return
+    if (!meterBooking) return
 
-    const beforeReading = meterModal.booking.meterReadingBefore || 0
-    const afterReading = parseFloat(meterData.meterReadingAfter)
+    const beforeReading = parseFloat(meterData.meterReadingBefore) || 0
+    const afterReading = parseFloat(meterData.meterReadingAfter) || 0
 
-    if (afterReading < beforeReading) {
+    if (afterReading && beforeReading && afterReading < beforeReading) {
       toast.error('After reading cannot be less than before reading')
       return
     }
 
     updateMeterMutation.mutate({
-      id: meterModal.booking.id,
+      id: meterBooking.id,
       data: {
-        meterReadingAfter: meterData.meterReadingAfter,
+        meterReadingBefore: meterData.meterReadingBefore || null,
+        meterReadingAfter: meterData.meterReadingAfter || null,
+        electricityUnitPrice: meterData.electricityUnitPrice || '8',
         maintenanceCharges: meterData.maintenanceCharges,
         otherCharges: meterData.otherCharges,
         otherChargesNote: meterData.otherChargesNote
@@ -125,14 +154,109 @@ export default function FunctionHallBookingsPage() {
     })
   }
 
-  const openMeterModal = (booking: any) => {
+  const openMeterForm = (booking: any) => {
     setMeterData({
+      meterReadingBefore: booking.meterReadingBefore?.toString() || '',
       meterReadingAfter: booking.meterReadingAfter?.toString() || '',
+      electricityUnitPrice: booking.electricityUnitPrice?.toString() || '8',
       maintenanceCharges: booking.maintenanceCharges?.toString() || '0',
       otherCharges: booking.otherCharges?.toString() || '0',
       otherChargesNote: booking.otherChargesNote || ''
     })
-    setMeterModal({ show: true, booking })
+    setMeterBooking(booking)
+  }
+
+  const openBillModal = (booking: any) => {
+    setPaymentAmount('')
+    setBillModal({ show: true, booking })
+  }
+
+  const handleRecordPayment = () => {
+    if (!billModal.booking || !paymentAmount) return
+    
+    const amount = parseFloat(paymentAmount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid payment amount')
+      return
+    }
+    
+    if (amount > billModal.booking.balanceAmount) {
+      toast.error('Payment amount cannot exceed balance')
+      return
+    }
+
+    recordPaymentMutation.mutate({ id: billModal.booking.id, amount })
+  }
+
+  const printBill = (booking: any) => {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    const grandTotal = booking.grandTotal || booking.totalAmount
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Bill - ${booking.customerName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          .header h1 { margin: 0; color: #333; }
+          .header p { margin: 5px 0; color: #666; }
+          .section { margin: 20px 0; }
+          .section-title { font-weight: bold; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
+          .row { display: flex; justify-content: space-between; padding: 5px 0; }
+          .row.total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 1.2em; }
+          .row.balance { color: #d97706; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Function Hall Booking Bill</h1>
+          <p>Convention Center</p>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">Customer Details</div>
+          <div class="row"><span>Name:</span><span>${booking.customerName}</span></div>
+          <div class="row"><span>Phone:</span><span>${booking.customerPhone}</span></div>
+          ${booking.customerEmail ? `<div class="row"><span>Email:</span><span>${booking.customerEmail}</span></div>` : ''}
+        </div>
+
+        <div class="section">
+          <div class="section-title">Event Details</div>
+          <div class="row"><span>Hall:</span><span>${booking.hall?.name || 'N/A'}</span></div>
+          <div class="row"><span>Event Type:</span><span>${booking.eventType}</span></div>
+          <div class="row"><span>Date:</span><span>${new Date(booking.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+          <div class="row"><span>Time:</span><span>${booking.startTime} - ${booking.endTime}</span></div>
+          <div class="row"><span>Expected Guests:</span><span>${booking.expectedGuests}</span></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Charges</div>
+          <div class="row"><span>Hall Charges:</span><span>₹${booking.totalAmount?.toLocaleString()}</span></div>
+          ${booking.electricityCharges ? `<div class="row"><span>Electricity (${booking.unitsConsumed?.toFixed(1)} units):</span><span>₹${booking.electricityCharges?.toLocaleString()}</span></div>` : ''}
+          ${booking.maintenanceCharges ? `<div class="row"><span>Maintenance:</span><span>₹${booking.maintenanceCharges?.toLocaleString()}</span></div>` : ''}
+          ${booking.otherCharges ? `<div class="row"><span>Other Charges${booking.otherChargesNote ? ` (${booking.otherChargesNote})` : ''}:</span><span>₹${booking.otherCharges?.toLocaleString()}</span></div>` : ''}
+          <div class="row total"><span>Grand Total:</span><span>₹${grandTotal?.toLocaleString()}</span></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Payment Status</div>
+          <div class="row"><span>Amount Paid:</span><span>₹${booking.advanceAmount?.toLocaleString()}</span></div>
+          <div class="row balance"><span>Balance Due:</span><span>₹${booking.balanceAmount?.toLocaleString()}</span></div>
+        </div>
+
+        <div style="margin-top: 40px; text-align: center; color: #666; font-size: 0.9em;">
+          <p>Generated on: ${new Date().toLocaleString('en-IN')}</p>
+        </div>
+      </body>
+      </html>
+    `
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.print()
   }
 
 
@@ -187,6 +311,153 @@ export default function FunctionHallBookingsPage() {
             <span>New Booking</span>
           </Link>
         </div>
+
+        {/* Inline Meter & Charges Form */}
+        {meterBooking && (
+          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-6 border border-yellow-500/30 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <FaBolt className="text-yellow-400" />
+                  Electricity & Additional Charges
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">
+                  {meterBooking.customerName} • {meterBooking.hall?.name} • {new Date(meterBooking.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setMeterBooking(null)
+                  setMeterData({ meterReadingBefore: '', meterReadingAfter: '', electricityUnitPrice: '8', maintenanceCharges: '0', otherCharges: '0', otherChargesNote: '' })
+                }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg"
+              >
+                <FaTimes className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleMeterSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Meter Readings */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Before Reading (at start)</label>
+                  <input
+                    type="number"
+                    value={meterData.meterReadingBefore}
+                    onChange={(e) => setMeterData(prev => ({ ...prev, meterReadingBefore: e.target.value }))}
+                    min="0"
+                    step="0.01"
+                    className="form-input"
+                    placeholder="Starting reading"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">After Reading (after event)</label>
+                  <input
+                    type="number"
+                    value={meterData.meterReadingAfter}
+                    onChange={(e) => setMeterData(prev => ({ ...prev, meterReadingAfter: e.target.value }))}
+                    min={parseFloat(meterData.meterReadingBefore) || 0}
+                    step="0.01"
+                    className="form-input"
+                    placeholder="Ending reading"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Unit Price (₹/kWh)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                    <input
+                      type="number"
+                      value={meterData.electricityUnitPrice}
+                      onChange={(e) => setMeterData(prev => ({ ...prev, electricityUnitPrice: e.target.value }))}
+                      min="0"
+                      step="0.01"
+                      className="form-input pl-8"
+                      placeholder="8"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Maintenance Charges</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                    <input
+                      type="number"
+                      value={meterData.maintenanceCharges}
+                      onChange={(e) => setMeterData(prev => ({ ...prev, maintenanceCharges: e.target.value }))}
+                      min="0"
+                      className="form-input pl-8"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Other Charges</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                    <input
+                      type="number"
+                      value={meterData.otherCharges}
+                      onChange={(e) => setMeterData(prev => ({ ...prev, otherCharges: e.target.value }))}
+                      min="0"
+                      className="form-input pl-8"
+                    />
+                  </div>
+                </div>
+                {parseFloat(meterData.otherCharges) > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Other Charges Description</label>
+                    <input
+                      type="text"
+                      value={meterData.otherChargesNote}
+                      onChange={(e) => setMeterData(prev => ({ ...prev, otherChargesNote: e.target.value }))}
+                      className="form-input"
+                      placeholder="Description..."
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Electricity Calculation */}
+              {meterData.meterReadingBefore && meterData.meterReadingAfter && parseFloat(meterData.meterReadingAfter) > parseFloat(meterData.meterReadingBefore) && (
+                <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Units Consumed:</span>
+                    <span className="text-white font-medium">
+                      {(parseFloat(meterData.meterReadingAfter) - parseFloat(meterData.meterReadingBefore)).toFixed(2)} kWh
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-slate-400">@ ₹{meterData.electricityUnitPrice || 8}/unit:</span>
+                    <span className="text-yellow-400 font-bold">
+                      ₹{((parseFloat(meterData.meterReadingAfter) - parseFloat(meterData.meterReadingBefore)) * parseFloat(meterData.electricityUnitPrice || '8')).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMeterBooking(null)
+                    setMeterData({ meterReadingBefore: '', meterReadingAfter: '', electricityUnitPrice: '8', maintenanceCharges: '0', otherCharges: '0', otherChargesNote: '' })
+                  }}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-medium rounded-lg hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateMeterMutation.isPending}
+                  className="px-6 py-2 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-500 disabled:opacity-50"
+                >
+                  {updateMeterMutation.isPending ? 'Saving...' : 'Save Charges'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Bookings List */}
         {bookings && bookings.length > 0 ? (
@@ -266,6 +537,14 @@ export default function FunctionHallBookingsPage() {
                       </div>
                     )}
                     <div className="flex items-center justify-end gap-2">
+                      {/* View Bill button */}
+                      <button
+                        onClick={() => openBillModal(booking)}
+                        className="p-2 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors"
+                        title="View Bill"
+                      >
+                        <FaFileInvoiceDollar className="w-4 h-4" />
+                      </button>
                       {/* Edit button */}
                       {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
                         <Link
@@ -276,10 +555,10 @@ export default function FunctionHallBookingsPage() {
                           <FaEdit className="w-4 h-4" />
                         </Link>
                       )}
-                      {/* Meter reading button - show for confirmed bookings */}
+                      {/* Meter reading button - show for confirmed/completed bookings */}
                       {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') && (
                         <button
-                          onClick={() => openMeterModal(booking)}
+                          onClick={() => openMeterForm(booking)}
                           className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition-colors"
                           title="Update Meter & Charges"
                         >
@@ -406,133 +685,151 @@ export default function FunctionHallBookingsPage() {
         confirmText="Delete Permanently"
       />
 
-      {/* Meter Reading Modal */}
-      {meterModal.show && meterModal.booking && (
+      {/* Bill Modal */}
+      {billModal.show && billModal.booking && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900/95 backdrop-blur-xl max-w-md w-full rounded-2xl border border-white/10 shadow-2xl p-6">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <FaBolt className="text-yellow-400" />
-              Update Meter & Charges
-            </h2>
-            <p className="text-sm text-slate-400 mb-4">
-              Customer: <span className="text-white">{meterModal.booking.customerName}</span> | 
-              Event: <span className="text-white">{new Date(meterModal.booking.eventDate).toLocaleDateString()}</span>
-            </p>
+          <div className="bg-slate-900/95 backdrop-blur-xl max-w-lg w-full rounded-2xl border border-white/10 shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <FaFileInvoiceDollar className="text-emerald-400" />
+                Booking Bill
+              </h2>
+              <button
+                onClick={() => printBill(billModal.booking)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                title="Print Bill"
+              >
+                <FaPrint className="w-4 h-4" />
+              </button>
+            </div>
             
-            <form onSubmit={handleMeterSubmit} className="space-y-4">
-              {/* Meter Readings */}
-              <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
-                <h3 className="text-sm font-medium text-yellow-400">Electricity Meter</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Before Reading</label>
-                    <input
-                      type="number"
-                      value={meterModal.booking.meterReadingBefore || ''}
-                      disabled
-                      className="form-input text-sm bg-slate-700/50 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">After Reading *</label>
-                    <input
-                      type="number"
-                      value={meterData.meterReadingAfter}
-                      onChange={(e) => setMeterData(prev => ({ ...prev, meterReadingAfter: e.target.value }))}
-                      required
-                      min={meterModal.booking.meterReadingBefore || 0}
-                      step="0.01"
-                      className="form-input text-sm"
-                      placeholder="Current reading"
-                    />
-                  </div>
+            {/* Customer & Event Info */}
+            <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-slate-400">Customer:</span>
+                  <span className="text-white ml-2">{billModal.booking.customerName}</span>
                 </div>
-                {meterData.meterReadingAfter && meterModal.booking.meterReadingBefore && (
-                  <div className="text-sm bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Units Consumed:</span>
-                      <span className="text-white font-medium">
-                        {(parseFloat(meterData.meterReadingAfter) - meterModal.booking.meterReadingBefore).toFixed(2)} kWh
-                      </span>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-slate-400">@ ₹{meterModal.booking.electricityUnitPrice || 8}/unit:</span>
-                      <span className="text-yellow-400 font-bold">
-                        ₹{((parseFloat(meterData.meterReadingAfter) - meterModal.booking.meterReadingBefore) * (meterModal.booking.electricityUnitPrice || 8)).toLocaleString()}
-                      </span>
-                    </div>
+                <div>
+                  <span className="text-slate-400">Phone:</span>
+                  <span className="text-white ml-2">{billModal.booking.customerPhone}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Hall:</span>
+                  <span className="text-white ml-2">{billModal.booking.hall?.name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Event:</span>
+                  <span className="text-white ml-2">{billModal.booking.eventType}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-400">Date:</span>
+                  <span className="text-white ml-2">
+                    {new Date(billModal.booking.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} 
+                    ({billModal.booking.startTime} - {billModal.booking.endTime})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Charges Breakdown */}
+            <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
+              <h3 className="text-sm font-medium text-slate-300 mb-3">Charges Breakdown</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Hall Charges</span>
+                  <span className="text-white">₹{billModal.booking.totalAmount?.toLocaleString()}</span>
+                </div>
+                {billModal.booking.electricityCharges > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">
+                      Electricity ({billModal.booking.unitsConsumed?.toFixed(1)} units @ ₹{billModal.booking.electricityUnitPrice || 8})
+                    </span>
+                    <span className="text-yellow-400">₹{billModal.booking.electricityCharges?.toLocaleString()}</span>
                   </div>
                 )}
-              </div>
-
-              {/* Additional Charges */}
-              <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
-                <h3 className="text-sm font-medium text-slate-300">Additional Charges</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Maintenance</label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">₹</span>
-                      <input
-                        type="number"
-                        value={meterData.maintenanceCharges}
-                        onChange={(e) => setMeterData(prev => ({ ...prev, maintenanceCharges: e.target.value }))}
-                        min="0"
-                        className="form-input text-sm pl-6"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Other Charges</label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">₹</span>
-                      <input
-                        type="number"
-                        value={meterData.otherCharges}
-                        onChange={(e) => setMeterData(prev => ({ ...prev, otherCharges: e.target.value }))}
-                        min="0"
-                        className="form-input text-sm pl-6"
-                      />
-                    </div>
-                  </div>
-                </div>
-                {parseFloat(meterData.otherCharges) > 0 && (
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Other Charges Note</label>
-                    <input
-                      type="text"
-                      value={meterData.otherChargesNote}
-                      onChange={(e) => setMeterData(prev => ({ ...prev, otherChargesNote: e.target.value }))}
-                      className="form-input text-sm"
-                      placeholder="Description..."
-                    />
+                {billModal.booking.maintenanceCharges > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Maintenance</span>
+                    <span className="text-white">₹{billModal.booking.maintenanceCharges?.toLocaleString()}</span>
                   </div>
                 )}
+                {billModal.booking.otherCharges > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">
+                      Other{billModal.booking.otherChargesNote ? ` (${billModal.booking.otherChargesNote})` : ''}
+                    </span>
+                    <span className="text-white">₹{billModal.booking.otherCharges?.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="border-t border-white/10 pt-2 mt-2">
+                  <div className="flex justify-between text-base font-bold">
+                    <span className="text-slate-300">Grand Total</span>
+                    <span className="text-white">₹{(billModal.booking.grandTotal || billModal.booking.totalAmount)?.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Status */}
+            <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
+              <h3 className="text-sm font-medium text-slate-300 mb-3">Payment Status</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Amount Paid</span>
+                  <span className="text-emerald-400">₹{billModal.booking.advanceAmount?.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Balance Due</span>
+                  <span className={billModal.booking.balanceAmount > 0 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                    ₹{billModal.booking.balanceAmount?.toLocaleString()}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex space-x-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMeterModal({ show: false, booking: null })
-                    setMeterData({ meterReadingAfter: '', maintenanceCharges: '0', otherCharges: '0', otherChargesNote: '' })
-                  }}
-                  className="flex-1 py-2 px-4 bg-slate-800 text-slate-300 font-medium rounded-lg hover:bg-slate-700 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateMeterMutation.isPending}
-                  className="flex-1 py-2 px-4 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-500 transition-all disabled:opacity-50"
-                >
-                  {updateMeterMutation.isPending ? 'Updating...' : 'Update'}
-                </button>
-              </div>
-            </form>
+              {/* Record Payment */}
+              {billModal.booking.balanceAmount > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <h4 className="text-xs font-medium text-slate-400 mb-2">Record Payment</h4>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                      <input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        min="0"
+                        max={billModal.booking.balanceAmount}
+                        className="form-input text-sm pl-7 w-full"
+                        placeholder="Enter amount"
+                      />
+                    </div>
+                    <button
+                      onClick={handleRecordPayment}
+                      disabled={recordPaymentMutation.isPending || !paymentAmount}
+                      className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-500 transition-all disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <FaRupeeSign className="w-3 h-3" />
+                      {recordPaymentMutation.isPending ? 'Saving...' : 'Record'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setBillModal({ show: false, booking: null })}
+                className="px-4 py-2 bg-slate-800 text-slate-300 font-medium rounded-lg hover:bg-slate-700 transition-all"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
+
     </>
   )
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt, FaFileExcel, FaBrain, FaCog, FaWallet, FaClipboardList } from 'react-icons/fa'
+import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt, FaFileExcel, FaBrain, FaCog, FaWallet, FaClipboardList, FaUniversity } from 'react-icons/fa'
 
 export function Sidebar() {
   const router = useRouter()
@@ -49,6 +49,7 @@ export function Sidebar() {
 
   // Finance menu items
   const financeMenuItems = [
+    { href: '/bank-accounts', icon: FaUniversity, label: 'Bank Accounts', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/workforce', icon: FaWallet, label: 'Workforce', roles: ['SUPER_ADMIN'] },
   ]

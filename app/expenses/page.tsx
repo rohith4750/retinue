@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
   FaMoneyBillWave,
@@ -17,6 +16,7 @@ import {
   FaArrowDown,
   FaCalendarAlt,
   FaFilter,
+  FaUserTie,
 } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
@@ -55,15 +55,26 @@ const MONTHS = [
 ]
 
 export default function ExpensesPage() {
-  const router = useRouter()
   const queryClient = useQueryClient()
   const [user, setUser] = useState<any>(null)
-  const [showModal, setShowModal] = useState(false)
   const [editingExpense, setEditingExpense] = useState<any>(null)
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; expenseId: string | null }>({
     show: false,
     expenseId: null,
   })
+  
+  // Inline form state
+  const [formData, setFormData] = useState({
+    businessUnit: 'HOTEL',
+    category: 'MAINTENANCE',
+    description: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    vendor: '',
+    invoiceNumber: '',
+    notes: '',
+  })
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   // Filters
   const currentYear = new Date().getFullYear()
@@ -121,6 +132,22 @@ export default function ExpensesPage() {
     console.error('Expenses fetch error:', expensesError)
   }
 
+  // Reset form to initial state
+  const resetForm = () => {
+    setFormData({
+      businessUnit: 'HOTEL',
+      category: 'MAINTENANCE',
+      description: '',
+      amount: '',
+      date: new Date().toISOString().split('T')[0],
+      vendor: '',
+      invoiceNumber: '',
+      notes: '',
+    })
+    setFormErrors({})
+    setEditingExpense(null)
+  }
+
   // Mutations
   const createExpenseMutation = useMutation({
     mutationFn: (data: any) => api.post('/expenses', data),
@@ -128,8 +155,7 @@ export default function ExpensesPage() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
       toast.success('Expense added successfully')
-      setShowModal(false)
-      setEditingExpense(null)
+      resetForm()
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to add expense')
@@ -142,8 +168,7 @@ export default function ExpensesPage() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
       toast.success('Expense updated successfully')
-      setShowModal(false)
-      setEditingExpense(null)
+      resetForm()
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to update expense')
@@ -194,6 +219,48 @@ export default function ExpensesPage() {
   const summaryData = getSummaryData()
   const expensesList = getExpensesList()
 
+  // Form validation
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+    if (!formData.businessUnit) newErrors.businessUnit = 'Business unit is required'
+    if (!formData.category) newErrors.category = 'Category is required'
+    if (!formData.description.trim()) newErrors.description = 'Description is required'
+    if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'Valid amount is required'
+    if (!formData.date) newErrors.date = 'Date is required'
+    setFormErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // Handle form submit
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (validateForm()) {
+      if (editingExpense) {
+        updateExpenseMutation.mutate({ id: editingExpense.id, data: formData })
+      } else {
+        createExpenseMutation.mutate(formData)
+      }
+    }
+  }
+
+  // Handle edit button click
+  const handleEditClick = (expense: any) => {
+    setEditingExpense(expense)
+    setFormData({
+      businessUnit: expense.businessUnit || 'HOTEL',
+      category: expense.category || 'MAINTENANCE',
+      description: expense.description || '',
+      amount: expense.amount?.toString() || '',
+      date: expense.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      vendor: expense.vendor || '',
+      invoiceNumber: expense.invoiceNumber || '',
+      notes: expense.notes || '',
+    })
+    setFormErrors({})
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`
 
   const getCategoryBadge = (category: string) => {
@@ -224,27 +291,152 @@ export default function ExpensesPage() {
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-slate-100">
-              {canViewFinancials ? 'Revenue & Expenses' : 'Record Expenses'}
-            </h1>
-            <p className="text-sm text-slate-400">
-              {canViewFinancials 
-                ? 'Track income and expenses for both businesses' 
-                : 'Add expense records for the business'}
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-slate-100">
+            {canViewFinancials ? 'Revenue & Expenses' : 'Record Expenses'}
+          </h1>
+          <p className="text-sm text-slate-400">
+            {canViewFinancials 
+              ? 'Track income and expenses for both businesses' 
+              : 'Add expense records for the business'}
+          </p>
+        </div>
+
+        {/* Inline Add/Edit Expense Form */}
+        <div className="card mb-6">
+          <div className="card-header mb-4">
+            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <FaPlus className="text-sky-400" />
+              {editingExpense ? 'Edit Expense' : 'Add New Expense'}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              {editingExpense ? 'Update the expense details below' : 'Fill in the details to record an expense'}
             </p>
           </div>
-          <button
-            onClick={() => {
-              setEditingExpense(null)
-              setShowModal(true)
-            }}
-            className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-500 transition-colors"
-          >
-            <FaPlus className="w-4 h-4" />
-            <span>Add Expense</span>
-          </button>
+
+          <form onSubmit={handleFormSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <FormSelect
+                label="Business Unit *"
+                value={formData.businessUnit}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setFormData({ ...formData, businessUnit: e.target.value })
+                }
+                options={BUSINESS_UNITS}
+                error={formErrors.businessUnit}
+                required
+              />
+
+              <FormSelect
+                label="Category *"
+                value={formData.category}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                options={EXPENSE_CATEGORIES}
+                error={formErrors.category}
+                required
+              />
+
+              <FormInput
+                label="Amount (₹) *"
+                type="number"
+                value={formData.amount}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, amount: e.target.value })
+                }
+                error={formErrors.amount}
+                placeholder="0.00"
+                required
+              />
+
+              <FormInput
+                label="Date *"
+                type="date"
+                value={formData.date}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, date: e.target.value })
+                }
+                error={formErrors.date}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormInput
+                label="Description *"
+                type="text"
+                value={formData.description}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                error={formErrors.description}
+                placeholder="e.g., Plumbing repair for Room 101"
+                required
+              />
+
+              <FormInput
+                label="Vendor/Supplier"
+                type="text"
+                value={formData.vendor}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, vendor: e.target.value })
+                }
+                placeholder="Vendor name (optional)"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormInput
+                label="Invoice Number"
+                type="text"
+                value={formData.invoiceNumber}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, invoiceNumber: e.target.value })
+                }
+                placeholder="INV-001 (optional)"
+              />
+
+              <FormTextarea
+                label="Notes"
+                value={formData.notes}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
+                placeholder="Additional notes (optional)"
+                rows={1}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+              {editingExpense && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="btn-secondary text-sm px-4 py-2"
+                >
+                  Cancel Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                className="btn-primary text-sm px-6 py-2 flex items-center gap-2"
+                disabled={createExpenseMutation.isPending || updateExpenseMutation.isPending}
+              >
+                {(createExpenseMutation.isPending || updateExpenseMutation.isPending) ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <FaPlus className="w-4 h-4" />
+                    <span>{editingExpense ? 'Update Expense' : 'Add Expense'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* Filters */}
@@ -459,21 +651,35 @@ export default function ExpensesPage() {
                 </thead>
                 <tbody>
                   {expensesList.map((expense: any) => (
-                    <tr key={expense.id}>
+                    <tr key={expense.id} className={expense.isSalaryPayment ? 'bg-emerald-500/5' : ''}>
                       <td className="text-slate-300">
                         {new Date(expense.date).toLocaleDateString()}
                       </td>
                       <td>
                         <div>
-                          <p className="text-slate-100 font-medium">{expense.description}</p>
-                          {expense.vendor && (
+                          <p className="text-slate-100 font-medium flex items-center gap-2">
+                            {expense.isSalaryPayment && <FaUserTie className="w-3 h-3 text-emerald-400" />}
+                            {expense.description}
+                          </p>
+                          {expense.vendor && !expense.isSalaryPayment && (
                             <p className="text-xs text-slate-500">{expense.vendor}</p>
+                          )}
+                          {expense.isSalaryPayment && (
+                            <p className="text-xs text-emerald-400/70">
+                              {expense.staffType === 'DAILY' ? 'Daily Wage' : 'Monthly Salary'}
+                              {expense.bonus > 0 && ` • Bonus: ₹${expense.bonus.toLocaleString()}`}
+                              {expense.deductions > 0 && ` • Deduction: ₹${expense.deductions.toLocaleString()}`}
+                            </p>
                           )}
                         </div>
                       </td>
                       <td>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getCategoryBadge(expense.category)}`}>
-                          {expense.category.replace('_', ' ')}
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                          expense.isSalaryPayment 
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                            : getCategoryBadge(expense.category)
+                        }`}>
+                          {expense.isSalaryPayment ? 'STAFF SALARY' : expense.category.replace('_', ' ')}
                         </span>
                       </td>
                       <td>
@@ -488,23 +694,26 @@ export default function ExpensesPage() {
                       )}
                       {canViewFinancials && (
                         <td>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => {
-                                setEditingExpense(expense)
-                                setShowModal(true)
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
-                            >
-                              <FaEdit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteModal({ show: true, expenseId: expense.id })}
-                              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                            >
-                              <FaTrash className="w-4 h-4" />
-                            </button>
-                          </div>
+                          {expense.isSalaryPayment ? (
+                            <span className="text-xs text-slate-500 italic">From Salary</span>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleEditClick(expense)}
+                                className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
+                                title="Edit expense"
+                              >
+                                <FaEdit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteModal({ show: true, expenseId: expense.id })}
+                                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                title="Delete expense"
+                              >
+                                <FaTrash className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -514,25 +723,6 @@ export default function ExpensesPage() {
             </div>
           )}
         </div>
-
-        {/* Add/Edit Expense Modal */}
-        {showModal && (
-          <ExpenseModal
-            expense={editingExpense}
-            onClose={() => {
-              setShowModal(false)
-              setEditingExpense(null)
-            }}
-            onSave={(data) => {
-              if (editingExpense) {
-                updateExpenseMutation.mutate({ id: editingExpense.id, data })
-              } else {
-                createExpenseMutation.mutate(data)
-              }
-            }}
-            isLoading={createExpenseMutation.isPending || updateExpenseMutation.isPending}
-          />
-        )}
 
         {/* Delete Confirmation Modal */}
         <ConfirmationModal
@@ -555,178 +745,3 @@ export default function ExpensesPage() {
   )
 }
 
-// Expense Modal Component
-function ExpenseModal({
-  expense,
-  onClose,
-  onSave,
-  isLoading,
-}: {
-  expense: any
-  onClose: () => void
-  onSave: (data: any) => void
-  isLoading: boolean
-}) {
-  const [formData, setFormData] = useState({
-    businessUnit: expense?.businessUnit || 'HOTEL',
-    category: expense?.category || 'MAINTENANCE',
-    description: expense?.description || '',
-    amount: expense?.amount?.toString() || '',
-    date: expense?.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    vendor: expense?.vendor || '',
-    invoiceNumber: expense?.invoiceNumber || '',
-    notes: expense?.notes || '',
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.businessUnit) newErrors.businessUnit = 'Business unit is required'
-    if (!formData.category) newErrors.category = 'Category is required'
-    if (!formData.description.trim()) newErrors.description = 'Description is required'
-    if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'Valid amount is required'
-    if (!formData.date) newErrors.date = 'Date is required'
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (validate()) {
-      onSave(formData)
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 relative z-10">
-          <div className="card-header">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center">
-              <FaMoneyBillWave className="mr-2 w-5 h-5 text-sky-400" />
-              {expense ? 'Edit Expense' : 'Add Expense'}
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Record maintenance or operational expense
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormSelect
-                label="Business Unit *"
-                value={formData.businessUnit}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setFormData({ ...formData, businessUnit: e.target.value })
-                }
-                options={BUSINESS_UNITS}
-                error={errors.businessUnit}
-                required
-              />
-
-              <FormSelect
-                label="Category *"
-                value={formData.category}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                options={EXPENSE_CATEGORIES}
-                error={errors.category}
-                required
-              />
-            </div>
-
-            <FormInput
-              label="Description *"
-              type="text"
-              value={formData.description}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              error={errors.description}
-              placeholder="e.g., Plumbing repair for Room 101"
-              required
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label="Amount (₹) *"
-                type="number"
-                value={formData.amount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-                error={errors.amount}
-                placeholder="0.00"
-                required
-              />
-
-              <FormInput
-                label="Date *"
-                type="date"
-                value={formData.date}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, date: e.target.value })
-                }
-                error={errors.date}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label="Vendor/Supplier"
-                type="text"
-                value={formData.vendor}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, vendor: e.target.value })
-                }
-                placeholder="Vendor name"
-              />
-
-              <FormInput
-                label="Invoice Number"
-                type="text"
-                value={formData.invoiceNumber}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, invoiceNumber: e.target.value })
-                }
-                placeholder="INV-001"
-              />
-            </div>
-
-            <FormTextarea
-              label="Notes"
-              value={formData.notes}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setFormData({ ...formData, notes: e.target.value })
-              }
-              placeholder="Additional notes..."
-              rows={2}
-            />
-
-            <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn-secondary text-sm px-4 py-2"
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary text-sm px-4 py-2"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Saving...' : expense ? 'Update Expense' : 'Add Expense'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
-}

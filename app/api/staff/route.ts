@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()
-    const { name, role, phone, salary, status } = data
+    const { name, role, phone, staffType, salary, dailyWage, businessUnit, status } = data
 
     if (!name || !role || !phone) {
       return Response.json(
@@ -47,12 +47,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const staff = await prisma.staff.create({
+    const staff = await (prisma as any).staff.create({
       data: {
         name,
         role,
         phone,
+        staffType: staffType || 'SALARY',
         salary: salary ? parseFloat(salary) : null,
+        dailyWage: dailyWage ? parseFloat(dailyWage) : null,
+        businessUnit: businessUnit || 'HOTEL',
         status: status || 'ACTIVE',
       },
     })

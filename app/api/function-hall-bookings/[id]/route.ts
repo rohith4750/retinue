@@ -11,7 +11,7 @@ export async function GET(
     const authResult = await requireAuth()(request)
     if (authResult instanceof Response) return authResult
 
-    const booking = await prisma.functionHallBooking.findUnique({
+    const booking = await (prisma as any).functionHallBooking.findUnique({
       where: { id: params.id },
       include: {
         hall: true
@@ -66,10 +66,12 @@ export async function PUT(
       maintenanceCharges,
       otherCharges,
       otherChargesNote,
+      // Payment recording
+      addPayment,
     } = data
 
     // Check if booking exists
-    const existingBooking = await prisma.functionHallBooking.findUnique({
+    const existingBooking = await (prisma as any).functionHallBooking.findUnique({
       where: { id: params.id }
     })
 
@@ -95,7 +97,17 @@ export async function PUT(
 
     // Calculate balance and grand total
     const hallAmount = totalAmount !== undefined ? parseFloat(totalAmount) : existingBooking.totalAmount
-    const advance = advanceAmount !== undefined ? parseFloat(advanceAmount) : existingBooking.advanceAmount
+    
+    // Handle payment: either set new advance amount or add to existing
+    let advance = existingBooking.advanceAmount
+    if (addPayment !== undefined) {
+      // Adding a new payment to existing advance
+      advance = existingBooking.advanceAmount + parseFloat(addPayment)
+    } else if (advanceAmount !== undefined) {
+      // Setting the advance amount directly
+      advance = parseFloat(advanceAmount)
+    }
+    
     const maintenance = maintenanceCharges !== undefined ? parseFloat(maintenanceCharges) : (existingBooking.maintenanceCharges || 0)
     const other = otherCharges !== undefined ? parseFloat(otherCharges) : (existingBooking.otherCharges || 0)
     
@@ -103,7 +115,7 @@ export async function PUT(
     const grandTotal = hallAmount + (electricityCharges || 0) + maintenance + other
     const balanceAmount = grandTotal - advance
 
-    const booking = await prisma.functionHallBooking.update({
+    const booking = await (prisma as any).functionHallBooking.update({
       where: { id: params.id },
       data: {
         ...(customerName && { customerName }),
@@ -115,13 +127,14 @@ export async function PUT(
         ...(endTime && { endTime }),
         ...(expectedGuests && { expectedGuests: parseInt(expectedGuests) }),
         ...(totalAmount !== undefined && { totalAmount: parseFloat(totalAmount) }),
-        ...(advanceAmount !== undefined && { advanceAmount: parseFloat(advanceAmount) }),
+        // Update advance amount (either from direct set or from addPayment)
+        ...((advanceAmount !== undefined || addPayment !== undefined) && { advanceAmount: advance }),
         balanceAmount,
         ...(specialRequests !== undefined && { specialRequests }),
         ...(status && { status }),
         // Electricity fields
-        ...(meterReadingBefore !== undefined && { meterReadingBefore: parseFloat(meterReadingBefore) }),
-        ...(meterReadingAfter !== undefined && { meterReadingAfter: parseFloat(meterReadingAfter) }),
+        ...(meterReadingBefore !== undefined && { meterReadingBefore: meterReadingBefore ? parseFloat(meterReadingBefore) : null }),
+        ...(meterReadingAfter !== undefined && { meterReadingAfter: meterReadingAfter ? parseFloat(meterReadingAfter) : null }),
         ...(electricityUnitPrice !== undefined && { electricityUnitPrice: parseFloat(electricityUnitPrice) }),
         ...(unitsConsumed !== null && { unitsConsumed }),
         ...(electricityCharges !== null && { electricityCharges }),
@@ -162,13 +175,13 @@ export async function DELETE(
 
     if (permanent) {
       // Permanent delete
-      await prisma.functionHallBooking.delete({
+      await (prisma as any).functionHallBooking.delete({
         where: { id: params.id }
       })
       return Response.json(successResponse(null, 'Booking deleted permanently'))
     } else {
       // Soft delete (cancel)
-      const booking = await prisma.functionHallBooking.update({
+      const booking = await (prisma as any).functionHallBooking.update({
         where: { id: params.id },
         data: { status: 'CANCELLED' }
       })

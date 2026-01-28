@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaBuilding, FaUser, FaPhone, FaEnvelope, FaCalendarAlt, FaClock, FaUsers, FaRupeeSign, FaArrowLeft, FaBolt, FaWrench } from 'react-icons/fa'
+import { FaBuilding, FaUser, FaPhone, FaEnvelope, FaCalendarAlt, FaClock, FaUsers, FaRupeeSign, FaArrowLeft } from 'react-icons/fa'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import Link from 'next/link'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
@@ -28,14 +28,7 @@ function NewFunctionHallBookingContent() {
     expectedGuests: '',
     totalAmount: '',
     advanceAmount: '0',
-    specialRequests: '',
-    // Electricity meter reading
-    meterReadingBefore: '',
-    electricityUnitPrice: '8', // Default ₹8 per unit
-    // Additional charges
-    maintenanceCharges: '0',
-    otherCharges: '0',
-    otherChargesNote: ''
+    specialRequests: ''
   })
 
   const [selectedHall, setSelectedHall] = useState<any>(null)
@@ -113,17 +106,10 @@ function NewFunctionHallBookingContent() {
     'Other'
   ]
 
-  const calculateGrandTotal = () => {
-    const hallAmount = parseFloat(formData.totalAmount) || 0
-    const maintenance = parseFloat(formData.maintenanceCharges) || 0
-    const other = parseFloat(formData.otherCharges) || 0
-    return hallAmount + maintenance + other
-  }
-
   const calculateBalance = () => {
-    const grandTotal = calculateGrandTotal()
+    const total = parseFloat(formData.totalAmount) || 0
     const advance = parseFloat(formData.advanceAmount) || 0
-    return grandTotal - advance
+    return total - advance
   }
 
   return (
@@ -288,106 +274,6 @@ function NewFunctionHallBookingContent() {
               </div>
             </div>
 
-            {/* Electricity & Meter Reading */}
-            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-6 border border-white/5">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <FaBolt className="text-yellow-400" />
-                Electricity Meter
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Meter Reading (Before)</label>
-                    <input
-                      type="number"
-                      name="meterReadingBefore"
-                      value={formData.meterReadingBefore}
-                      onChange={handleChange}
-                      min="0"
-                      step="0.01"
-                      className="form-input"
-                      placeholder="Current reading"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Note at event start</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Unit Price (₹/kWh)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
-                      <input
-                        type="number"
-                        name="electricityUnitPrice"
-                        value={formData.electricityUnitPrice}
-                        onChange={handleChange}
-                        min="0"
-                        step="0.01"
-                        className="form-input pl-8"
-                        placeholder="8"
-                      />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">Price per unit</p>
-                  </div>
-                </div>
-                <p className="text-xs text-amber-400 bg-amber-500/10 px-3 py-2 rounded-lg">
-                  After event completion, update the &quot;After&quot; reading to calculate electricity charges
-                </p>
-              </div>
-            </div>
-
-            {/* Additional Charges */}
-            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-6 border border-white/5">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <FaWrench className="text-slate-400" />
-                Additional Charges
-              </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Maintenance Charges</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
-                    <input
-                      type="number"
-                      name="maintenanceCharges"
-                      value={formData.maintenanceCharges}
-                      onChange={handleChange}
-                      min="0"
-                      className="form-input pl-8"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Other Charges</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
-                    <input
-                      type="number"
-                      name="otherCharges"
-                      value={formData.otherCharges}
-                      onChange={handleChange}
-                      min="0"
-                      className="form-input pl-8"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                {parseFloat(formData.otherCharges) > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Other Charges Description</label>
-                    <input
-                      type="text"
-                      name="otherChargesNote"
-                      value={formData.otherChargesNote}
-                      onChange={handleChange}
-                      className="form-input"
-                      placeholder="Describe other charges..."
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Right Column - Customer & Payment */}
@@ -497,22 +383,6 @@ function NewFunctionHallBookingContent() {
                     <span className="text-slate-400">Hall Charges</span>
                     <span className="text-white font-medium">₹{(parseFloat(formData.totalAmount) || 0).toLocaleString()}</span>
                   </div>
-                  {parseFloat(formData.maintenanceCharges) > 0 && (
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Maintenance</span>
-                      <span className="text-white font-medium">₹{(parseFloat(formData.maintenanceCharges) || 0).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {parseFloat(formData.otherCharges) > 0 && (
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Other Charges</span>
-                      <span className="text-white font-medium">₹{(parseFloat(formData.otherCharges) || 0).toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm mb-2 pt-2 border-t border-white/5">
-                    <span className="text-slate-300 font-medium">Grand Total</span>
-                    <span className="text-white font-bold">₹{calculateGrandTotal().toLocaleString()}</span>
-                  </div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-slate-400">Advance Paid</span>
                     <span className="text-emerald-400 font-medium">- ₹{(parseFloat(formData.advanceAmount) || 0).toLocaleString()}</span>
@@ -522,7 +392,7 @@ function NewFunctionHallBookingContent() {
                     <span className="text-amber-400 font-bold">₹{calculateBalance().toLocaleString()}</span>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
-                    * Electricity charges will be added after event completion
+                    * Electricity & maintenance charges will be added from booking details
                   </p>
                 </div>
               </div>

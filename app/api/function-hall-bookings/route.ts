@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [bookings, total] = await Promise.all([
-      prisma.functionHallBooking.findMany({
+      (prisma as any).functionHallBooking.findMany({
         where,
         skip,
         take: limit,
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { eventDate: 'desc' }
       }),
-      prisma.functionHallBooking.count({ where })
+      (prisma as any).functionHallBooking.count({ where })
     ])
 
     return Response.json(
@@ -87,13 +87,6 @@ export async function POST(request: NextRequest) {
       totalAmount,
       advanceAmount,
       specialRequests,
-      // Electricity meter readings
-      meterReadingBefore,
-      electricityUnitPrice,
-      // Additional charges
-      maintenanceCharges,
-      otherCharges,
-      otherChargesNote,
     } = data
 
     // Validation
@@ -105,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if hall exists
-    const hall = await prisma.functionHall.findUnique({
+    const hall = await (prisma as any).functionHall.findUnique({
       where: { id: hallId }
     })
 
@@ -131,7 +124,7 @@ export async function POST(request: NextRequest) {
     const endOfDay = new Date(eventDateObj)
     endOfDay.setHours(23, 59, 59, 999)
 
-    const conflictingBooking = await prisma.functionHallBooking.findFirst({
+    const conflictingBooking = await (prisma as any).functionHallBooking.findFirst({
       where: {
         hallId,
         eventDate: {
@@ -151,13 +144,11 @@ export async function POST(request: NextRequest) {
 
     const advance = parseFloat(advanceAmount) || 0
     const total = parseFloat(totalAmount)
-    const maintenance = maintenanceCharges ? parseFloat(maintenanceCharges) : 0
-    const other = otherCharges ? parseFloat(otherCharges) : 0
     
-    // Grand total at creation = hall amount + maintenance + other (electricity calculated later)
-    const grandTotal = total + maintenance + other
+    // Grand total at creation = hall amount (electricity and other charges added from bookings list later)
+    const grandTotal = total
 
-    const booking = await prisma.functionHallBooking.create({
+    const booking = await (prisma as any).functionHallBooking.create({
       data: {
         hallId,
         customerName,
@@ -173,13 +164,8 @@ export async function POST(request: NextRequest) {
         balanceAmount: grandTotal - advance,
         specialRequests: specialRequests || null,
         status: 'CONFIRMED',
-        // Electricity - before reading captured at booking time
-        meterReadingBefore: meterReadingBefore ? parseFloat(meterReadingBefore) : null,
-        electricityUnitPrice: electricityUnitPrice ? parseFloat(electricityUnitPrice) : null,
-        // Additional charges
-        maintenanceCharges: maintenance || null,
-        otherCharges: other || null,
-        otherChargesNote: otherChargesNote || null,
+        // Note: Electricity meter readings are now set from bookings list, not create form
+        // Additional charges also set from bookings list
         grandTotal,
       },
       include: {

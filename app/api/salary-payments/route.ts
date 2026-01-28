@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     const netAmount = parseFloat(amount) + parseFloat(bonus || 0) - parseFloat(deductions || 0)
 
-    const payment = await prisma.salaryPayment.create({
+    const payment = await (prisma as any).salaryPayment.create({
       data: {
         staffId,
         month: parseInt(month),
@@ -145,20 +145,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Also create an expense record for this salary payment
-    await prisma.expense.create({
-      data: {
-        businessUnit: staff.businessUnit || 'HOTEL',
-        category: 'SALARY',
-        description: `Salary payment - ${staff.name} (${staff.role})`,
-        amount: netAmount,
-        date: new Date(paymentDate),
-        month: parseInt(month),
-        year: parseInt(year),
-        notes: `Salary: ₹${amount}${bonus > 0 ? `, Bonus: ₹${bonus}` : ''}${deductions > 0 ? `, Deductions: ₹${deductions}` : ''}`,
-        createdBy: authResult.id,
-      },
-    })
+    // Note: Salary payments are automatically shown in expenses view
+    // No need to create duplicate expense record
 
     return NextResponse.json({
       success: true,
