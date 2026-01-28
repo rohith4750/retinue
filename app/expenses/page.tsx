@@ -77,32 +77,49 @@ export default function ExpensesPage() {
     if (userData) {
       const parsed = JSON.parse(userData)
       setUser(parsed)
-      // Redirect if not SUPER_ADMIN
-      if (parsed.role !== 'SUPER_ADMIN') {
-        toast.error('Access denied. Only Super Admin can access this page.')
-        router.push('/dashboard')
-      }
+      // All roles can access - RECEPTIONIST can add expenses
     }
-  }, [router])
+  }, [])
 
   // Fetch summary data
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summary, isLoading: summaryLoading, error: summaryError, isFetching: summaryFetching, status: summaryStatus } = useQuery({
     queryKey: ['expenses-summary', selectedYear, selectedMonth],
-    queryFn: () => api.get(`/expenses/summary?year=${selectedYear}${selectedMonth ? `&month=${selectedMonth}` : ''}`),
-    enabled: !!user && user.role === 'SUPER_ADMIN',
+    queryFn: async () => {
+      const result = await api.get(`/expenses/summary?year=${selectedYear}${selectedMonth ? `&month=${selectedMonth}` : ''}`)
+      return result
+    },
+    enabled: !!user,
+    staleTime: 0,
+    gcTime: 0,
+    retry: 2,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 
   // Fetch expenses list
-  const { data: expenses, isLoading: expensesLoading } = useQuery({
+  const { data: expenses, isLoading: expensesLoading, error: expensesError, status: expensesStatus } = useQuery({
     queryKey: ['expenses', selectedYear, selectedMonth, selectedBusinessUnit],
-    queryFn: () => {
+    queryFn: async () => {
       let url = `/expenses?year=${selectedYear}`
       if (selectedMonth) url += `&month=${selectedMonth}`
       if (selectedBusinessUnit) url += `&businessUnit=${selectedBusinessUnit}`
-      return api.get(url)
+      const result = await api.get(url)
+      return result
     },
-    enabled: !!user && user.role === 'SUPER_ADMIN',
+    enabled: !!user,
+    staleTime: 0,
+    gcTime: 0,
+    retry: 1,
+    refetchOnMount: true,
   })
+
+  // Log errors for debugging
+  if (summaryError) {
+    console.error('Summary fetch error:', summaryError)
+  }
+  if (expensesError) {
+    console.error('Expenses fetch error:', expensesError)
+  }
 
   // Mutations
   const createExpenseMutation = useMutation({
@@ -146,7 +163,7 @@ export default function ExpensesPage() {
     },
   })
 
-  if (!user || user.role !== 'SUPER_ADMIN') {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
         <LoadingSpinner size="lg" />
@@ -154,8 +171,28 @@ export default function ExpensesPage() {
     )
   }
 
-  const summaryData = summary
-  const expensesList = expenses || []
+  // Only SUPER_ADMIN and ADMIN can view financial data
+  const canViewFinancials = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'
+
+  // Handle both direct data and wrapped data structures
+  // The API returns { success: true, data: ... } and apiRequest returns data.data
+  // But handle cases where data might be wrapped differently
+  const getSummaryData = () => {
+    if (!summary) return null
+    if (summary.revenue) return summary // Direct object with revenue property
+    if (summary.data?.revenue) return summary.data // Wrapped in data property
+    return summary // Return as-is
+  }
+  
+  const getExpensesList = () => {
+    if (!expenses) return []
+    if (Array.isArray(expenses)) return expenses // Direct array
+    if (Array.isArray(expenses.data)) return expenses.data // Wrapped in data property
+    return [] // Fallback
+  }
+  
+  const summaryData = getSummaryData()
+  const expensesList = getExpensesList()
 
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`
 
@@ -189,8 +226,14 @@ export default function ExpensesPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-xl font-bold text-slate-100">Revenue & Expenses</h1>
-            <p className="text-sm text-slate-400">Track income and expenses for both businesses</p>
+            <h1 className="text-xl font-bold text-slate-100">
+              {canViewFinancials ? 'Revenue & Expenses' : 'Record Expenses'}
+            </h1>
+            <p className="text-sm text-slate-400">
+              {canViewFinancials 
+                ? 'Track income and expenses for both businesses' 
+                : 'Add expense records for the business'}
+            </p>
           </div>
           <button
             onClick={() => {
@@ -251,8 +294,8 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        {summaryLoading ? (
+        {/* Summary Cards - Only visible to ADMIN/SUPER_ADMIN */}
+        {canViewFinancials && (summaryLoading ? (
           <div className="flex items-center justify-center h-48">
             <LoadingSpinner size="lg" />
           </div>
@@ -374,7 +417,7 @@ export default function ExpensesPage() {
               </div>
             </div>
           </>
-        )}
+        ))}
 
         {/* Expenses List */}
         <div className="card">
@@ -388,6 +431,12 @@ export default function ExpensesPage() {
           {expensesLoading ? (
             <div className="flex items-center justify-center h-48">
               <LoadingSpinner size="md" />
+            </div>
+          ) : expensesError ? (
+            <div className="text-center py-12">
+              <FaMoneyBillWave className="text-4xl text-red-500 mx-auto mb-3" />
+              <p className="text-red-400 font-medium">Failed to load expenses</p>
+              <p className="text-xs text-slate-500 mt-1">Please refresh the page or try again later</p>
             </div>
           ) : expensesList.length === 0 ? (
             <div className="text-center py-12">
@@ -404,8 +453,8 @@ export default function ExpensesPage() {
                     <th>Description</th>
                     <th>Category</th>
                     <th>Business Unit</th>
-                    <th>Amount</th>
-                    <th>Actions</th>
+                    {canViewFinancials && <th>Amount</th>}
+                    {canViewFinancials && <th>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -432,28 +481,32 @@ export default function ExpensesPage() {
                           {expense.businessUnit === 'HOTEL' ? 'Hotel' : expense.businessUnit === 'CONVENTION' ? 'Convention' : 'Shared'}
                         </span>
                       </td>
-                      <td className="text-red-400 font-semibold">
-                        {formatCurrency(expense.amount)}
-                      </td>
-                      <td>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => {
-                              setEditingExpense(expense)
-                              setShowModal(true)
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
-                          >
-                            <FaEdit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteModal({ show: true, expenseId: expense.id })}
-                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                          >
-                            <FaTrash className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+                      {canViewFinancials && (
+                        <td className="text-red-400 font-semibold">
+                          {formatCurrency(expense.amount)}
+                        </td>
+                      )}
+                      {canViewFinancials && (
+                        <td>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                setEditingExpense(expense)
+                                setShowModal(true)
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
+                            >
+                              <FaEdit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteModal({ show: true, expenseId: expense.id })}
+                              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                            >
+                              <FaTrash className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -49,7 +49,7 @@ export function Sidebar() {
 
   // Finance menu items
   const financeMenuItems = [
-    { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', roles: ['SUPER_ADMIN'] },
+    { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/workforce', icon: FaWallet, label: 'Workforce', roles: ['SUPER_ADMIN'] },
   ]
 

@@ -5,7 +5,8 @@ import { requireAuth } from '@/lib/api-helpers'
 // GET - List all expenses with filters
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow all authenticated users to fetch expenses
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const searchParams = request.nextUrl.searchParams
@@ -37,13 +38,13 @@ export async function GET(request: NextRequest) {
     })
 
     // Calculate totals
-    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0)
+    const totalExpenses = expenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
     const hotelExpenses = expenses
-      .filter(exp => exp.businessUnit === 'HOTEL' || exp.businessUnit === 'BOTH')
-      .reduce((sum, exp) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
+      .filter((exp: any) => exp.businessUnit === 'HOTEL' || exp.businessUnit === 'BOTH')
+      .reduce((sum: number, exp: any) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
     const conventionExpenses = expenses
-      .filter(exp => exp.businessUnit === 'CONVENTION' || exp.businessUnit === 'BOTH')
-      .reduce((sum, exp) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
+      .filter((exp: any) => exp.businessUnit === 'CONVENTION' || exp.businessUnit === 'BOTH')
+      .reduce((sum: number, exp: any) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
 
     return NextResponse.json({
       success: true,
@@ -64,10 +65,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new expense
+// POST - Create new expense (RECEPTIONIST can also add expenses)
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow all authenticated users to create expenses
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const body = await request.json()

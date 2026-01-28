@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const hotelRevenue = hotelBills.reduce((sum, bill) => sum + bill.paidAmount, 0)
+    const hotelRevenue = hotelBills.reduce((sum: number, bill: any) => sum + bill.paidAmount, 0)
 
     // Get convention revenue (from FunctionHallBooking with paid amounts)
     const conventionRevenueQuery: any = {
@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const conventionRevenue = conventionBookings.reduce((sum, booking) => sum + booking.advanceAmount, 0)
-    const conventionPendingRevenue = conventionBookings.reduce((sum, booking) => sum + (booking.totalAmount - booking.advanceAmount), 0)
+    const conventionRevenue = conventionBookings.reduce((sum: number, booking: any) => sum + booking.advanceAmount, 0)
+    const conventionPendingRevenue = conventionBookings.reduce((sum: number, booking: any) => sum + (booking.totalAmount - booking.advanceAmount), 0)
 
     // Get expenses
     const expenseQuery: any = {
@@ -90,21 +90,21 @@ export async function GET(request: NextRequest) {
 
     // Calculate expense totals by business unit
     const hotelExpenses = expenses
-      .filter(exp => exp.businessUnit === 'HOTEL')
-      .reduce((sum, exp) => sum + exp.amount, 0)
+      .filter((exp: any) => exp.businessUnit === 'HOTEL')
+      .reduce((sum: number, exp: any) => sum + exp.amount, 0)
 
     const conventionExpenses = expenses
-      .filter(exp => exp.businessUnit === 'CONVENTION')
-      .reduce((sum, exp) => sum + exp.amount, 0)
+      .filter((exp: any) => exp.businessUnit === 'CONVENTION')
+      .reduce((sum: number, exp: any) => sum + exp.amount, 0)
 
     const sharedExpenses = expenses
-      .filter(exp => exp.businessUnit === 'BOTH')
-      .reduce((sum, exp) => sum + exp.amount, 0)
+      .filter((exp: any) => exp.businessUnit === 'BOTH')
+      .reduce((sum: number, exp: any) => sum + exp.amount, 0)
 
     const totalExpenses = hotelExpenses + conventionExpenses + sharedExpenses
 
     // Calculate expense breakdown by category
-    const expenseByCategory = expenses.reduce((acc, exp) => {
+    const expenseByCategory = expenses.reduce((acc: Record<string, number>, exp: any) => {
       if (!acc[exp.category]) {
         acc[exp.category] = 0
       }
@@ -121,27 +121,27 @@ export async function GET(request: NextRequest) {
       const monthEnd = new Date(currentYear, m, 1)
 
       // Monthly hotel revenue
-      const monthlyHotelBills = hotelBills.filter(bill => {
+      const monthlyHotelBills = hotelBills.filter((bill: any) => {
         const billDate = new Date(bill.createdAt)
         return billDate >= monthStart && billDate < monthEnd
       })
-      const monthlyHotelRevenue = monthlyHotelBills.reduce((sum, bill) => sum + bill.paidAmount, 0)
+      const monthlyHotelRevenue = monthlyHotelBills.reduce((sum: number, bill: any) => sum + bill.paidAmount, 0)
 
       // Monthly convention revenue
-      const monthlyConventionBookings = conventionBookings.filter(booking => {
+      const monthlyConventionBookings = conventionBookings.filter((booking: any) => {
         const eventDate = new Date(booking.eventDate)
         return eventDate >= monthStart && eventDate < monthEnd
       })
-      const monthlyConventionRevenue = monthlyConventionBookings.reduce((sum, booking) => sum + booking.advanceAmount, 0)
+      const monthlyConventionRevenue = monthlyConventionBookings.reduce((sum: number, booking: any) => sum + booking.advanceAmount, 0)
 
       // Monthly expenses
-      const monthlyExpenses = expenses.filter(exp => exp.month === m)
+      const monthlyExpenses = expenses.filter((exp: any) => exp.month === m)
       const monthlyHotelExpenses = monthlyExpenses
-        .filter(exp => exp.businessUnit === 'HOTEL' || exp.businessUnit === 'BOTH')
-        .reduce((sum, exp) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
+        .filter((exp: any) => exp.businessUnit === 'HOTEL' || exp.businessUnit === 'BOTH')
+        .reduce((sum: number, exp: any) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
       const monthlyConventionExpenses = monthlyExpenses
-        .filter(exp => exp.businessUnit === 'CONVENTION' || exp.businessUnit === 'BOTH')
-        .reduce((sum, exp) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
+        .filter((exp: any) => exp.businessUnit === 'CONVENTION' || exp.businessUnit === 'BOTH')
+        .reduce((sum: number, exp: any) => sum + (exp.businessUnit === 'BOTH' ? exp.amount / 2 : exp.amount), 0)
 
       monthlyData.push({
         month: m,
