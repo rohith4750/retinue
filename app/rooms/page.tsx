@@ -32,6 +32,19 @@ function getDefaultAvailabilityWindow() {
   }
 }
 
+function getStartOfTodayLocal() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return formatDateTimeLocal(d)
+}
+
+function getCheckOutPlus24h(checkInLocal: string) {
+  const dt = new Date(checkInLocal)
+  if (Number.isNaN(dt.getTime())) return ''
+  dt.setDate(dt.getDate() + 1)
+  return formatDateTimeLocal(dt)
+}
+
 export default function RoomsPage() {
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
@@ -42,7 +55,8 @@ export default function RoomsPage() {
   // Default date filter should be "today"
   const [filterCheckIn, setFilterCheckIn] = useState(() => getDefaultAvailabilityWindow().checkIn)
   const [filterCheckOut, setFilterCheckOut] = useState(() => getDefaultAvailabilityWindow().checkOut)
-  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
+  // Always show today's availability by default (no extra "Check Availability" click)
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(true)
   const [showDateFilter, setShowDateFilter] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean
@@ -109,7 +123,8 @@ export default function RoomsPage() {
     
     return bookings.find((booking: any) => {
       if (booking.room?.id !== roomId) return false
-      if (booking.status === 'CANCELLED') return false
+      // Don't show cancelled or checked-out bookings in calendar
+      if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') return false
       const checkIn = new Date(booking.checkIn)
       const checkOut = new Date(booking.checkOut)
       // Check if booking overlaps with this date
@@ -160,18 +175,11 @@ export default function RoomsPage() {
   // Extract rooms array from response (handles both /rooms and /rooms/available responses)
   const roomsData = rooms?.rooms || rooms || []
 
-  const handleCheckAvailability = () => {
-    if (filterCheckIn && filterCheckOut) {
-      setIsCheckingAvailability(true)
-      refetch()
-    }
-  }
-
   const handleClearFilter = () => {
     const { checkIn, checkOut } = getDefaultAvailabilityWindow()
     setFilterCheckIn(checkIn)
     setFilterCheckOut(checkOut)
-    setIsCheckingAvailability(false)
+    setIsCheckingAvailability(true)
     setShowDateFilter(false)
   }
 
@@ -314,51 +322,33 @@ export default function RoomsPage() {
         {showDateFilter && (
           <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-white/10">
             <div className="flex flex-wrap items-end gap-4">
-              {/* Check-in Date & Time */}
-              <div className="flex-1 min-w-[200px]">
+              {/* Single Date & Time */}
+              <div className="flex-1 min-w-[240px]">
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">
                   <FaCalendarAlt className="inline w-3 h-3 mr-1" />
-                  Check-in Date & Time
+                  Date & Time
                 </label>
                 <input
                   type="datetime-local"
                   value={filterCheckIn}
+                  min={getStartOfTodayLocal()}
                   onChange={(e) => {
-                    setFilterCheckIn(e.target.value)
-                    // Auto-set checkout to next day same time if empty
-                    if (!filterCheckOut && e.target.value) {
-                      const checkIn = new Date(e.target.value)
-                      checkIn.setDate(checkIn.getDate() + 1)
-                      setFilterCheckOut(formatDateTimeLocal(checkIn))
+                    // Prevent selecting past dates (before today)
+                    const min = getStartOfTodayLocal()
+                    const nextValue = e.target.value && e.target.value < min ? min : e.target.value
+                    setFilterCheckIn(nextValue)
+                    // Always auto-set checkout to +24h (hidden)
+                    if (nextValue) {
+                      setFilterCheckOut(getCheckOutPlus24h(nextValue))
+                    } else {
+                      setFilterCheckOut('')
                     }
+                    setIsCheckingAvailability(true)
                   }}
                   className="w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
                 />
+                <p className="text-[10px] text-slate-500 mt-1">* Availability window: 24 hours</p>
               </div>
-
-              {/* Check-out Date & Time */}
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                  <FaClock className="inline w-3 h-3 mr-1" />
-                  Check-out Date & Time
-                </label>
-                <input
-                  type="datetime-local"
-                  value={filterCheckOut}
-                  min={filterCheckIn}
-                  onChange={(e) => setFilterCheckOut(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
-                />
-              </div>
-
-              {/* Apply Filter Button */}
-              <button
-                onClick={handleCheckAvailability}
-                disabled={!filterCheckIn || !filterCheckOut}
-                className="px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Check Availability
-              </button>
             </div>
 
             {/* Show selected filter info */}
