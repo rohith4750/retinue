@@ -19,6 +19,9 @@ export async function GET(
         room: true,
         slot: true,
         guest: true,
+        history: {
+          orderBy: { timestamp: 'asc' },
+        },
       },
     })
 
@@ -30,6 +33,9 @@ export async function GET(
           room: true,
           slot: true,
           guest: true,
+          history: {
+            orderBy: { timestamp: 'asc' },
+          },
         },
       })
     }
@@ -52,9 +58,11 @@ export async function GET(
       totalAmount: booking.totalAmount,
       paidAmount: booking.paidAmount,
       balanceAmount: booking.balanceAmount,
+      advanceAmount: booking.advanceAmount,
       paymentStatus: booking.paymentStatus,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
+      history: booking.history || [],
       booking: {
         id: booking.id,
         checkIn: booking.checkIn,
@@ -113,23 +121,48 @@ export async function PUT(
       )
     }
 
-    const newPaidAmount = booking.paidAmount + parseFloat(paidAmount)
+    const oldPaidAmount = booking.paidAmount
+    const paymentReceived = parseFloat(paidAmount)
+    const newPaidAmount = oldPaidAmount + paymentReceived
     const balanceAmount = booking.totalAmount - newPaidAmount
     const paymentStatus =
       balanceAmount <= 0 ? 'PAID' : newPaidAmount > 0 ? 'PARTIAL' : 'PENDING'
 
-    const updatedBooking = await prisma.booking.update({
-      where: { id: booking.id },
-      data: {
-        paidAmount: newPaidAmount,
-        balanceAmount,
-        paymentStatus,
-      },
-      include: {
-        room: true,
-        slot: true,
-        guest: true,
-      },
+    // Update booking and create payment history in a transaction
+    const updatedBooking = await prisma.$transaction(async (tx: any) => {
+      const updated = await tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          paidAmount: newPaidAmount,
+          balanceAmount,
+          paymentStatus,
+        },
+        include: {
+          room: true,
+          slot: true,
+          guest: true,
+        },
+      })
+      
+      // Record payment in history
+      await tx.bookingHistory.create({
+        data: {
+          bookingId: booking.id,
+          action: 'PAYMENT_RECEIVED',
+          changedBy: (authResult as any).userId || null,
+          changes: {
+            paidAmount: { from: oldPaidAmount, to: newPaidAmount },
+            paymentReceived: paymentReceived,
+            paymentStatus: { from: booking.paymentStatus, to: paymentStatus },
+          },
+          notes: `Payment of ₹${paymentReceived.toLocaleString()} received`,
+        },
+      })
+      
+      return updated
+    }, {
+      maxWait: 10000,
+      timeout: 30000, // 30s timeout for slow Neon connections
     })
 
     // Return in compatible format

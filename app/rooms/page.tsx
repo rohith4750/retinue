@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaClock, FaFilter } from 'react-icons/fa'
+import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaClock, FaFilter, FaList, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
@@ -29,6 +29,17 @@ export default function RoomsPage() {
     show: false,
     roomId: null,
   })
+  
+  // Calendar view state
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  const [calendarStartDate, setCalendarStartDate] = useState(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today
+  })
+  const [calendarFloorFilter, setCalendarFloorFilter] = useState<string>('all')
+  const [calendarPage, setCalendarPage] = useState(0)
+  const ROOMS_PER_PAGE = 10
 
   useEffect(() => {
     const user = localStorage.getItem('user')
@@ -36,6 +47,55 @@ export default function RoomsPage() {
       setCurrentUser(JSON.parse(user))
     }
   }, [])
+
+  // Fetch bookings for calendar view
+  const { data: bookingsData } = useQuery({
+    queryKey: ['bookings-calendar', calendarStartDate.toISOString()],
+    queryFn: () => api.get('/bookings?limit=500'),
+    enabled: viewMode === 'calendar',
+    staleTime: 0,
+  })
+  
+  const bookings = bookingsData?.data || bookingsData || []
+
+  // Generate 7 days for calendar
+  const calendarDays = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(calendarStartDate)
+    date.setDate(date.getDate() + i)
+    return date
+  })
+
+  // Check if a room is booked on a specific date
+  const getRoomBookingForDate = (roomId: string, date: Date) => {
+    const dateStart = new Date(date)
+    dateStart.setHours(0, 0, 0, 0)
+    const dateEnd = new Date(date)
+    dateEnd.setHours(23, 59, 59, 999)
+    
+    return bookings.find((booking: any) => {
+      if (booking.room?.id !== roomId) return false
+      if (booking.status === 'CANCELLED') return false
+      const checkIn = new Date(booking.checkIn)
+      const checkOut = new Date(booking.checkOut)
+      // Check if booking overlaps with this date
+      return checkIn <= dateEnd && checkOut >= dateStart
+    })
+  }
+
+  // Navigate calendar
+  const navigateCalendar = (direction: 'prev' | 'next') => {
+    setCalendarStartDate(prev => {
+      const newDate = new Date(prev)
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7))
+      return newDate
+    })
+  }
+
+  const goToToday = () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    setCalendarStartDate(today)
+  }
 
   // Check if user can manage rooms (ADMIN or SUPER_ADMIN only)
   const canManageRooms = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN'
@@ -89,6 +149,21 @@ export default function RoomsPage() {
       room.status.toLowerCase().includes(search)
     )
   }) || []
+
+  // Get unique floors for filter
+  const uniqueFloors = Array.from(new Set(filteredRooms.map((r: any) => r.floor))).sort((a: any, b: any) => a - b)
+
+  // Filter rooms for calendar by floor
+  const calendarFilteredRooms = calendarFloorFilter === 'all' 
+    ? filteredRooms 
+    : filteredRooms.filter((r: any) => r.floor === parseInt(calendarFloorFilter))
+
+  // Paginate rooms for calendar
+  const totalCalendarPages = Math.ceil(calendarFilteredRooms.length / ROOMS_PER_PAGE)
+  const paginatedCalendarRooms = calendarFilteredRooms.slice(
+    calendarPage * ROOMS_PER_PAGE,
+    (calendarPage + 1) * ROOMS_PER_PAGE
+  )
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/rooms/${id}`),
@@ -160,6 +235,28 @@ export default function RoomsPage() {
                 Clear Filter
               </button>
             )}
+            
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-slate-800/60 rounded-lg border border-white/5 p-0.5">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <FaList className="w-3 h-3" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'calendar' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <FaCalendarAlt className="w-3 h-3" />
+                Calendar
+              </button>
+            </div>
           </div>
 
           {/* Right: Add Room button */}
@@ -251,7 +348,187 @@ export default function RoomsPage() {
           </div>
         )}
 
-        {filteredRooms && filteredRooms.length > 0 ? (
+        {/* Calendar View */}
+        {viewMode === 'calendar' && (
+          <div className="bg-slate-800/60 rounded-xl border border-white/10 overflow-hidden mb-4">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-900/50 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigateCalendar('prev')}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <FaChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-white">
+                    {calendarStartDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                  </h3>
+                  <button
+                    onClick={goToToday}
+                    className="px-2 py-1 text-[10px] font-medium text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 rounded border border-sky-500/30"
+                  >
+                    Today
+                  </button>
+                </div>
+                <button
+                  onClick={() => navigateCalendar('next')}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <FaChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {/* Floor Filter & Room Count */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500">
+                  {calendarFilteredRooms.length} rooms
+                </span>
+                <select
+                  value={calendarFloorFilter}
+                  onChange={(e) => { setCalendarFloorFilter(e.target.value); setCalendarPage(0) }}
+                  className="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:border-sky-500 outline-none"
+                >
+                  <option value="all">All Floors</option>
+                  {uniqueFloors.map((floor: any) => (
+                    <option key={floor} value={floor}>Floor {floor}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px]">
+                <thead>
+                  <tr className="bg-slate-900/30">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-32 sticky left-0 bg-slate-800/90 z-10">Room</th>
+                    {calendarDays.map((date, i) => {
+                      const isToday = date.toDateString() === new Date().toDateString()
+                      return (
+                        <th key={i} className={`px-2 py-3 text-center min-w-[100px] ${isToday ? 'bg-sky-500/10' : ''}`}>
+                          <div className={`text-[10px] uppercase tracking-wider ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
+                            {date.toLocaleDateString('en-IN', { weekday: 'short' })}
+                          </div>
+                          <div className={`text-sm font-bold ${isToday ? 'text-sky-400' : 'text-slate-300'}`}>
+                            {date.getDate()}
+                          </div>
+                          <div className={`text-[10px] ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
+                            {date.toLocaleDateString('en-IN', { month: 'short' })}
+                          </div>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedCalendarRooms.map((room: any) => (
+                    <tr key={room.id} className="border-t border-white/5 hover:bg-slate-700/20">
+                      <td className="px-4 py-2 sticky left-0 bg-slate-800/90 z-10">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${
+                            room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                            room.status === 'BOOKED' ? 'bg-red-400' :
+                            room.status === 'MAINTENANCE' ? 'bg-amber-400' : 'bg-slate-400'
+                          }`} />
+                          <div>
+                            <p className="text-sm font-semibold text-white">{room.roomNumber}</p>
+                            <p className="text-[10px] text-slate-500">{room.roomType} • F{room.floor}</p>
+                          </div>
+                        </div>
+                      </td>
+                      {calendarDays.map((date, i) => {
+                        const booking = getRoomBookingForDate(room.id, date)
+                        const isToday = date.toDateString() === new Date().toDateString()
+                        return (
+                          <td key={i} className={`px-1 py-1 ${isToday ? 'bg-sky-500/5' : ''}`}>
+                            {booking ? (
+                              <div 
+                                className={`px-2 py-1.5 rounded-lg text-center cursor-pointer transition-all hover:scale-[1.02] ${
+                                  booking.status === 'CHECKED_IN' ? 'bg-sky-500/30 border border-sky-500/50' :
+                                  booking.status === 'CONFIRMED' ? 'bg-emerald-500/30 border border-emerald-500/50' :
+                                  'bg-amber-500/30 border border-amber-500/50'
+                                }`}
+                                title={`${booking.guest?.name || 'Guest'} - ${booking.status}`}
+                              >
+                                <p className={`text-[10px] font-semibold truncate ${
+                                  booking.status === 'CHECKED_IN' ? 'text-sky-300' :
+                                  booking.status === 'CONFIRMED' ? 'text-emerald-300' :
+                                  'text-amber-300'
+                                }`}>
+                                  {booking.guest?.name?.split(' ')[0] || 'Guest'}
+                                </p>
+                                <p className={`text-[8px] ${
+                                  booking.status === 'CHECKED_IN' ? 'text-sky-400' :
+                                  booking.status === 'CONFIRMED' ? 'text-emerald-400' :
+                                  'text-amber-400'
+                                }`}>
+                                  {booking.status === 'CHECKED_IN' ? 'In' : booking.status === 'CONFIRMED' ? 'Conf' : 'Pend'}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="px-2 py-1.5 rounded-lg text-center bg-slate-700/20 border border-slate-700/30">
+                                <p className="text-[10px] text-slate-500">-</p>
+                              </div>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Legend & Pagination */}
+            <div className="px-4 py-3 bg-slate-900/30 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500/50" />
+                  <span className="text-slate-400">Confirmed</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-3 h-3 rounded bg-sky-500/30 border border-sky-500/50" />
+                  <span className="text-slate-400">Checked In</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-3 h-3 rounded bg-amber-500/30 border border-amber-500/50" />
+                  <span className="text-slate-400">Pending</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-3 h-3 rounded bg-slate-700/30 border border-slate-700/50" />
+                  <span className="text-slate-400">Available</span>
+                </div>
+              </div>
+              
+              {/* Pagination */}
+              {totalCalendarPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCalendarPage(p => Math.max(0, p - 1))}
+                    disabled={calendarPage === 0}
+                    className="px-2 py-1 text-xs text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaChevronLeft className="w-3 h-3" />
+                  </button>
+                  <span className="text-xs text-slate-400">
+                    {calendarPage + 1} / {totalCalendarPages}
+                  </span>
+                  <button
+                    onClick={() => setCalendarPage(p => Math.min(totalCalendarPages - 1, p + 1))}
+                    disabled={calendarPage >= totalCalendarPages - 1}
+                    className="px-2 py-1 text-xs text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FaChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* List View */}
+        {viewMode === 'list' && filteredRooms && filteredRooms.length > 0 ? (
           <div className="flex flex-col">
             {/* Group rooms into pairs and render with divider lines */}
             {Array.from({ length: Math.ceil(filteredRooms.length / 2) }, (_, rowIndex) => {
@@ -350,7 +627,7 @@ export default function RoomsPage() {
               )
             })}
           </div>
-        ) : (
+        ) : viewMode === 'list' ? (
           <div className="card text-center py-12">
             <div className="flex flex-col items-center">
               <FaHome className="text-4xl mb-3 text-slate-500" />
@@ -373,7 +650,7 @@ export default function RoomsPage() {
               )}
             </div>
           </div>
-        )}
+        ) : null}
 
         {showModal && canManageRooms && (
           <RoomModal

@@ -61,7 +61,7 @@ export async function PUT(
     const data = await request.json()
     const { status, checkIn, checkOut, roomId } = data
 
-    // Phase 2: Transaction management
+    // Phase 2: Transaction management with extended timeout for slow connections
     const result = await prisma.$transaction(async (tx: any) => {
       // Get current booking
       const currentBooking = await tx.booking.findUnique({
@@ -108,12 +108,43 @@ export async function PUT(
       }
 
       if (checkOut && new Date(checkOut).getTime() !== currentBooking.checkOut.getTime()) {
-        updateData.checkOut = new Date(checkOut)
+        const newCheckOut = new Date(checkOut)
+        updateData.checkOut = newCheckOut
         changes.push({
           field: 'checkOut',
           oldValue: currentBooking.checkOut,
-          newValue: new Date(checkOut),
+          newValue: newCheckOut,
         })
+
+        // If extending stay, recalculate total amount
+        if (data.action === 'EXTEND_STAY' && newCheckOut > currentBooking.checkOut) {
+          const room = currentBooking.room
+          const oldDays = Math.ceil((currentBooking.checkOut.getTime() - currentBooking.checkIn.getTime()) / (1000 * 60 * 60 * 24))
+          const newDays = Math.ceil((newCheckOut.getTime() - currentBooking.checkIn.getTime()) / (1000 * 60 * 60 * 24))
+          const additionalDays = newDays - oldDays
+          
+          // Use room's basePrice for additional days calculation
+          if (additionalDays > 0 && room?.basePrice) {
+            const additionalAmount = additionalDays * room.basePrice
+            const newSubtotal = (currentBooking.subtotal || currentBooking.totalAmount) + additionalAmount
+            const newTax = currentBooking.applyGst ? Math.round(newSubtotal * 0.18) : 0
+            const newTotal = newSubtotal + newTax - (currentBooking.discount || 0)
+            const newBalance = newTotal - (currentBooking.paidAmount || 0)
+            
+            updateData.subtotal = newSubtotal
+            updateData.tax = newTax
+            updateData.totalAmount = newTotal
+            updateData.balanceAmount = newBalance
+            updateData.paymentStatus = newBalance <= 0 ? 'PAID' : (currentBooking.paidAmount || 0) > 0 ? 'PARTIAL' : 'PENDING'
+            
+            changes.push({
+              field: 'totalAmount',
+              oldValue: currentBooking.totalAmount,
+              newValue: newTotal,
+              note: `Extended stay by ${additionalDays} day(s), additional ₹${additionalAmount}`,
+            })
+          }
+        }
       }
 
       // Phase 3: Allow room change (if not checked in)
@@ -175,16 +206,32 @@ export async function PUT(
 
       // Phase 3: Log changes to audit trail
       if (changes.length > 0) {
+        // Determine the action type based on what was changed
+        let actionType = 'UPDATED'
+        let notes = 'Booking updated'
+        
+        if (status) {
+          actionType = 'STATUS_CHANGED'
+          notes = `Status changed to ${status}`
+        } else if (data.action === 'EXTEND_STAY') {
+          actionType = 'STAY_EXTENDED'
+          const extendChange = changes.find((c: any) => c.field === 'totalAmount')
+          notes = extendChange?.note || 'Stay extended'
+        }
+        
         await logBookingChange(
           params.id,
-          status ? 'STATUS_CHANGED' : 'UPDATED',
+          actionType,
           userId,
           changes,
-          status ? `Status changed to ${status}` : 'Booking updated'
+          notes
         )
       }
 
       return updatedBooking
+    }, {
+      maxWait: 10000, // Max time to wait for transaction to start
+      timeout: 30000, // Max time for transaction to complete (30s for slow Neon connections)
     })
 
     return Response.json(successResponse(result, 'Booking updated successfully'))
@@ -267,6 +314,9 @@ export async function DELETE(
             data: { status: 'AVAILABLE' },
           })
         }
+      }, {
+        maxWait: 10000,
+        timeout: 30000,
       })
 
       return Response.json(successResponse(null, 'Booking permanently deleted'))
@@ -327,6 +377,9 @@ export async function DELETE(
       )
 
       return cancelledBooking
+    }, {
+      maxWait: 10000,
+      timeout: 30000,
     })
 
     return Response.json(successResponse(result, 'Booking cancelled successfully'))

@@ -1,27 +1,15 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaFileInvoice, FaMoneyBillWave, FaDownload, FaPrint } from 'react-icons/fa'
+import { FaDownload, FaPrint, FaHistory, FaCheckCircle, FaArrowLeft } from 'react-icons/fa'
+import Link from 'next/link'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { pdf } from '@react-pdf/renderer'
 import { BillPDF } from '@/components/BillPDF'
 
 export default function BillPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [confirmPaymentModal, setConfirmPaymentModal] = useState<{
-    show: boolean
-    amount: number | null
-  }>({
-    show: false,
-    amount: null,
-  })
-
   // Auth is handled by root layout
 
   const billId = params.id
@@ -30,22 +18,6 @@ export default function BillPage({ params }: { params: { id: string } }) {
     queryFn: () => api.get(`/bills/${billId}`),
     staleTime: 0,
     refetchOnMount: 'always',
-  })
-
-  const queryClient = useQueryClient()
-
-  const updatePaymentMutation = useMutation({
-    mutationFn: (paidAmount: number) =>
-      api.put(`/bills/${billId}`, { paidAmount }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bill', params.id] })
-      setShowPaymentModal(false)
-      setConfirmPaymentModal({ show: false, amount: null })
-      toast.success('Payment updated successfully')
-    },
-    onError: () => {
-      toast.error('Failed to update payment')
-    },
   })
 
   if (isLoading) {
@@ -260,116 +232,81 @@ export default function BillPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {bill.paymentStatus !== 'PAID' && (
-            <div className="mt-6 relative z-10">
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="btn-primary"
-              >
-                <span>Record Payment</span>
-              </button>
-            </div>
-          )}
-        </div>
+          {/* Payment History Section */}
+          <div className="mt-8 border-t border-white/5 pt-6 relative z-10">
+            <h3 className="font-semibold text-slate-100 mb-4 text-lg flex items-center gap-2">
+              <FaHistory className="w-4 h-4 text-sky-400" />
+              Payment History
+            </h3>
+            
+            <div className="space-y-3">
+              {/* Booking Created */}
+              <div className="flex items-center gap-4 p-3 bg-slate-800/40 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-300">Booking Created</p>
+                  <p className="text-xs text-slate-500">{new Date(bill.createdAt).toLocaleString('en-IN')}</p>
+                </div>
+                <span className="text-sm text-slate-400">₹{bill.totalAmount.toLocaleString()}</span>
+              </div>
 
-        {showPaymentModal && (
-          <div className="modal-overlay" onClick={() => setShowPaymentModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <PaymentModal
-                bill={bill}
-                onClose={() => setShowPaymentModal(false)}
-                onPay={(amount: number) => {
-                  setShowPaymentModal(false)
-                  setConfirmPaymentModal({ show: true, amount })
-                }}
-              />
+              {/* Advance Payment */}
+              {bill.advanceAmount > 0 && (
+                <div className="flex items-center gap-4 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm text-emerald-400">Advance Payment</p>
+                    <p className="text-xs text-slate-500">At booking time</p>
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-400">+₹{bill.advanceAmount.toLocaleString()}</span>
+                </div>
+              )}
+
+              {/* Payment History from database */}
+              {bill.history?.filter((h: any) => h.action === 'PAYMENT_RECEIVED' || h.changes?.paidAmount).map((h: any, i: number) => (
+                <div key={i} className="flex items-center gap-4 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm text-emerald-400">Payment Received</p>
+                    <p className="text-xs text-slate-500">{new Date(h.timestamp).toLocaleString('en-IN')}</p>
+                    {h.notes && <p className="text-xs text-slate-400 mt-1">{h.notes}</p>}
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-400">
+                    +₹{(h.changes?.paymentReceived || h.changes?.paidAmount?.to - h.changes?.paidAmount?.from || 0).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+
+              {/* Show message if no payment history */}
+              {!bill.advanceAmount && (!bill.history || bill.history.filter((h: any) => h.action === 'PAYMENT_RECEIVED').length === 0) && bill.paidAmount === 0 && (
+                <div className="text-center py-6 bg-slate-800/30 rounded-lg">
+                  <p className="text-slate-500 text-sm">No payments recorded yet</p>
+                </div>
+              )}
+
+              {/* Total Summary */}
+              <div className="flex items-center gap-4 p-4 bg-slate-800/60 rounded-lg border border-white/10 mt-4">
+                <FaCheckCircle className={`w-5 h-5 ${bill.paymentStatus === 'PAID' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-200">Total Received</p>
+                </div>
+                <span className="text-lg font-bold text-emerald-400">₹{bill.paidAmount.toLocaleString()}</span>
+              </div>
             </div>
           </div>
-        )}
 
-        <ConfirmationModal
-          show={confirmPaymentModal.show}
-          title="Confirm Payment"
-          message={`Are you sure you want to record a payment of ₹${confirmPaymentModal.amount?.toLocaleString()}?`}
-          action="Record Payment"
-          type="update"
-          onConfirm={() => {
-            if (confirmPaymentModal.amount) {
-              updatePaymentMutation.mutate(confirmPaymentModal.amount)
-            }
-          }}
-          onCancel={() => setConfirmPaymentModal({ show: false, amount: null })}
-          isLoading={updatePaymentMutation.isPending}
-          confirmText="Record Payment"
-        />
+          {/* Back to Bookings */}
+          <div className="mt-6 relative z-10">
+            <Link
+              href="/bookings"
+              className="btn-secondary flex items-center gap-2 w-fit"
+            >
+              <FaArrowLeft className="w-4 h-4" />
+              Back to Bookings
+            </Link>
+          </div>
+        </div>
       </div>
     </>
-  )
-}
-
-function PaymentModal({
-  bill,
-  onClose,
-  onPay,
-}: {
-  bill: any
-  onClose: () => void
-  onPay: (amount: number) => void
-}) {
-  const [amount, setAmount] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const paymentAmount = parseFloat(amount)
-    if (paymentAmount > 0 && paymentAmount <= bill.balanceAmount) {
-      onPay(paymentAmount)
-    } else {
-      toast.error('Invalid payment amount')
-    }
-  }
-
-  return (
-    <div className="modal-content">
-      <div className="p-6 relative z-10">
-        <div className="card-header">
-          <h2 className="text-lg font-bold text-slate-100 flex items-center">
-            <FaMoneyBillWave className="mr-2 w-4 h-4" />
-            Record Payment
-          </h2>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="form-label">Payment Amount</label>
-            <input
-              type="number"
-              required
-              step="0.01"
-              max={bill.balanceAmount}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="form-input"
-            />
-            <p className="mt-2 text-sm text-slate-400">
-              Balance: <span className="font-semibold text-slate-200">₹{bill.balanceAmount.toLocaleString()}</span>
-            </p>
-          </div>
-          <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-            >
-              <span>Record Payment</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   )
 }

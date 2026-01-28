@@ -30,6 +30,7 @@ function NewBookingContent() {
     numberOfGuests: '1',
     checkIn: '',
     checkOut: '',
+    flexibleCheckout: false, // When true, checkout time is tentative/TBD
     paymentMode: 'CASH',
     advanceAmount: '0',
     discount: '0',
@@ -37,6 +38,21 @@ function NewBookingContent() {
     extraBed: false,
     extraBedCount: '1',
     extraBedPrice: '500', // Default price, user can change
+  }
+
+  // Auto-set default checkout time when flexible checkout is enabled
+  const setDefaultCheckout = (checkInValue: string) => {
+    if (!checkInValue) return ''
+    const checkInDate = new Date(checkInValue)
+    // Default: Next day at 11:00 AM (standard hotel checkout)
+    const nextDay = new Date(checkInDate)
+    nextDay.setDate(nextDay.getDate() + 1)
+    nextDay.setHours(11, 0, 0, 0)
+    // Format for datetime-local input
+    const year = nextDay.getFullYear()
+    const month = String(nextDay.getMonth() + 1).padStart(2, '0')
+    const day = String(nextDay.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}T11:00`
   }
 
   // ID Proof validation patterns for Indian documents
@@ -202,6 +218,7 @@ function NewBookingContent() {
           numberOfGuests: parseInt(data.numberOfGuests) || 1,
           checkIn: checkInISO,
           checkOut: checkOutISO,
+          flexibleCheckout: data.flexibleCheckout || false,
           totalAmount,
           discount: discountAmount,
           gstAmount: gstAmount,
@@ -461,7 +478,14 @@ function NewBookingContent() {
                   type="datetime-local"
                   value={formData.checkIn}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    updateField('checkIn', e.target.value)
+                    const newCheckIn = e.target.value
+                    updateField('checkIn', newCheckIn)
+                    
+                    // Auto-set checkout to next day 11 AM if not already set
+                    if (newCheckIn && !formData.checkOut) {
+                      updateField('checkOut', setDefaultCheckout(newCheckIn))
+                    }
+                    
                     // Clear room selection when dates change
                     if (formData.roomIds.length > 0) {
                       updateField('roomIds', [])
@@ -475,25 +499,84 @@ function NewBookingContent() {
                   onBlur={() => handleBlur('checkIn')}
                   error={getError('checkIn')}
                 />
-                <FormInput
-                  label="Check-out Date & Time *"
-                  type="datetime-local"
-                  value={formData.checkOut}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    updateField('checkOut', e.target.value)
-                    // Clear room selection when dates change
-                    if (formData.roomIds.length > 0) {
-                      updateField('roomIds', [])
-                      setSelectedRooms([])
-                    }
-                    // Clear error when user starts typing
-                    if (errors.checkOut) {
-                      setTimeout(() => handleBlur('checkOut'), 100)
-                    }
-                  }}
-                  onBlur={() => handleBlur('checkOut')}
-                  error={getError('checkOut')}
-                />
+                <div className="space-y-2">
+                  <FormInput
+                    label={formData.flexibleCheckout ? "Expected Check-out (Tentative)" : "Check-out Date & Time *"}
+                    type="datetime-local"
+                    value={formData.checkOut}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const newCheckOut = e.target.value
+                      updateField('checkOut', newCheckOut)
+                      updateField('flexibleCheckout', false) // Disable flexible if manually changed
+                      
+                      // Validate minimum stay (at least 12 hours)
+                      if (formData.checkIn && newCheckOut) {
+                        const checkInTime = new Date(formData.checkIn).getTime()
+                        const checkOutTime = new Date(newCheckOut).getTime()
+                        const hoursDiff = (checkOutTime - checkInTime) / (1000 * 60 * 60)
+                        
+                        if (hoursDiff < 12) {
+                          toast.error('Minimum stay is 12 hours. Check-out must be at least 12 hours after check-in.')
+                          // Auto-correct to 12 hours after check-in
+                          const correctedCheckout = new Date(checkInTime + (12 * 60 * 60 * 1000))
+                          const year = correctedCheckout.getFullYear()
+                          const month = String(correctedCheckout.getMonth() + 1).padStart(2, '0')
+                          const day = String(correctedCheckout.getDate()).padStart(2, '0')
+                          const hours = String(correctedCheckout.getHours()).padStart(2, '0')
+                          const mins = String(correctedCheckout.getMinutes()).padStart(2, '0')
+                          updateField('checkOut', `${year}-${month}-${day}T${hours}:${mins}`)
+                        }
+                      }
+                      
+                      // Clear room selection when dates change
+                      if (formData.roomIds.length > 0) {
+                        updateField('roomIds', [])
+                        setSelectedRooms([])
+                      }
+                      // Clear error when user starts typing
+                      if (errors.checkOut) {
+                        setTimeout(() => handleBlur('checkOut'), 100)
+                      }
+                    }}
+                    onBlur={() => handleBlur('checkOut')}
+                    error={getError('checkOut')}
+                  />
+                  {/* Minimum checkout hint */}
+                  {formData.checkIn && (
+                    <p className="text-[10px] text-slate-500">
+                      Minimum checkout: {new Date(new Date(formData.checkIn).getTime() + 12*60*60*1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} (12 hours min)
+                    </p>
+                  )}
+                  
+                  {/* Flexible Checkout Toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={formData.flexibleCheckout}
+                      onChange={(e) => {
+                        updateField('flexibleCheckout', e.target.checked)
+                        if (e.target.checked && formData.checkIn) {
+                          // Auto-set default checkout (next day 11 AM)
+                          updateField('checkOut', setDefaultCheckout(formData.checkIn))
+                          // Clear room selection
+                          if (formData.roomIds.length > 0) {
+                            updateField('roomIds', [])
+                            setSelectedRooms([])
+                          }
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-800"
+                    />
+                    <span className="text-xs text-slate-400 group-hover:text-slate-300">
+                      Checkout time not confirmed (flexible)
+                    </span>
+                  </label>
+                  {formData.flexibleCheckout && (
+                    <p className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
+                      Default: Next day 11 AM. Can be updated later when guest confirms.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
           room: true,
           slot: true,
           guest: true,
+          history: {
+            orderBy: { timestamp: 'asc' },
+            take: 20,
+          },
         },
         orderBy: { bookingDate: 'desc' },
       }),
@@ -254,6 +258,7 @@ export async function POST(request: NextRequest) {
             guestId: guest.id,
             checkIn: checkInDate,
             checkOut: checkOutDate,
+            flexibleCheckout: data.flexibleCheckout || false,
             numberOfGuests: parseInt(String(data.numberOfGuests)) || 1,
             totalAmount: priceCalculation.totalAmount,
             advanceAmount: advancePerRoom,
@@ -305,6 +310,9 @@ export async function POST(request: NextRequest) {
       }
 
       return { bookings, guest }
+    }, {
+      maxWait: 10000, // Max time to wait for transaction to start
+      timeout: 30000, // Max time for transaction to complete (30s for slow Neon connections)
     })
 
     // Return response based on number of rooms
