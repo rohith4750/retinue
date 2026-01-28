@@ -72,6 +72,7 @@ export function requireAuth(requiredRole?: UserRole) {
 
     if (requiredRole) {
       const roleHierarchy: Record<UserRole, number> = {
+        STAFF: 0,
         RECEPTIONIST: 1,
         ADMIN: 2,
         SUPER_ADMIN: 3,

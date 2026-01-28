@@ -45,6 +45,7 @@ export async function authenticateUser(email: string, password: string) {
 
 export function hasPermission(userRole: UserRole, requiredRole: UserRole): boolean {
   const roleHierarchy: Record<UserRole, number> = {
+    STAFF: 0,
     RECEPTIONIST: 1,
     ADMIN: 2,
     SUPER_ADMIN: 3,
