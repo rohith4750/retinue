@@ -35,7 +35,6 @@ export const ROOM_TYPES = {
 
 // User Roles
 export const USER_ROLES = {
-  STAFF: 'STAFF',
   RECEPTIONIST: 'RECEPTIONIST',
   ADMIN: 'ADMIN',
   SUPER_ADMIN: 'SUPER_ADMIN',

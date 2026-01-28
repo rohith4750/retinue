@@ -91,8 +91,6 @@ export default function UsersPage() {
         return <FaUserTie className="w-4 h-4" />
       case 'RECEPTIONIST':
         return <FaUserCheck className="w-4 h-4" />
-      case 'STAFF':
-        return <FaUser className="w-4 h-4" />
       default:
         return <FaUser className="w-4 h-4" />
     }
@@ -106,8 +104,6 @@ export default function UsersPage() {
         return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
       case 'RECEPTIONIST':
         return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-      case 'STAFF':
-        return 'text-slate-400 bg-slate-500/10 border-slate-500/20'
       default:
         return 'text-slate-400 bg-slate-500/10 border-slate-500/20'
     }
@@ -282,10 +278,6 @@ export default function UsersPage() {
                         <span className="text-slate-400">RECEPTIONIST:</span>
                         <span className="text-slate-200">receptionist / receptionist123</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">STAFF:</span>
-                        <span className="text-slate-200">staff / staff123</span>
-                      </div>
                     </div>
                   </div>
 
@@ -330,7 +322,7 @@ function CreateUserModal({
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'STAFF',
+    role: 'RECEPTIONIST',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -455,7 +447,6 @@ function CreateUserModal({
               }}
               error={errors.role}
               options={[
-                { value: 'STAFF', label: 'Staff' },
                 { value: 'RECEPTIONIST', label: 'Receptionist' },
                 { value: 'ADMIN', label: 'Admin' },
                 { value: 'SUPER_ADMIN', label: 'Super Admin' },
@@ -502,7 +493,7 @@ function EditUserModal({
   const [formData, setFormData] = useState({
     username: user.username || '',
     email: user.email || '',
-    role: user.role || 'STAFF',
+    role: user.role || 'RECEPTIONIST',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -592,7 +583,6 @@ function EditUserModal({
               }}
               error={errors.role}
               options={[
-                { value: 'STAFF', label: 'Staff' },
                 { value: 'RECEPTIONIST', label: 'Receptionist' },
                 { value: 'ADMIN', label: 'Admin' },
                 { value: 'SUPER_ADMIN', label: 'Super Admin' },

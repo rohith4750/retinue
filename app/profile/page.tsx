@@ -83,8 +83,6 @@ export default function ProfilePage() {
         return 'text-blue-400 bg-blue-500/20 border-blue-500/30'
       case 'RECEPTIONIST':
         return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30'
-      case 'STAFF':
-        return 'text-slate-400 bg-slate-500/20 border-slate-500/30'
       default:
         return 'text-slate-400 bg-slate-500/20 border-slate-500/30'
     }

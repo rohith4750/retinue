@@ -6,14 +6,14 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST'
 
 // Validation schema for creating a user (email is required for login)
 const createUserSchema = z.object({
   username: z.string().min(3).max(50),
   email: z.string().email('Valid email is required'),
   password: z.string().min(6).max(100),
-  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'STAFF']),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']),
 })
 
 // POST /api/auth/users - Create a new user (Admin only)

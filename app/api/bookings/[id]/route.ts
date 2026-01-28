@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // Types - will be available from @prisma/client after running: npx prisma generate
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST'
 type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED'
 import { validateStatusTransition } from '@/lib/booking-state-machine'
 import { BookingError, InvalidStatusTransitionError } from '@/lib/booking-errors'

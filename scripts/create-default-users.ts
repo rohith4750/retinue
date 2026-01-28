@@ -25,11 +25,6 @@ const defaultUsers = [
     password: 'receptionist123',
     role: UserRole.RECEPTIONIST,
   },
-  {
-    username: 'staff',
-    password: 'staff123',
-    role: UserRole.STAFF,
-  },
 ]
 
 async function createDefaultUsers() {

@@ -52,6 +52,8 @@ export default function DashboardPage() {
   }
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+  const isAdmin = user?.role === 'ADMIN'
+  const canViewFinance = isSuperAdmin || isAdmin // Only SUPER_ADMIN and ADMIN can view financial data
 
   return (
     <>
@@ -89,7 +91,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Stats - Row 1 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-2 ${canViewFinance ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
           {/* Occupancy Rate */}
           <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 backdrop-blur-xl border border-sky-500/20 rounded-2xl p-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-20 h-20 bg-sky-400/10 rounded-full blur-2xl"></div>
@@ -120,18 +122,20 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Today's Revenue */}
-          <div className="bg-gradient-to-br from-amber-600/30 to-amber-800/20 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/10 rounded-full blur-2xl"></div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-2">
-                <FaDollarSign className="text-amber-400 text-xl" />
-                <span className="text-xs text-slate-400">Today</span>
+          {/* Today's Revenue - Only for ADMIN/SUPER_ADMIN */}
+          {canViewFinance && (
+            <div className="bg-gradient-to-br from-amber-600/30 to-amber-800/20 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/10 rounded-full blur-2xl"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-2">
+                  <FaDollarSign className="text-amber-400 text-xl" />
+                  <span className="text-xs text-slate-400">Today</span>
+                </div>
+                <p className="text-3xl font-bold text-white">₹{((stats?.todayRevenue || 0) / 1000).toFixed(1)}K</p>
+                <p className="text-xs text-slate-400 mt-1">Today&apos;s Revenue</p>
               </div>
-              <p className="text-3xl font-bold text-white">₹{((stats?.todayRevenue || 0) / 1000).toFixed(1)}K</p>
-              <p className="text-xs text-slate-400 mt-1">Today&apos;s Revenue</p>
             </div>
-          </div>
+          )}
 
           {/* Today's Bookings */}
           <div className="bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-4 relative overflow-hidden">
@@ -147,116 +151,120 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Monthly Stats with Growth Indicators */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Monthly Revenue */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Revenue</p>
-                <p className="text-2xl font-bold text-white mt-2">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
+        {/* Monthly Stats with Growth Indicators - Only for ADMIN/SUPER_ADMIN */}
+        {canViewFinance && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Monthly Revenue */}
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Revenue</p>
+                  <p className="text-2xl font-bold text-white mt-2">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
+                </div>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
+                  (stats?.revenueGrowth || 0) >= 0 
+                    ? 'bg-emerald-500/20 text-emerald-400' 
+                    : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {(stats?.revenueGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
+                  {Math.abs(stats?.revenueGrowth || 0)}%
+                </div>
               </div>
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                (stats?.revenueGrowth || 0) >= 0 
-                  ? 'bg-emerald-500/20 text-emerald-400' 
-                  : 'bg-red-500/20 text-red-400'
-              }`}>
-                {(stats?.revenueGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
-                {Math.abs(stats?.revenueGrowth || 0)}%
+              <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                <span className="text-slate-400">vs last month</span>
+                <span className="text-slate-300">Hotel Revenue</span>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-              <span className="text-slate-400">vs last month</span>
-              <span className="text-slate-300">Hotel Revenue</span>
-            </div>
-          </div>
 
-          {/* Monthly Bookings */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Bookings</p>
-                <p className="text-2xl font-bold text-white mt-2">{stats?.monthBookings || 0}</p>
+            {/* Monthly Bookings */}
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Bookings</p>
+                  <p className="text-2xl font-bold text-white mt-2">{stats?.monthBookings || 0}</p>
+                </div>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
+                  (stats?.bookingGrowth || 0) >= 0 
+                    ? 'bg-emerald-500/20 text-emerald-400' 
+                    : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {(stats?.bookingGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
+                  {Math.abs(stats?.bookingGrowth || 0)}%
+                </div>
               </div>
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                (stats?.bookingGrowth || 0) >= 0 
-                  ? 'bg-emerald-500/20 text-emerald-400' 
-                  : 'bg-red-500/20 text-red-400'
-              }`}>
-                {(stats?.bookingGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
-                {Math.abs(stats?.bookingGrowth || 0)}%
+              <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                <span className="text-slate-400">vs last month</span>
+                <span className="text-slate-300">Room Bookings</span>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-              <span className="text-slate-400">vs last month</span>
-              <span className="text-slate-300">Room Bookings</span>
-            </div>
-          </div>
 
-          {/* Hall Revenue */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Hall Revenue</p>
-                <p className="text-2xl font-bold text-white mt-2">₹{(stats?.hallRevenueThisMonth || 0).toLocaleString()}</p>
+            {/* Hall Revenue */}
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Hall Revenue</p>
+                  <p className="text-2xl font-bold text-white mt-2">₹{(stats?.hallRevenueThisMonth || 0).toLocaleString()}</p>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-purple-500/20 text-purple-400">
+                  <FaBuilding className="w-3 h-3" />
+                  {stats?.hallBookingsThisMonth || 0}
+                </div>
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-purple-500/20 text-purple-400">
-                <FaBuilding className="w-3 h-3" />
-                {stats?.hallBookingsThisMonth || 0}
+              <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                <span className="text-slate-400">{stats?.totalHalls || 0} halls</span>
+                <span className="text-slate-300">Convention Revenue</span>
               </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-              <span className="text-slate-400">{stats?.totalHalls || 0} halls</span>
-              <span className="text-slate-300">Convention Revenue</span>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Charts & Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Weekly Revenue Chart */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <FaChartLine className="text-sky-400" />
-                  Weekly Revenue
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">Last 7 days performance</p>
+        <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
+          {/* Weekly Revenue Chart - Only for ADMIN/SUPER_ADMIN */}
+          {canViewFinance && (
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <FaChartLine className="text-sky-400" />
+                    Weekly Revenue
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">Last 7 days performance</p>
+                </div>
+              </div>
+              <div className="h-48 flex items-end gap-2">
+                {stats?.weeklyRevenue?.map((day: any, index: number) => {
+                  const maxAmount = Math.max(...(stats?.weeklyRevenue?.map((d: any) => d.amount) || [1]))
+                  const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0
+                  const isToday = index === (stats?.weeklyRevenue?.length || 0) - 1
+                  
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full relative" style={{ height: '140px' }}>
+                        <div 
+                          className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
+                            isToday 
+                              ? 'bg-gradient-to-t from-sky-600 to-sky-400' 
+                              : 'bg-gradient-to-t from-slate-700 to-slate-600'
+                          }`}
+                          style={{ height: `${Math.max(height, 5)}%` }}
+                        >
+                          {day.amount > 0 && (
+                            <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 whitespace-nowrap">
+                              ₹{(day.amount / 1000).toFixed(0)}K
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`text-xs ${isToday ? 'text-sky-400 font-semibold' : 'text-slate-500'}`}>
+                        {day.day}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
-            <div className="h-48 flex items-end gap-2">
-              {stats?.weeklyRevenue?.map((day: any, index: number) => {
-                const maxAmount = Math.max(...(stats?.weeklyRevenue?.map((d: any) => d.amount) || [1]))
-                const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0
-                const isToday = index === (stats?.weeklyRevenue?.length || 0) - 1
-                
-                return (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full relative" style={{ height: '140px' }}>
-                      <div 
-                        className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
-                          isToday 
-                            ? 'bg-gradient-to-t from-sky-600 to-sky-400' 
-                            : 'bg-gradient-to-t from-slate-700 to-slate-600'
-                        }`}
-                        style={{ height: `${Math.max(height, 5)}%` }}
-                      >
-                        {day.amount > 0 && (
-                          <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 whitespace-nowrap">
-                            ₹{(day.amount / 1000).toFixed(0)}K
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className={`text-xs ${isToday ? 'text-sky-400 font-semibold' : 'text-slate-500'}`}>
-                      {day.day}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          )}
 
           {/* Room Status Distribution */}
           <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
@@ -320,7 +328,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions & Alerts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${canViewFinance ? 'lg:grid-cols-4' : ''} gap-4`}>
           {/* Upcoming Check-ins */}
           <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
             <div className="flex items-center gap-3">
@@ -347,100 +355,106 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Pending Payments */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-red-500/20 rounded-xl">
-                <FaMoneyBillWave className="text-red-400 text-lg" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">₹{((stats?.pendingPayments || 0) / 1000).toFixed(1)}K</p>
-                <p className="text-xs text-slate-400">Pending Payments</p>
+          {/* Pending Payments - Only for ADMIN/SUPER_ADMIN */}
+          {canViewFinance && (
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-red-500/20 rounded-xl">
+                  <FaMoneyBillWave className="text-red-400 text-lg" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">₹{((stats?.pendingPayments || 0) / 1000).toFixed(1)}K</p>
+                  <p className="text-xs text-slate-400">Pending Payments</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Low Stock */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${(stats?.lowStockAlerts || 0) > 0 ? 'bg-yellow-500/20' : 'bg-emerald-500/20'}`}>
-                <FaBox className={`text-lg ${(stats?.lowStockAlerts || 0) > 0 ? 'text-yellow-400' : 'text-emerald-400'}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{stats?.lowStockAlerts || 0}</p>
-                <p className="text-xs text-slate-400">Low Stock Items</p>
+          {/* Low Stock - Only for ADMIN/SUPER_ADMIN */}
+          {canViewFinance && (
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl ${(stats?.lowStockAlerts || 0) > 0 ? 'bg-yellow-500/20' : 'bg-emerald-500/20'}`}>
+                  <FaBox className={`text-lg ${(stats?.lowStockAlerts || 0) > 0 ? 'text-yellow-400' : 'text-emerald-400'}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{stats?.lowStockAlerts || 0}</p>
+                  <p className="text-xs text-slate-400">Low Stock Items</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Monthly Trend & Booking Status */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Monthly Revenue Trend */}
-          <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <FaChartLine className="text-emerald-400" />
-                  Revenue Trend
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">Last 6 months comparison</p>
+        <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-3' : ''} gap-6`}>
+          {/* Monthly Revenue Trend - Only for ADMIN/SUPER_ADMIN */}
+          {canViewFinance && (
+            <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <FaChartLine className="text-emerald-400" />
+                    Revenue Trend
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">Last 6 months comparison</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-amber-500"></span>
+                    Hotel
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-purple-500"></span>
+                    Convention
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-4 text-xs">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-amber-500"></span>
-                  Hotel
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-purple-500"></span>
-                  Convention
-                </span>
-              </div>
-            </div>
-            <div className="h-56 flex items-end gap-3">
-              {stats?.monthlyTrend?.map((month: any, index: number) => {
-                const maxAmount = Math.max(...(stats?.monthlyTrend?.map((m: any) => m.total) || [1]))
-                const hotelHeight = maxAmount > 0 ? (month.hotelRevenue / maxAmount) * 100 : 0
-                const hallHeight = maxAmount > 0 ? (month.hallRevenue / maxAmount) * 100 : 0
-                const isCurrentMonth = index === (stats?.monthlyTrend?.length || 0) - 1
-                
-                return (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex gap-1" style={{ height: '180px' }}>
-                      {/* Hotel Revenue Bar */}
-                      <div className="flex-1 relative">
-                        <div 
-                          className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
-                            isCurrentMonth 
-                              ? 'bg-gradient-to-t from-amber-600 to-amber-400' 
-                              : 'bg-gradient-to-t from-amber-700/60 to-amber-600/60'
-                          }`}
-                          style={{ height: `${Math.max(hotelHeight, 2)}%` }}
-                        />
+              <div className="h-56 flex items-end gap-3">
+                {stats?.monthlyTrend?.map((month: any, index: number) => {
+                  const maxAmount = Math.max(...(stats?.monthlyTrend?.map((m: any) => m.total) || [1]))
+                  const hotelHeight = maxAmount > 0 ? (month.hotelRevenue / maxAmount) * 100 : 0
+                  const hallHeight = maxAmount > 0 ? (month.hallRevenue / maxAmount) * 100 : 0
+                  const isCurrentMonth = index === (stats?.monthlyTrend?.length || 0) - 1
+                  
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full flex gap-1" style={{ height: '180px' }}>
+                        {/* Hotel Revenue Bar */}
+                        <div className="flex-1 relative">
+                          <div 
+                            className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
+                              isCurrentMonth 
+                                ? 'bg-gradient-to-t from-amber-600 to-amber-400' 
+                                : 'bg-gradient-to-t from-amber-700/60 to-amber-600/60'
+                            }`}
+                            style={{ height: `${Math.max(hotelHeight, 2)}%` }}
+                          />
+                        </div>
+                        {/* Hall Revenue Bar */}
+                        <div className="flex-1 relative">
+                          <div 
+                            className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
+                              isCurrentMonth 
+                                ? 'bg-gradient-to-t from-purple-600 to-purple-400' 
+                                : 'bg-gradient-to-t from-purple-700/60 to-purple-600/60'
+                            }`}
+                            style={{ height: `${Math.max(hallHeight, 2)}%` }}
+                          />
+                        </div>
                       </div>
-                      {/* Hall Revenue Bar */}
-                      <div className="flex-1 relative">
-                        <div 
-                          className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
-                            isCurrentMonth 
-                              ? 'bg-gradient-to-t from-purple-600 to-purple-400' 
-                              : 'bg-gradient-to-t from-purple-700/60 to-purple-600/60'
-                          }`}
-                          style={{ height: `${Math.max(hallHeight, 2)}%` }}
-                        />
-                      </div>
+                      <span className={`text-xs ${isCurrentMonth ? 'text-white font-semibold' : 'text-slate-500'}`}>
+                        {month.month}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        ₹{(month.total / 1000).toFixed(0)}K
+                      </span>
                     </div>
-                    <span className={`text-xs ${isCurrentMonth ? 'text-white font-semibold' : 'text-slate-500'}`}>
-                      {month.month}
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      ₹{(month.total / 1000).toFixed(0)}K
-                    </span>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Booking Status */}
           <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
@@ -524,7 +538,9 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-white">₹{(booking.totalAmount || 0).toLocaleString()}</p>
+                      {canViewFinance && (
+                        <p className="text-sm font-semibold text-white">₹{(booking.totalAmount || 0).toLocaleString()}</p>
+                      )}
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
                         booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
@@ -573,7 +589,9 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-white">₹{(booking.totalAmount || 0).toLocaleString()}</p>
+                      {canViewFinance && (
+                        <p className="text-sm font-semibold text-white">₹{(booking.totalAmount || 0).toLocaleString()}</p>
+                      )}
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
                         booking.status === 'COMPLETED' ? 'bg-slate-500/20 text-slate-400' :

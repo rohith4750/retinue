@@ -49,7 +49,6 @@ enum UserRole {
   SUPER_ADMIN
   ADMIN
   RECEPTIONIST
-  STAFF
 }
 
 enum InventoryTransactionType {

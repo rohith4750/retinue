@@ -4,7 +4,7 @@ import { verifyAccessToken, extractTokenFromHeader } from './jwt'
 import { ERROR_CODES } from './constants'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST'
 
 export interface ApiResponse<T = any> {
   success: boolean
@@ -72,7 +72,7 @@ export function requireAuth(requiredRole?: UserRole) {
 
     if (requiredRole) {
       const roleHierarchy: Record<UserRole, number> = {
-        STAFF: 1,
+        RECEPTIONIST: 1,
         RECEPTIONIST: 2,
         ADMIN: 3,
         SUPER_ADMIN: 4,
