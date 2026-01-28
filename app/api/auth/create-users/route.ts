@@ -4,7 +4,7 @@ import { createUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST'
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // POST /api/auth/create-users - Create default users for all roles
 export async function POST(request: NextRequest) {

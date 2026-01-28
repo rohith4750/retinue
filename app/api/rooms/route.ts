@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST'
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 // GET /api/rooms - List all rooms
 export async function GET(request: NextRequest) {

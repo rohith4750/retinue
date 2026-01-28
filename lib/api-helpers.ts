@@ -4,7 +4,7 @@ import { verifyAccessToken, extractTokenFromHeader } from './jwt'
 import { ERROR_CODES } from './constants'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST'
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
 export interface ApiResponse<T = any> {
   success: boolean

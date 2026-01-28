@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
-type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST'
+type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 import { createBookingSchema, validateBookingDates, checkDateConflicts, isRoomAvailable, calculateBookingPrice } from '@/lib/booking-validators'
 import { BookingError, RoomUnavailableError, DateConflictError, InvalidDateError, ValidationError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
