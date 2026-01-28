@@ -122,11 +122,11 @@ export async function GET(request: NextRequest) {
       const monthEnd = new Date(currentYear, m, 1)
 
       // Monthly hotel revenue
-      const monthlyHotelBills = hotelBills.filter((bill: any) => {
-        const billDate = new Date(bill.createdAt)
-        return billDate >= monthStart && billDate < monthEnd
+      const monthlyHotelBookings = hotelBookings.filter((booking: any) => {
+        const bookingDate = new Date(booking.createdAt)
+        return bookingDate >= monthStart && bookingDate < monthEnd
       })
-      const monthlyHotelRevenue = monthlyHotelBills.reduce((sum: number, bill: any) => sum + bill.paidAmount, 0)
+      const monthlyHotelRevenue = monthlyHotelBookings.reduce((sum: number, booking: any) => sum + (booking.paidAmount || 0), 0)
 
       // Monthly convention revenue
       const monthlyConventionBookings = conventionBookings.filter((booking: any) => {
