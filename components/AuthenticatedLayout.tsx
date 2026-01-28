@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
@@ -17,18 +17,25 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const pathname = usePathname()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const sessionInitialized = useRef(false)
 
   // Pages that don't need authentication
   const publicPaths = ['/login', '/forgot-password', '/reset-password']
   const isPublicPath = publicPaths.some(path => pathname?.startsWith(path))
 
-  // Session timeout handler
+  // Session timeout handler - only trigger if actually authenticated and session was initialized
   const handleSessionTimeout = useCallback(() => {
+    // Only show timeout if session was properly initialized
+    if (!sessionInitialized.current) {
+      return
+    }
+    
     toast.error('Session expired. Please login again.')
     localStorage.removeItem('accessToken')
     localStorage.removeItem('user')
     localStorage.removeItem('rememberMe')
     clearSessionTimeout()
+    sessionInitialized.current = false
     router.push('/login')
   }, [router])
 
@@ -36,16 +43,24 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     if (isPublicPath) {
       setIsLoading(false)
       clearSessionTimeout() // Clear any existing timeout on public pages
+      sessionInitialized.current = false
       return
     }
 
     const user = localStorage.getItem('user')
-    if (!user) {
+    const accessToken = localStorage.getItem('accessToken')
+    
+    if (!user || !accessToken) {
+      // Not authenticated - redirect to login without showing timeout message
       router.push('/login')
+      setIsLoading(false)
     } else {
       setIsAuthenticated(true)
-      // Initialize session timeout after authentication is confirmed
-      initSessionTimeout(handleSessionTimeout)
+      // Initialize session timeout after a small delay to prevent race conditions
+      setTimeout(() => {
+        initSessionTimeout(handleSessionTimeout)
+        sessionInitialized.current = true
+      }, 500)
     }
     setIsLoading(false)
   }, [router, isPublicPath, handleSessionTimeout])
