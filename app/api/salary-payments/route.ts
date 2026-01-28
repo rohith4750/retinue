@@ -5,7 +5,8 @@ import { requireAuth } from '@/lib/api-helpers'
 // GET - List salary payments with filters
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow ADMIN and above to view salary payments
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const searchParams = request.nextUrl.searchParams
@@ -64,7 +65,8 @@ export async function GET(request: NextRequest) {
 // POST - Create salary payment
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    // Allow ADMIN and above to create salary payments
+    const authResult = await requireAuth('ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
     const body = await request.json()

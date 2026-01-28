@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
@@ -11,10 +11,12 @@ import {
   FaHotel,
   FaBuilding,
   FaCalendarAlt,
-  FaFilter,
   FaCheck,
   FaClock,
-  FaPlus,
+  FaHistory,
+  FaTimes,
+  FaRupeeSign,
+  FaCheckCircle,
 } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
@@ -45,8 +47,9 @@ export default function WorkforcePage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [user, setUser] = useState<any>(null)
-  const [showPayModal, setShowPayModal] = useState(false)
-  const [selectedStaff, setSelectedStaff] = useState<any>(null)
+  
+  // Selected staff for payment
+  const [payingStaff, setPayingStaff] = useState<any>(null)
 
   // Filters
   const currentYear = new Date().getFullYear()
@@ -54,31 +57,85 @@ export default function WorkforcePage() {
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
   const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString())
 
+  // Payment form state
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    bonus: '0',
+    deductions: '0',
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: 'CASH',
+    notes: '',
+  })
+
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (userData) {
       const parsed = JSON.parse(userData)
       setUser(parsed)
-      if (parsed.role !== 'SUPER_ADMIN') {
-        toast.error('Access denied. Only Super Admin can access this page.')
+      // Allow ADMIN and SUPER_ADMIN
+      if (parsed.role !== 'SUPER_ADMIN' && parsed.role !== 'ADMIN') {
+        toast.error('Access denied. Only Admin can access this page.')
         router.push('/dashboard')
       }
     }
   }, [router])
 
-  // Fetch staff with salary info
-  const { data: staffData, isLoading: staffLoading } = useQuery({
+  const isAllowed = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
+
+  // Fetch staff
+  const { data: staffResponse, isLoading: staffLoading } = useQuery({
     queryKey: ['staff'],
     queryFn: () => api.get('/staff'),
-    enabled: !!user && user.role === 'SUPER_ADMIN',
+    enabled: !!user && isAllowed,
   })
 
   // Fetch salary payments for selected month
-  const { data: payments, isLoading: paymentsLoading } = useQuery({
+  const { data: paymentsResponse, isLoading: paymentsLoading, refetch: refetchPayments } = useQuery({
     queryKey: ['salary-payments', selectedYear, selectedMonth],
     queryFn: () => api.get(`/salary-payments?year=${selectedYear}&month=${selectedMonth}`),
-    enabled: !!user && user.role === 'SUPER_ADMIN',
+    enabled: !!user && isAllowed,
+    staleTime: 0,
   })
+
+  // Parse data - handle both array and wrapped responses
+  const staffList = useMemo(() => {
+    if (!staffResponse) return []
+    if (Array.isArray(staffResponse)) return staffResponse
+    if (Array.isArray(staffResponse.data)) return staffResponse.data
+    return []
+  }, [staffResponse])
+
+  const paymentsList = useMemo(() => {
+    if (!paymentsResponse) return []
+    if (Array.isArray(paymentsResponse)) return paymentsResponse
+    if (Array.isArray(paymentsResponse.data)) return paymentsResponse.data
+    return []
+  }, [paymentsResponse])
+
+  const paymentSummary = paymentsResponse?.summary || { total: 0, hotel: 0, convention: 0, count: 0 }
+
+  // Create a map of paid staff for quick lookup
+  const paidStaffMap = useMemo(() => {
+    const map = new Map()
+    paymentsList.forEach((p: any) => {
+      map.set(p.staffId, p)
+    })
+    return map
+  }, [paymentsList])
+
+  // Check if staff has been paid
+  const isPaid = (staffId: string) => paidStaffMap.has(staffId)
+  const getPayment = (staffId: string) => paidStaffMap.get(staffId)
+
+  // Group staff by business unit and filter active only
+  const activeStaff = staffList.filter((s: any) => s.status === 'ACTIVE')
+  const hotelStaff = activeStaff.filter((s: any) => s.businessUnit === 'HOTEL' || !s.businessUnit)
+  const conventionStaff = activeStaff.filter((s: any) => s.businessUnit === 'CONVENTION')
+
+  // Calculate pending
+  const pendingStaff = activeStaff.filter((s: any) => !isPaid(s.id))
+  const paidStaff = activeStaff.filter((s: any) => isPaid(s.id))
+  const totalPendingSalary = pendingStaff.reduce((sum: number, s: any) => sum + (s.salary || s.dailyWage || 0), 0)
 
   // Pay salary mutation
   const paySalaryMutation = useMutation({
@@ -87,16 +144,68 @@ export default function WorkforcePage() {
       queryClient.invalidateQueries({ queryKey: ['salary-payments'] })
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
-      toast.success('Salary paid successfully')
-      setShowPayModal(false)
-      setSelectedStaff(null)
+      toast.success(`Salary paid successfully for ${payingStaff?.name}`)
+      setPayingStaff(null)
+      resetPaymentForm()
+      refetchPayments()
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to process salary')
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to process salary')
     },
   })
 
-  if (!user || user.role !== 'SUPER_ADMIN') {
+  const resetPaymentForm = () => {
+    setPaymentForm({
+      amount: '',
+      bonus: '0',
+      deductions: '0',
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentMethod: 'CASH',
+      notes: '',
+    })
+  }
+
+  const openPayment = (staff: any) => {
+    setPayingStaff(staff)
+    setPaymentForm({
+      amount: (staff.staffType === 'DAILY' ? staff.dailyWage : staff.salary)?.toString() || '',
+      bonus: '0',
+      deductions: '0',
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentMethod: 'CASH',
+      notes: '',
+    })
+  }
+
+  const handlePaySalary = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!payingStaff) return
+
+    const amount = parseFloat(paymentForm.amount) || 0
+    if (amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+
+    paySalaryMutation.mutate({
+      staffId: payingStaff.id,
+      month: parseInt(selectedMonth),
+      year: parseInt(selectedYear),
+      amount: amount,
+      bonus: parseFloat(paymentForm.bonus) || 0,
+      deductions: parseFloat(paymentForm.deductions) || 0,
+      paymentDate: paymentForm.paymentDate,
+      paymentMethod: paymentForm.paymentMethod,
+      notes: paymentForm.notes || null,
+    })
+  }
+
+  const netAmount = (parseFloat(paymentForm.amount) || 0) + (parseFloat(paymentForm.bonus) || 0) - (parseFloat(paymentForm.deductions) || 0)
+
+  const formatCurrency = (amount: number) => `₹${(amount || 0).toLocaleString()}`
+  const monthLabel = MONTHS.find(m => m.value === selectedMonth)?.label || ''
+
+  if (!user || !isAllowed) {
     return (
       <div className="flex items-center justify-center h-96">
         <LoadingSpinner size="lg" />
@@ -104,30 +213,7 @@ export default function WorkforcePage() {
     )
   }
 
-  const staffList = staffData || []
-  const paymentsList = payments?.data || []
-  const paymentSummary = payments?.summary || { total: 0, hotel: 0, convention: 0 }
-
-  // Check if staff has been paid for selected month
-  const isPaid = (staffId: string) => {
-    return paymentsList.some((p: any) => p.staffId === staffId)
-  }
-
-  // Get payment for staff
-  const getPayment = (staffId: string) => {
-    return paymentsList.find((p: any) => p.staffId === staffId)
-  }
-
-  const formatCurrency = (amount: number) => `₹${amount?.toLocaleString() || 0}`
-
-  // Group staff by business unit
-  const hotelStaff = staffList.filter((s: any) => s.businessUnit === 'HOTEL' || !s.businessUnit)
-  const conventionStaff = staffList.filter((s: any) => s.businessUnit === 'CONVENTION')
-
-  // Calculate pending salaries
-  const pendingHotel = hotelStaff.filter((s: any) => !isPaid(s.id) && s.status === 'ACTIVE')
-  const pendingConvention = conventionStaff.filter((s: any) => !isPaid(s.id) && s.status === 'ACTIVE')
-  const totalPendingSalary = [...pendingHotel, ...pendingConvention].reduce((sum, s: any) => sum + (s.salary || 0), 0)
+  const isLoading = staffLoading || paymentsLoading
 
   return (
     <>
@@ -135,21 +221,19 @@ export default function WorkforcePage() {
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-slate-100">Workforce & Salary</h1>
-            <p className="text-sm text-slate-400">Manage staff salaries and track payments</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-slate-100">Workforce & Salary</h1>
+          <p className="text-sm text-slate-400">Manage staff salaries and track payments</p>
         </div>
 
-        {/* Filters */}
+        {/* Month/Year Selector */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/60 rounded-lg border border-white/5">
-            <FaCalendarAlt className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/60 rounded-lg border border-white/10">
+            <FaCalendarAlt className="w-4 h-4 text-sky-400" />
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="bg-transparent text-slate-200 text-sm focus:outline-none"
+              className="bg-transparent text-slate-200 text-sm font-medium focus:outline-none cursor-pointer"
             >
               {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
                 <option key={y} value={y} className="bg-slate-800">
@@ -158,12 +242,12 @@ export default function WorkforcePage() {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/60 rounded-lg border border-white/5">
-            <FaFilter className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/60 rounded-lg border border-white/10">
+            <FaCalendarAlt className="w-4 h-4 text-emerald-400" />
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent text-slate-200 text-sm focus:outline-none"
+              className="bg-transparent text-slate-200 text-sm font-medium focus:outline-none cursor-pointer"
             >
               {MONTHS.map((m) => (
                 <option key={m.value} value={m.value} className="bg-slate-800">
@@ -172,25 +256,26 @@ export default function WorkforcePage() {
               ))}
             </select>
           </div>
+          <span className="text-sm text-slate-400">
+            Showing payments for <span className="text-sky-400 font-medium">{monthLabel} {selectedYear}</span>
+          </span>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Total Paid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="card bg-emerald-500/10 border-emerald-500/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Total Paid</p>
+                <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Paid</p>
                 <p className="text-2xl font-bold text-emerald-400 mt-1">
                   {formatCurrency(paymentSummary.total)}
                 </p>
-                <p className="text-xs text-emerald-400/60 mt-1">{paymentsList.length} payments</p>
+                <p className="text-xs text-emerald-400/60 mt-1">{paidStaff.length} of {activeStaff.length} staff</p>
               </div>
-              <FaCheck className="w-8 h-8 text-emerald-400/50" />
+              <FaCheckCircle className="w-8 h-8 text-emerald-400/40" />
             </div>
           </div>
 
-          {/* Pending */}
           <div className="card bg-orange-500/10 border-orange-500/20">
             <div className="flex items-center justify-between">
               <div>
@@ -198,385 +283,390 @@ export default function WorkforcePage() {
                 <p className="text-2xl font-bold text-orange-400 mt-1">
                   {formatCurrency(totalPendingSalary)}
                 </p>
-                <p className="text-xs text-orange-400/60 mt-1">{pendingHotel.length + pendingConvention.length} staff</p>
+                <p className="text-xs text-orange-400/60 mt-1">{pendingStaff.length} staff pending</p>
               </div>
-              <FaClock className="w-8 h-8 text-orange-400/50" />
+              <FaClock className="w-8 h-8 text-orange-400/40" />
             </div>
           </div>
 
-          {/* Hotel Salaries */}
           <div className="card bg-amber-500/10 border-amber-500/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider">Hotel Staff</p>
+                <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider">Hotel</p>
                 <p className="text-2xl font-bold text-amber-400 mt-1">
                   {formatCurrency(paymentSummary.hotel)}
                 </p>
                 <p className="text-xs text-amber-400/60 mt-1">{hotelStaff.length} staff</p>
               </div>
-              <FaHotel className="w-8 h-8 text-amber-400/50" />
+              <FaHotel className="w-8 h-8 text-amber-400/40" />
             </div>
           </div>
 
-          {/* Convention Salaries */}
           <div className="card bg-sky-500/10 border-sky-500/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-sky-400 font-semibold uppercase tracking-wider">Convention Staff</p>
+                <p className="text-xs text-sky-400 font-semibold uppercase tracking-wider">Convention</p>
                 <p className="text-2xl font-bold text-sky-400 mt-1">
                   {formatCurrency(paymentSummary.convention)}
                 </p>
                 <p className="text-xs text-sky-400/60 mt-1">{conventionStaff.length} staff</p>
               </div>
-              <FaBuilding className="w-8 h-8 text-sky-400/50" />
+              <FaBuilding className="w-8 h-8 text-sky-400/40" />
             </div>
           </div>
         </div>
 
-        {/* Staff List with Payment Status */}
-        {staffLoading || paymentsLoading ? (
+        {/* Payment Form (inline, shown when staff is selected) */}
+        {payingStaff && (
+          <div className="card mb-6 border-emerald-500/30 bg-emerald-500/5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <FaRupeeSign className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-100">Pay Salary - {payingStaff.name}</h2>
+                  <p className="text-xs text-slate-400">
+                    {payingStaff.role} • {payingStaff.staffType === 'DAILY' ? 'Daily Wage' : 'Monthly'} • {monthLabel} {selectedYear}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setPayingStaff(null)
+                  resetPaymentForm()
+                }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePaySalary}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <FormInput
+                  label="Base Amount (₹) *"
+                  type="number"
+                  value={paymentForm.amount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPaymentForm({ ...paymentForm, amount: e.target.value })
+                  }
+                  placeholder="0"
+                  required
+                />
+                <FormInput
+                  label="Bonus (₹)"
+                  type="number"
+                  value={paymentForm.bonus}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPaymentForm({ ...paymentForm, bonus: e.target.value })
+                  }
+                  placeholder="0"
+                />
+                <FormInput
+                  label="Deductions (₹)"
+                  type="number"
+                  value={paymentForm.deductions}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPaymentForm({ ...paymentForm, deductions: e.target.value })
+                  }
+                  placeholder="0"
+                />
+                <FormInput
+                  label="Payment Date *"
+                  type="date"
+                  value={paymentForm.paymentDate}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPaymentForm({ ...paymentForm, paymentDate: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <FormSelect
+                  label="Payment Method"
+                  value={paymentForm.paymentMethod}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })
+                  }
+                  options={PAYMENT_METHODS}
+                />
+                <FormInput
+                  label="Notes"
+                  type="text"
+                  value={paymentForm.notes}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPaymentForm({ ...paymentForm, notes: e.target.value })
+                  }
+                  placeholder="Optional notes..."
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <div className="bg-emerald-500/20 rounded-lg px-4 py-2">
+                  <span className="text-sm text-emerald-400 mr-2">Net Amount:</span>
+                  <span className="text-xl font-bold text-emerald-400">{formatCurrency(netAmount)}</span>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayingStaff(null)
+                      resetPaymentForm()
+                    }}
+                    className="btn-secondary px-4 py-2"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={paySalaryMutation.isPending || netAmount <= 0}
+                    className="btn-success px-6 py-2 flex items-center gap-2"
+                  >
+                    {paySalaryMutation.isPending ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <FaCheck className="w-4 h-4" />
+                        Pay {formatCurrency(netAmount)}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Staff List */}
+        {isLoading ? (
           <div className="flex items-center justify-center h-48">
             <LoadingSpinner size="lg" />
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Hotel Staff */}
-            <div className="card">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                  <FaHotel className="w-5 h-5 text-amber-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-amber-400">The Retinue Staff</h3>
-                  <p className="text-xs text-slate-400">
-                    {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}
-                  </p>
-                </div>
-              </div>
-
-              {hotelStaff.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  <FaUsers className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No hotel staff found</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {hotelStaff.map((staff: any) => {
-                    const paid = isPaid(staff.id)
-                    const payment = getPayment(staff.id)
-                    return (
-                      <div
-                        key={staff.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${
-                          paid
-                            ? 'bg-emerald-500/5 border-emerald-500/20'
-                            : 'bg-slate-800/40 border-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                            paid ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'
-                          }`}>
-                            {staff.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-200">{staff.name}</p>
-                            <p className="text-xs text-slate-500">{staff.role}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className={`text-sm font-semibold ${paid ? 'text-emerald-400' : 'text-slate-300'}`}>
-                              {formatCurrency(payment?.netAmount || staff.salary || 0)}
-                            </p>
-                            {paid && (
-                              <p className="text-xs text-emerald-400/60">Paid</p>
-                            )}
-                          </div>
-                          {!paid && staff.status === 'ACTIVE' && (
-                            <button
-                              onClick={() => {
-                                setSelectedStaff(staff)
-                                setShowPayModal(true)
-                              }}
-                              className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-500 transition-colors"
-                            >
-                              Pay
-                            </button>
-                          )}
-                          {staff.status !== 'ACTIVE' && (
-                            <span className="px-2 py-1 bg-slate-700 text-slate-400 text-xs rounded">
-                              Inactive
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+            <StaffCard
+              title="The Retinue Staff"
+              subtitle={`${monthLabel} ${selectedYear}`}
+              icon={<FaHotel className="w-5 h-5 text-amber-400" />}
+              iconBg="bg-amber-500/20"
+              staffList={hotelStaff}
+              isPaid={isPaid}
+              getPayment={getPayment}
+              onPay={openPayment}
+              payingStaffId={payingStaff?.id}
+              formatCurrency={formatCurrency}
+            />
 
             {/* Convention Staff */}
-            <div className="card">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-sky-500/20 rounded-lg flex items-center justify-center">
-                  <FaBuilding className="w-5 h-5 text-sky-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-sky-400">Buchirajuu Convention Staff</h3>
-                  <p className="text-xs text-slate-400">
-                    {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}
-                  </p>
-                </div>
-              </div>
-
-              {conventionStaff.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  <FaUsers className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No convention staff found</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {conventionStaff.map((staff: any) => {
-                    const paid = isPaid(staff.id)
-                    const payment = getPayment(staff.id)
-                    return (
-                      <div
-                        key={staff.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${
-                          paid
-                            ? 'bg-emerald-500/5 border-emerald-500/20'
-                            : 'bg-slate-800/40 border-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                            paid ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'
-                          }`}>
-                            {staff.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-200">{staff.name}</p>
-                            <p className="text-xs text-slate-500">{staff.role}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className={`text-sm font-semibold ${paid ? 'text-emerald-400' : 'text-slate-300'}`}>
-                              {formatCurrency(payment?.netAmount || staff.salary || 0)}
-                            </p>
-                            {paid && (
-                              <p className="text-xs text-emerald-400/60">Paid</p>
-                            )}
-                          </div>
-                          {!paid && staff.status === 'ACTIVE' && (
-                            <button
-                              onClick={() => {
-                                setSelectedStaff(staff)
-                                setShowPayModal(true)
-                              }}
-                              className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-500 transition-colors"
-                            >
-                              Pay
-                            </button>
-                          )}
-                          {staff.status !== 'ACTIVE' && (
-                            <span className="px-2 py-1 bg-slate-700 text-slate-400 text-xs rounded">
-                              Inactive
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+            <StaffCard
+              title="Buchirajuu Convention Staff"
+              subtitle={`${monthLabel} ${selectedYear}`}
+              icon={<FaBuilding className="w-5 h-5 text-sky-400" />}
+              iconBg="bg-sky-500/20"
+              staffList={conventionStaff}
+              isPaid={isPaid}
+              getPayment={getPayment}
+              onPay={openPayment}
+              payingStaffId={payingStaff?.id}
+              formatCurrency={formatCurrency}
+            />
           </div>
         )}
 
-        {/* Pay Salary Modal */}
-        {showPayModal && selectedStaff && (
-          <PaySalaryModal
-            staff={selectedStaff}
-            month={selectedMonth}
-            year={selectedYear}
-            onClose={() => {
-              setShowPayModal(false)
-              setSelectedStaff(null)
-            }}
-            onPay={(data) => paySalaryMutation.mutate(data)}
-            isLoading={paySalaryMutation.isPending}
-          />
+        {/* Payment History */}
+        {paymentsList.length > 0 && (
+          <div className="card mt-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                <FaHistory className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-purple-400">Payment History</h3>
+                <p className="text-xs text-slate-400">{monthLabel} {selectedYear} - {paymentsList.length} payments</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left py-2 px-3 text-slate-400 font-medium">Staff</th>
+                    <th className="text-left py-2 px-3 text-slate-400 font-medium">Date</th>
+                    <th className="text-right py-2 px-3 text-slate-400 font-medium">Base</th>
+                    <th className="text-right py-2 px-3 text-slate-400 font-medium">Bonus</th>
+                    <th className="text-right py-2 px-3 text-slate-400 font-medium">Deduct</th>
+                    <th className="text-right py-2 px-3 text-slate-400 font-medium">Net</th>
+                    <th className="text-left py-2 px-3 text-slate-400 font-medium">Method</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentsList.map((payment: any) => (
+                    <tr key={payment.id} className="border-b border-white/5 hover:bg-slate-800/30">
+                      <td className="py-2 px-3">
+                        <div>
+                          <p className="text-slate-200 font-medium">{payment.staff?.name || 'Unknown'}</p>
+                          <p className="text-xs text-slate-500">{payment.staff?.role}</p>
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-slate-300">
+                        {new Date(payment.paymentDate).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 px-3 text-right text-slate-300">{formatCurrency(payment.amount)}</td>
+                      <td className="py-2 px-3 text-right text-emerald-400">
+                        {payment.bonus > 0 ? `+${formatCurrency(payment.bonus)}` : '-'}
+                      </td>
+                      <td className="py-2 px-3 text-right text-red-400">
+                        {payment.deductions > 0 ? `-${formatCurrency(payment.deductions)}` : '-'}
+                      </td>
+                      <td className="py-2 px-3 text-right font-semibold text-emerald-400">
+                        {formatCurrency(payment.netAmount)}
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded">
+                          {payment.paymentMethod || 'Cash'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
     </>
   )
 }
 
-// Pay Salary Modal Component
-function PaySalaryModal({
-  staff,
-  month,
-  year,
-  onClose,
+// Staff Card Component
+function StaffCard({
+  title,
+  subtitle,
+  icon,
+  iconBg,
+  staffList,
+  isPaid,
+  getPayment,
   onPay,
-  isLoading,
+  payingStaffId,
+  formatCurrency,
 }: {
-  staff: any
-  month: string
-  year: string
-  onClose: () => void
-  onPay: (data: any) => void
-  isLoading: boolean
+  title: string
+  subtitle: string
+  icon: React.ReactNode
+  iconBg: string
+  staffList: any[]
+  isPaid: (id: string) => boolean
+  getPayment: (id: string) => any
+  onPay: (staff: any) => void
+  payingStaffId?: string
+  formatCurrency: (amount: number) => string
 }) {
-  const [formData, setFormData] = useState({
-    amount: staff.salary?.toString() || '',
-    bonus: '0',
-    deductions: '0',
-    paymentDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'CASH',
-    notes: '',
-  })
-
-  const netAmount = (parseFloat(formData.amount) || 0) + (parseFloat(formData.bonus) || 0) - (parseFloat(formData.deductions) || 0)
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onPay({
-      staffId: staff.id,
-      month: parseInt(month),
-      year: parseInt(year),
-      amount: parseFloat(formData.amount),
-      bonus: parseFloat(formData.bonus) || 0,
-      deductions: parseFloat(formData.deductions) || 0,
-      paymentDate: formData.paymentDate,
-      paymentMethod: formData.paymentMethod,
-      notes: formData.notes || null,
-    })
-  }
+  const paidCount = staffList.filter(s => isPaid(s.id)).length
+  const allPaid = staffList.length > 0 && paidCount === staffList.length
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 relative z-10">
-          <div className="card-header">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center">
-              <FaMoneyBillWave className="mr-2 w-5 h-5 text-emerald-400" />
-              Pay Salary
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              {staff.name} - {MONTHS.find(m => m.value === month)?.label} {year}
-            </p>
+    <div className={`card ${allPaid ? 'border-emerald-500/30' : ''}`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center`}>
+            {icon}
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            {/* Staff Info */}
-            <div className="p-3 bg-slate-800/40 rounded-lg border border-white/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 font-bold">
-                  {staff.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-200">{staff.name}</p>
-                  <p className="text-xs text-slate-500">{staff.role} • {staff.businessUnit === 'CONVENTION' ? 'Convention' : 'Hotel'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label="Base Salary (₹) *"
-                type="number"
-                value={formData.amount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-                placeholder="0.00"
-                required
-              />
-
-              <FormInput
-                label="Bonus (₹)"
-                type="number"
-                value={formData.bonus}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, bonus: e.target.value })
-                }
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label="Deductions (₹)"
-                type="number"
-                value={formData.deductions}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, deductions: e.target.value })
-                }
-                placeholder="0.00"
-              />
-
-              <FormInput
-                label="Payment Date *"
-                type="date"
-                value={formData.paymentDate}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, paymentDate: e.target.value })
-                }
-                required
-              />
-            </div>
-
-            <FormSelect
-              label="Payment Method"
-              value={formData.paymentMethod}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setFormData({ ...formData, paymentMethod: e.target.value })
-              }
-              options={PAYMENT_METHODS}
-            />
-
-            <FormTextarea
-              label="Notes"
-              value={formData.notes}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setFormData({ ...formData, notes: e.target.value })
-              }
-              placeholder="Additional notes..."
-              rows={2}
-            />
-
-            {/* Net Amount */}
-            <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-emerald-400">Net Amount to Pay</span>
-                <span className="text-2xl font-bold text-emerald-400">₹{netAmount.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn-secondary text-sm px-4 py-2"
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-success text-sm px-4 py-2 flex items-center space-x-2"
-                disabled={isLoading || netAmount <= 0}
-              >
-                {isLoading ? 'Processing...' : 'Pay Salary'}
-              </button>
-            </div>
-          </form>
+          <div>
+            <h3 className="text-sm font-bold text-slate-200">{title}</h3>
+            <p className="text-xs text-slate-400">{subtitle}</p>
+          </div>
         </div>
+        {allPaid && (
+          <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded-full">
+            <FaCheckCircle className="w-3 h-3" />
+            All Paid
+          </span>
+        )}
+        {!allPaid && staffList.length > 0 && (
+          <span className="text-xs text-slate-400">
+            {paidCount}/{staffList.length} paid
+          </span>
+        )}
       </div>
+
+      {staffList.length === 0 ? (
+        <div className="text-center py-8 text-slate-500">
+          <FaUsers className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No staff found</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {staffList.map((staff: any) => {
+            const paid = isPaid(staff.id)
+            const payment = getPayment(staff.id)
+            const isSelected = payingStaffId === staff.id
+            const salary = staff.staffType === 'DAILY' ? staff.dailyWage : staff.salary
+
+            return (
+              <div
+                key={staff.id}
+                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                  paid
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : isSelected
+                    ? 'bg-sky-500/10 border-sky-500/30'
+                    : 'bg-slate-800/40 border-white/5 hover:border-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${
+                    paid 
+                      ? 'bg-emerald-500/30 text-emerald-400' 
+                      : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {paid ? <FaCheck className="w-4 h-4" /> : staff.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-200">{staff.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {staff.role} • {staff.staffType === 'DAILY' ? 'Daily' : 'Monthly'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold ${paid ? 'text-emerald-400' : 'text-slate-300'}`}>
+                      {formatCurrency(payment?.netAmount || salary || 0)}
+                    </p>
+                    {paid && (
+                      <p className="text-xs text-emerald-400/70">
+                        Paid {new Date(payment.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                      </p>
+                    )}
+                  </div>
+
+                  {!paid && (
+                    <button
+                      onClick={() => onPay(staff)}
+                      disabled={isSelected}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                        isSelected
+                          ? 'bg-sky-600 text-white'
+                          : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                      }`}
+                    >
+                      {isSelected ? 'Paying...' : 'Pay'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

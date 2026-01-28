@@ -17,6 +17,8 @@ import {
   FaCalendarAlt,
   FaFilter,
   FaUserTie,
+  FaFileInvoiceDollar,
+  FaTools,
 } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
@@ -54,6 +56,31 @@ const MONTHS = [
   { value: '12', label: 'December' },
 ]
 
+const PAYMENT_METHODS = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+  { value: 'UPI', label: 'UPI' },
+  { value: 'CHEQUE', label: 'Cheque' },
+]
+
+// Common service provider types for one-time payments
+const SERVICE_TYPES = [
+  { value: 'ELECTRICIAN', label: 'Electrician' },
+  { value: 'PLUMBER', label: 'Plumber' },
+  { value: 'AC_MECHANIC', label: 'AC Mechanic' },
+  { value: 'CARPENTER', label: 'Carpenter' },
+  { value: 'PAINTER', label: 'Painter' },
+  { value: 'CLEANER', label: 'Cleaner (One-time)' },
+  { value: 'SECURITY', label: 'Security (One-time)' },
+  { value: 'TECHNICIAN', label: 'Technician' },
+  { value: 'DRIVER', label: 'Driver' },
+  { value: 'LAUNDRY', label: 'Laundry Service' },
+  { value: 'CATERING', label: 'Catering' },
+  { value: 'OTHER', label: 'Other Service' },
+]
+
+type ExpenseMode = 'expense' | 'salary' | 'service'
+
 export default function ExpensesPage() {
   const queryClient = useQueryClient()
   const [user, setUser] = useState<any>(null)
@@ -63,7 +90,10 @@ export default function ExpensesPage() {
     expenseId: null,
   })
   
-  // Inline form state
+  // Mode toggle: 'expense' or 'salary'
+  const [expenseMode, setExpenseMode] = useState<ExpenseMode>('expense')
+  
+  // Inline form state for regular expenses
   const [formData, setFormData] = useState({
     businessUnit: 'HOTEL',
     category: 'MAINTENANCE',
@@ -75,6 +105,34 @@ export default function ExpensesPage() {
     notes: '',
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  // Salary payment form state (for regular staff)
+  const [salaryFormData, setSalaryFormData] = useState({
+    staffId: '',
+    month: (new Date().getMonth() + 1).toString(),
+    year: new Date().getFullYear().toString(),
+    amount: '',
+    bonus: '',
+    deductions: '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: 'CASH',
+    notes: '',
+  })
+  const [salaryFormErrors, setSalaryFormErrors] = useState<Record<string, string>>({})
+
+  // Service provider payment form state (for one-time contractors)
+  const [serviceFormData, setServiceFormData] = useState({
+    serviceType: 'ELECTRICIAN',
+    providerName: '',
+    description: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    businessUnit: 'HOTEL',
+    paymentMethod: 'CASH',
+    phone: '',
+    notes: '',
+  })
+  const [serviceFormErrors, setServiceFormErrors] = useState<Record<string, string>>({})
 
   // Filters
   const currentYear = new Date().getFullYear()
@@ -91,6 +149,31 @@ export default function ExpensesPage() {
       // All roles can access - RECEPTIONIST can add expenses
     }
   }, [])
+
+  // Fetch staff list for salary payments
+  const { data: staffData } = useQuery({
+    queryKey: ['staff'],
+    queryFn: () => api.get('/staff'),
+    enabled: !!user,
+  })
+
+  const staffList = Array.isArray(staffData) ? staffData : (staffData?.data || [])
+
+  // Fetch salary payments for the selected month/year in salary form
+  const { data: salaryPaymentsData } = useQuery({
+    queryKey: ['salary-payments', salaryFormData.month, salaryFormData.year],
+    queryFn: () => api.get(`/salary-payments?month=${salaryFormData.month}&year=${salaryFormData.year}`),
+    enabled: !!user && expenseMode === 'salary',
+  })
+
+  // Get list of staff IDs who have been paid for selected month/year
+  const paidStaffIds = new Set(
+    (salaryPaymentsData?.data || salaryPaymentsData || [])
+      .map((p: any) => p.staffId)
+  )
+
+  // Check if staff member is already paid
+  const isStaffPaid = (staffId: string) => paidStaffIds.has(staffId)
 
   // Fetch summary data
   const { data: summary, isLoading: summaryLoading, error: summaryError, isFetching: summaryFetching, status: summaryStatus } = useQuery({
@@ -148,6 +231,38 @@ export default function ExpensesPage() {
     setEditingExpense(null)
   }
 
+  // Reset salary form
+  const resetSalaryForm = () => {
+    setSalaryFormData({
+      staffId: '',
+      month: (new Date().getMonth() + 1).toString(),
+      year: new Date().getFullYear().toString(),
+      amount: '',
+      bonus: '',
+      deductions: '',
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentMethod: 'CASH',
+      notes: '',
+    })
+    setSalaryFormErrors({})
+  }
+
+  // Reset service form
+  const resetServiceForm = () => {
+    setServiceFormData({
+      serviceType: 'ELECTRICIAN',
+      providerName: '',
+      description: '',
+      amount: '',
+      date: new Date().toISOString().split('T')[0],
+      businessUnit: 'HOTEL',
+      paymentMethod: 'CASH',
+      phone: '',
+      notes: '',
+    })
+    setServiceFormErrors({})
+  }
+
   // Mutations
   const createExpenseMutation = useMutation({
     mutationFn: (data: any) => api.post('/expenses', data),
@@ -159,6 +274,34 @@ export default function ExpensesPage() {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to add expense')
+    },
+  })
+
+  const createSalaryPaymentMutation = useMutation({
+    mutationFn: (data: any) => api.post('/salary-payments', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['salary-payments'] })
+      toast.success('Salary payment recorded successfully')
+      resetSalaryForm()
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to record salary payment')
+    },
+  })
+
+  // Service provider payment creates an expense record
+  const createServicePaymentMutation = useMutation({
+    mutationFn: (data: any) => api.post('/expenses', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
+      toast.success('Service payment recorded successfully')
+      resetServiceForm()
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to record service payment')
     },
   })
 
@@ -231,6 +374,46 @@ export default function ExpensesPage() {
     return Object.keys(newErrors).length === 0
   }
 
+  // Salary form validation
+  const validateSalaryForm = () => {
+    const newErrors: Record<string, string> = {}
+    if (!salaryFormData.staffId) newErrors.staffId = 'Please select a staff member'
+    if (!salaryFormData.month) newErrors.month = 'Month is required'
+    if (!salaryFormData.year) newErrors.year = 'Year is required'
+    if (!salaryFormData.amount || parseFloat(salaryFormData.amount) <= 0) newErrors.amount = 'Valid amount is required'
+    if (!salaryFormData.paymentDate) newErrors.paymentDate = 'Payment date is required'
+    setSalaryFormErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // Service form validation
+  const validateServiceForm = () => {
+    const newErrors: Record<string, string> = {}
+    if (!serviceFormData.serviceType) newErrors.serviceType = 'Please select service type'
+    if (!serviceFormData.providerName.trim()) newErrors.providerName = 'Provider name is required'
+    if (!serviceFormData.amount || parseFloat(serviceFormData.amount) <= 0) newErrors.amount = 'Valid amount is required'
+    if (!serviceFormData.date) newErrors.date = 'Date is required'
+    setServiceFormErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // Handle service form submit
+  const handleServiceFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (validateServiceForm()) {
+      const serviceLabel = SERVICE_TYPES.find(s => s.value === serviceFormData.serviceType)?.label || serviceFormData.serviceType
+      createServicePaymentMutation.mutate({
+        businessUnit: serviceFormData.businessUnit,
+        category: 'REPAIRS', // Service payments go under REPAIRS category
+        description: `${serviceLabel} - ${serviceFormData.providerName}${serviceFormData.description ? ': ' + serviceFormData.description : ''}`,
+        amount: serviceFormData.amount,
+        date: serviceFormData.date,
+        vendor: serviceFormData.providerName,
+        notes: serviceFormData.notes ? `${serviceFormData.paymentMethod}${serviceFormData.phone ? ' | Phone: ' + serviceFormData.phone : ''} | ${serviceFormData.notes}` : `${serviceFormData.paymentMethod}${serviceFormData.phone ? ' | Phone: ' + serviceFormData.phone : ''}`,
+      })
+    }
+  }
+
   // Handle form submit
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -240,6 +423,38 @@ export default function ExpensesPage() {
       } else {
         createExpenseMutation.mutate(formData)
       }
+    }
+  }
+
+  // Handle salary form submit
+  const handleSalaryFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (validateSalaryForm()) {
+      createSalaryPaymentMutation.mutate(salaryFormData)
+    }
+  }
+
+  // When staff is selected, auto-fill the amount
+  const handleStaffSelect = (staffId: string) => {
+    const selectedStaff = staffList.find((s: any) => s.id === staffId)
+    if (selectedStaff) {
+      const amount = selectedStaff.staffType === 'DAILY' 
+        ? (selectedStaff.dailyWage || 0).toString()
+        : (selectedStaff.salary || 0).toString()
+      setSalaryFormData(prev => ({
+        ...prev,
+        staffId,
+        amount,
+      }))
+    } else {
+      setSalaryFormData(prev => ({
+        ...prev,
+        staffId,
+        amount: '',
+      }))
+    }
+    if (salaryFormErrors.staffId) {
+      setSalaryFormErrors(prev => ({ ...prev, staffId: '' }))
     }
   }
 
@@ -302,142 +517,504 @@ export default function ExpensesPage() {
           </p>
         </div>
 
-        {/* Inline Add/Edit Expense Form */}
-        <div className="card mb-6">
-          <div className="card-header mb-4">
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <FaPlus className="text-sky-400" />
-              {editingExpense ? 'Edit Expense' : 'Add New Expense'}
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              {editingExpense ? 'Update the expense details below' : 'Fill in the details to record an expense'}
-            </p>
+        {/* Mode Toggle */}
+        {!editingExpense && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => setExpenseMode('expense')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                expenseMode === 'expense'
+                  ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                  : 'bg-slate-800/60 text-slate-400 border border-white/5 hover:bg-slate-800/80'
+              }`}
+            >
+              <FaFileInvoiceDollar className="w-4 h-4" />
+              Add Expense
+            </button>
+            <button
+              onClick={() => setExpenseMode('salary')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                expenseMode === 'salary'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-slate-800/60 text-slate-400 border border-white/5 hover:bg-slate-800/80'
+              }`}
+            >
+              <FaUserTie className="w-4 h-4" />
+              Pay Staff Salary
+            </button>
+            <button
+              onClick={() => setExpenseMode('service')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                expenseMode === 'service'
+                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                  : 'bg-slate-800/60 text-slate-400 border border-white/5 hover:bg-slate-800/80'
+              }`}
+            >
+              <FaTools className="w-4 h-4" />
+              Pay Service Provider
+            </button>
           </div>
+        )}
 
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <FormSelect
-                label="Business Unit *"
-                value={formData.businessUnit}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setFormData({ ...formData, businessUnit: e.target.value })
-                }
-                options={BUSINESS_UNITS}
-                error={formErrors.businessUnit}
-                required
-              />
-
-              <FormSelect
-                label="Category *"
-                value={formData.category}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                options={EXPENSE_CATEGORIES}
-                error={formErrors.category}
-                required
-              />
-
-              <FormInput
-                label="Amount (₹) *"
-                type="number"
-                value={formData.amount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-                error={formErrors.amount}
-                placeholder="0.00"
-                required
-              />
-
-              <FormInput
-                label="Date *"
-                type="date"
-                value={formData.date}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, date: e.target.value })
-                }
-                error={formErrors.date}
-                required
-              />
+        {/* Inline Add/Edit Expense Form */}
+        {(expenseMode === 'expense' || editingExpense) && (
+          <div className="card mb-6">
+            <div className="card-header mb-4">
+              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <FaPlus className="text-sky-400" />
+                {editingExpense ? 'Edit Expense' : 'Add New Expense'}
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                {editingExpense ? 'Update the expense details below' : 'Fill in the details to record an expense'}
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormInput
-                label="Description *"
-                type="text"
-                value={formData.description}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                error={formErrors.description}
-                placeholder="e.g., Plumbing repair for Room 101"
-                required
-              />
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FormSelect
+                  label="Business Unit *"
+                  value={formData.businessUnit}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setFormData({ ...formData, businessUnit: e.target.value })
+                  }
+                  options={BUSINESS_UNITS}
+                  error={formErrors.businessUnit}
+                  required
+                />
 
-              <FormInput
-                label="Vendor/Supplier"
-                type="text"
-                value={formData.vendor}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, vendor: e.target.value })
-                }
-                placeholder="Vendor name (optional)"
-              />
+                <FormSelect
+                  label="Category *"
+                  value={formData.category}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  options={EXPENSE_CATEGORIES}
+                  error={formErrors.category}
+                  required
+                />
+
+                <FormInput
+                  label="Amount (₹) *"
+                  type="number"
+                  value={formData.amount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, amount: e.target.value })
+                  }
+                  error={formErrors.amount}
+                  placeholder="0.00"
+                  required
+                />
+
+                <FormInput
+                  label="Date *"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, date: e.target.value })
+                  }
+                  error={formErrors.date}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormInput
+                  label="Description *"
+                  type="text"
+                  value={formData.description}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  error={formErrors.description}
+                  placeholder="e.g., Plumbing repair for Room 101"
+                  required
+                />
+
+                <FormInput
+                  label="Vendor/Supplier"
+                  type="text"
+                  value={formData.vendor}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, vendor: e.target.value })
+                  }
+                  placeholder="Vendor name (optional)"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormInput
+                  label="Invoice Number"
+                  type="text"
+                  value={formData.invoiceNumber}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, invoiceNumber: e.target.value })
+                  }
+                  placeholder="INV-001 (optional)"
+                />
+
+                <FormTextarea
+                  label="Notes"
+                  value={formData.notes}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  placeholder="Additional notes (optional)"
+                  rows={1}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                {editingExpense && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="btn-secondary text-sm px-4 py-2"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="btn-primary text-sm px-6 py-2 flex items-center gap-2"
+                  disabled={createExpenseMutation.isPending || updateExpenseMutation.isPending}
+                >
+                  {(createExpenseMutation.isPending || updateExpenseMutation.isPending) ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaPlus className="w-4 h-4" />
+                      <span>{editingExpense ? 'Update Expense' : 'Add Expense'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Pay Staff Salary Form */}
+        {expenseMode === 'salary' && !editingExpense && (
+          <div className="card mb-6">
+            <div className="card-header mb-4">
+              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <FaUserTie className="text-emerald-400" />
+                Pay Staff Salary
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Select a staff member and record their salary payment
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormInput
-                label="Invoice Number"
-                type="text"
-                value={formData.invoiceNumber}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, invoiceNumber: e.target.value })
-                }
-                placeholder="INV-001 (optional)"
-              />
+            <form onSubmit={handleSalaryFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Select Staff *</label>
+                  <select
+                    value={salaryFormData.staffId}
+                    onChange={(e) => handleStaffSelect(e.target.value)}
+                    className={`form-input ${salaryFormErrors.staffId ? 'border-red-500' : ''}`}
+                    required
+                  >
+                    <option value="">-- Select Staff --</option>
+                    {staffList
+                      .filter((s: any) => s.status === 'ACTIVE')
+                      .map((s: any) => (
+                        <option 
+                          key={s.id} 
+                          value={s.id}
+                          disabled={isStaffPaid(s.id)}
+                        >
+                          {s.name} ({s.role}) - {s.staffType === 'DAILY' ? 'Daily' : 'Monthly'}
+                          {isStaffPaid(s.id) ? ' ✓ PAID' : ''}
+                        </option>
+                      ))}
+                  </select>
+                  {salaryFormErrors.staffId && (
+                    <p className="text-xs text-red-400 mt-1">{salaryFormErrors.staffId}</p>
+                  )}
+                </div>
+
+                <FormSelect
+                  label="Month *"
+                  value={salaryFormData.month}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setSalaryFormData({ ...salaryFormData, month: e.target.value })
+                  }
+                  options={MONTHS.filter(m => m.value !== '')}
+                  error={salaryFormErrors.month}
+                  required
+                />
+
+                <FormSelect
+                  label="Year *"
+                  value={salaryFormData.year}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setSalaryFormData({ ...salaryFormData, year: e.target.value })
+                  }
+                  options={[currentYear, currentYear - 1, currentYear - 2].map(y => ({
+                    value: y.toString(),
+                    label: y.toString(),
+                  }))}
+                  error={salaryFormErrors.year}
+                  required
+                />
+
+                <FormInput
+                  label="Payment Date *"
+                  type="date"
+                  value={salaryFormData.paymentDate}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setSalaryFormData({ ...salaryFormData, paymentDate: e.target.value })
+                  }
+                  error={salaryFormErrors.paymentDate}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FormInput
+                  label="Base Amount (₹) *"
+                  type="number"
+                  value={salaryFormData.amount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setSalaryFormData({ ...salaryFormData, amount: e.target.value })
+                  }
+                  error={salaryFormErrors.amount}
+                  placeholder="0.00"
+                  required
+                />
+
+                <FormInput
+                  label="Bonus (₹)"
+                  type="number"
+                  value={salaryFormData.bonus}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setSalaryFormData({ ...salaryFormData, bonus: e.target.value })
+                  }
+                  placeholder="0.00"
+                />
+
+                <FormInput
+                  label="Deductions (₹)"
+                  type="number"
+                  value={salaryFormData.deductions}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setSalaryFormData({ ...salaryFormData, deductions: e.target.value })
+                  }
+                  placeholder="0.00"
+                />
+
+                <FormSelect
+                  label="Payment Method"
+                  value={salaryFormData.paymentMethod}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setSalaryFormData({ ...salaryFormData, paymentMethod: e.target.value })
+                  }
+                  options={PAYMENT_METHODS}
+                />
+              </div>
+
+              {/* Net Amount Preview */}
+              {salaryFormData.amount && (
+                <div className="bg-slate-800/40 rounded-lg p-3 border border-white/5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-400">Net Amount to Pay:</span>
+                    <span className="text-lg font-bold text-emerald-400">
+                      ₹{(
+                        parseFloat(salaryFormData.amount || '0') +
+                        parseFloat(salaryFormData.bonus || '0') -
+                        parseFloat(salaryFormData.deductions || '0')
+                      ).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <FormTextarea
                 label="Notes"
-                value={formData.notes}
+                value={salaryFormData.notes}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setFormData({ ...formData, notes: e.target.value })
+                  setSalaryFormData({ ...salaryFormData, notes: e.target.value })
                 }
                 placeholder="Additional notes (optional)"
-                rows={1}
+                rows={2}
               />
-            </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-              {editingExpense && (
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
                 <button
                   type="button"
-                  onClick={resetForm}
+                  onClick={resetSalaryForm}
                   className="btn-secondary text-sm px-4 py-2"
                 >
-                  Cancel Edit
+                  Reset
                 </button>
-              )}
-              <button
-                type="submit"
-                className="btn-primary text-sm px-6 py-2 flex items-center gap-2"
-                disabled={createExpenseMutation.isPending || updateExpenseMutation.isPending}
-              >
-                {(createExpenseMutation.isPending || updateExpenseMutation.isPending) ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <FaPlus className="w-4 h-4" />
-                    <span>{editingExpense ? 'Update Expense' : 'Add Expense'}</span>
-                  </>
-                )}
-              </button>
+                <button
+                  type="submit"
+                  className="btn-primary text-sm px-6 py-2 flex items-center gap-2"
+                  disabled={createSalaryPaymentMutation.isPending}
+                >
+                  {createSalaryPaymentMutation.isPending ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span>Recording...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaUserTie className="w-4 h-4" />
+                      <span>Record Salary Payment</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Pay Service Provider Form (One-time contractors) */}
+        {expenseMode === 'service' && !editingExpense && (
+          <div className="card mb-6 border-orange-500/20">
+            <div className="card-header mb-4">
+              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <FaTools className="text-orange-400" />
+                Pay Service Provider
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Record one-time payment for contractors (Electrician, Plumber, AC Mechanic, etc.)
+              </p>
             </div>
-          </form>
-        </div>
+
+            <form onSubmit={handleServiceFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FormSelect
+                  label="Service Type *"
+                  value={serviceFormData.serviceType}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setServiceFormData({ ...serviceFormData, serviceType: e.target.value })
+                  }
+                  options={SERVICE_TYPES}
+                  error={serviceFormErrors.serviceType}
+                  required
+                />
+
+                <FormInput
+                  label="Provider Name *"
+                  type="text"
+                  value={serviceFormData.providerName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setServiceFormData({ ...serviceFormData, providerName: e.target.value })
+                  }
+                  error={serviceFormErrors.providerName}
+                  placeholder="e.g., Raju Electricals"
+                  required
+                />
+
+                <FormInput
+                  label="Amount (₹) *"
+                  type="number"
+                  value={serviceFormData.amount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setServiceFormData({ ...serviceFormData, amount: e.target.value })
+                  }
+                  error={serviceFormErrors.amount}
+                  placeholder="0.00"
+                  required
+                />
+
+                <FormInput
+                  label="Date *"
+                  type="date"
+                  value={serviceFormData.date}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setServiceFormData({ ...serviceFormData, date: e.target.value })
+                  }
+                  error={serviceFormErrors.date}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FormSelect
+                  label="Business Unit *"
+                  value={serviceFormData.businessUnit}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setServiceFormData({ ...serviceFormData, businessUnit: e.target.value })
+                  }
+                  options={BUSINESS_UNITS}
+                  required
+                />
+
+                <FormSelect
+                  label="Payment Method"
+                  value={serviceFormData.paymentMethod}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setServiceFormData({ ...serviceFormData, paymentMethod: e.target.value })
+                  }
+                  options={PAYMENT_METHODS}
+                />
+
+                <FormInput
+                  label="Phone (Optional)"
+                  type="tel"
+                  value={serviceFormData.phone}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setServiceFormData({ ...serviceFormData, phone: e.target.value })
+                  }
+                  placeholder="Contact number"
+                />
+
+                <FormInput
+                  label="Work Description"
+                  type="text"
+                  value={serviceFormData.description}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setServiceFormData({ ...serviceFormData, description: e.target.value })
+                  }
+                  placeholder="e.g., Fixed AC in Room 101"
+                />
+              </div>
+
+              <FormTextarea
+                label="Notes"
+                value={serviceFormData.notes}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setServiceFormData({ ...serviceFormData, notes: e.target.value })
+                }
+                placeholder="Additional notes (optional)"
+                rows={2}
+              />
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={resetServiceForm}
+                  className="btn-secondary text-sm px-4 py-2"
+                >
+                  Reset
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary text-sm px-6 py-2 flex items-center gap-2"
+                  disabled={createServicePaymentMutation.isPending}
+                >
+                  {createServicePaymentMutation.isPending ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span>Recording...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaTools className="w-4 h-4" />
+                      <span>Record Service Payment</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">

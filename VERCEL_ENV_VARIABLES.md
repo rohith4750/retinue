@@ -204,6 +204,63 @@ After adding environment variables in Vercel:
 
 ---
 
+### 7. **Database Analytics Password** (Recommended)
+```
+DB_ANALYTICS_PASSWORD=YourSecurePassword123!
+```
+- **Description**: Password to access DB Analytics page (SUPER_ADMIN only)
+- **Required**: ❌ No (defaults to `SuperAdmin@DB2026`)
+- **Security**: 🔒 **Recommended** - Change from default for production
+
+---
+
+### 8. **Auto-Cleanup Cron Secret** (Required for auto-cleanup)
+```
+CRON_SECRET=your-auto-cleanup-secret-key
+```
+- **Description**: Secret key for authenticating scheduled cleanup jobs
+- **Required**: ✅ Yes (for automatic data cleanup)
+- **Security**: 🔒 **CRITICAL** - Use strong, random string
+- **Default**: `auto-cleanup-secret-2026`
+- **Used by**: Vercel Cron Jobs or external cron services
+
+**For Vercel Cron Jobs:**
+The `vercel.json` is pre-configured to run cleanup every 2 months:
+```json
+{
+  "crons": [
+    {
+      "path": "/api/admin/auto-cleanup?secret=${CRON_SECRET}",
+      "schedule": "0 2 1 */2 *"
+    }
+  ]
+}
+```
+
+**For External Cron Services (cron-job.org, EasyCron):**
+- URL: `https://your-domain.vercel.app/api/admin/auto-cleanup?secret=YOUR_CRON_SECRET`
+- Schedule: Every 2 months (1st day at 2:00 AM)
+- Cron expression: `0 2 1 */2 *`
+
+---
+
+### 9. **Admin Backup Email** (Recommended for auto-cleanup)
+```
+ADMIN_BACKUP_EMAIL=admin@yourhotel.com
+```
+- **Description**: Email address to receive CSV backup files before data cleanup
+- **Required**: ❌ No (defaults to `SMTP_USER` if not set)
+- **Format**: Valid email address
+- **Note**: Before any data is deleted, CSV backup files are automatically emailed to this address
+
+**What you receive:**
+- `booking_history_backup_YYYY-MM-DD.csv`
+- `inventory_transactions_backup_YYYY-MM-DD.csv`
+- `attendance_backup_YYYY-MM-DD.csv`
+- `password_resets_backup_YYYY-MM-DD.csv`
+
+---
+
 ## 🔄 After Adding Variables
 
 1. **Redeploy your application**:

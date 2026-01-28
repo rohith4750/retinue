@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaSearch } from 'react-icons/fa'
+import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaClock, FaFilter } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
@@ -18,8 +18,10 @@ export default function RoomsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
-  const [selectedDate, setSelectedDate] = useState('')
+  const [filterCheckIn, setFilterCheckIn] = useState('')
+  const [filterCheckOut, setFilterCheckOut] = useState('')
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
+  const [showDateFilter, setShowDateFilter] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean
     roomId: string | null
@@ -40,22 +42,19 @@ export default function RoomsPage() {
 
   const queryClient = useQueryClient()
 
-  // Fetch rooms - either all rooms or available rooms based on date
+  // Fetch rooms - either all rooms or available rooms based on date/time
   const { data: rooms, isLoading, refetch } = useQuery({
-    queryKey: ['rooms', debouncedSearch, selectedDate, isCheckingAvailability],
+    queryKey: ['rooms', debouncedSearch, filterCheckIn, filterCheckOut, isCheckingAvailability],
     queryFn: () => {
       const params = new URLSearchParams()
       if (debouncedSearch) {
         params.append('search', debouncedSearch)
       }
-      // If checking availability with date, use the available endpoint
-      if (isCheckingAvailability && selectedDate) {
-        // Set check-in to start of selected day and check-out to end of selected day
-        const checkIn = new Date(selectedDate)
-        checkIn.setHours(0, 0, 0, 0)
-        const checkOut = new Date(selectedDate)
-        checkOut.setHours(23, 59, 59, 999)
-        return api.get(`/rooms/available?checkIn=${encodeURIComponent(checkIn.toISOString())}&checkOut=${encodeURIComponent(checkOut.toISOString())}`)
+      // If checking availability with date/time, use the available endpoint
+      if (isCheckingAvailability && filterCheckIn && filterCheckOut) {
+        const checkInDate = new Date(filterCheckIn).toISOString()
+        const checkOutDate = new Date(filterCheckOut).toISOString()
+        return api.get(`/rooms/available?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}`)
       }
       return api.get(`/rooms?${params.toString()}`)
     },
@@ -65,15 +64,17 @@ export default function RoomsPage() {
   const roomsData = rooms?.rooms || rooms || []
 
   const handleCheckAvailability = () => {
-    if (selectedDate) {
+    if (filterCheckIn && filterCheckOut) {
       setIsCheckingAvailability(true)
       refetch()
     }
   }
 
-  const handleClearDate = () => {
-    setSelectedDate('')
+  const handleClearFilter = () => {
+    setFilterCheckIn('')
+    setFilterCheckOut('')
     setIsCheckingAvailability(false)
+    setShowDateFilter(false)
   }
 
   // Filter rooms client-side if needed (for additional filtering)
@@ -125,7 +126,7 @@ export default function RoomsPage() {
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         {/* Header: Search/Filter on left, Add Room on right */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-          {/* Left: Search and Date Filter */}
+          {/* Left: Search and Date Filter Toggle */}
           <div className="flex flex-wrap items-center gap-3">
             <SearchInput
               placeholder="Search rooms..."
@@ -133,32 +134,29 @@ export default function RoomsPage() {
               onChange={setSearchQuery}
               className="w-48"
             />
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 rounded-lg border border-white/5">
-              <FaCalendarAlt className="w-3.5 h-3.5 text-sky-400" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value)
-                  if (e.target.value) {
-                    setIsCheckingAvailability(true)
-                  }
-                }}
-                className="bg-transparent text-sm text-slate-200 border-none outline-none w-32"
-              />
-            </div>
+            <button
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+                isCheckingAvailability 
+                  ? 'bg-sky-600/20 border-sky-500 text-sky-400' 
+                  : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-slate-600'
+              }`}
+            >
+              <FaFilter className="w-3 h-3" />
+              <span className="text-sm">Date & Time Filter</span>
+              {isCheckingAvailability && (
+                <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded">
+                  {filteredRooms.length}
+                </span>
+              )}
+            </button>
             {isCheckingAvailability && (
               <button
-                onClick={handleClearDate}
-                className="px-3 py-1.5 bg-slate-700 text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-600 transition-colors"
+                onClick={handleClearFilter}
+                className="px-3 py-1.5 bg-red-500/20 text-red-400 text-xs font-medium rounded-lg hover:bg-red-500/30 transition-colors border border-red-500/30"
               >
-                Clear
+                Clear Filter
               </button>
-            )}
-            {isCheckingAvailability && selectedDate && (
-              <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
-                {filteredRooms.length} available
-              </span>
             )}
           </div>
 
@@ -176,6 +174,80 @@ export default function RoomsPage() {
             </button>
           )}
         </div>
+
+        {/* Date & Time Filter Panel */}
+        {showDateFilter && (
+          <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-white/10">
+            <div className="flex flex-wrap items-end gap-4">
+              {/* Check-in Date & Time */}
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                  <FaCalendarAlt className="inline w-3 h-3 mr-1" />
+                  Check-in Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={filterCheckIn}
+                  onChange={(e) => {
+                    setFilterCheckIn(e.target.value)
+                    // Auto-set checkout to next day same time if empty
+                    if (!filterCheckOut && e.target.value) {
+                      const checkIn = new Date(e.target.value)
+                      checkIn.setDate(checkIn.getDate() + 1)
+                      const formatted = checkIn.toISOString().slice(0, 16)
+                      setFilterCheckOut(formatted)
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
+                />
+              </div>
+
+              {/* Check-out Date & Time */}
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                  <FaClock className="inline w-3 h-3 mr-1" />
+                  Check-out Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={filterCheckOut}
+                  min={filterCheckIn}
+                  onChange={(e) => setFilterCheckOut(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
+                />
+              </div>
+
+              {/* Apply Filter Button */}
+              <button
+                onClick={handleCheckAvailability}
+                disabled={!filterCheckIn || !filterCheckOut}
+                className="px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Check Availability
+              </button>
+            </div>
+
+            {/* Show selected filter info */}
+            {isCheckingAvailability && filterCheckIn && filterCheckOut && (
+              <div className="mt-3 pt-3 border-t border-white/5">
+                <p className="text-xs text-slate-400">
+                  Showing rooms available from{' '}
+                  <span className="text-sky-400 font-medium">
+                    {new Date(filterCheckIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {' at '}
+                    {new Date(filterCheckIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                  {' to '}
+                  <span className="text-sky-400 font-medium">
+                    {new Date(filterCheckOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {' at '}
+                    {new Date(filterCheckOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {filteredRooms && filteredRooms.length > 0 ? (
           <div className="flex flex-col">

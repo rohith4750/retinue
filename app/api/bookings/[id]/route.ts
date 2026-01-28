@@ -24,7 +24,6 @@ export async function GET(
         room: true,
         slot: true,
         guest: true,
-        bill: true,
         history: {
           orderBy: { timestamp: 'desc' },
           take: 10, // Last 10 history entries
@@ -71,7 +70,6 @@ export async function PUT(
           room: true,
           slot: true,
           guest: true,
-          bill: true,
         },
       })
 
@@ -149,7 +147,6 @@ export async function PUT(
           room: true,
           slot: true,
           guest: true,
-          bill: true,
         },
       })
 
@@ -250,11 +247,6 @@ export async function DELETE(
           where: { bookingId: params.id },
         })
 
-        // Delete bill if exists
-        await tx.bill.deleteMany({
-          where: { bookingId: params.id },
-        })
-
         // Delete the booking
         await tx.booking.delete({
           where: { id: params.id },
@@ -307,7 +299,6 @@ export async function DELETE(
           room: true,
           slot: true,
           guest: true,
-          bill: true,
         },
       })
 

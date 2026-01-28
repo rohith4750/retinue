@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Today's revenue
-    const todayRevenue = await prisma.bill.aggregate({
+    // Today's revenue (using Booking - Bill merged)
+    const todayRevenue = await prisma.booking.aggregate({
       where: {
         createdAt: {
           gte: today,
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     })
 
     // This month's revenue
-    const monthRevenue = await prisma.bill.aggregate({
+    const monthRevenue = await prisma.booking.aggregate({
       where: {
         createdAt: {
           gte: startOfMonth,
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Last month's revenue for comparison
-    const lastMonthRevenue = await prisma.bill.aggregate({
+    const lastMonthRevenue = await prisma.booking.aggregate({
       where: {
         createdAt: {
           gte: startOfLastMonth,
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Pending payments
-    const pendingPayments = await prisma.bill.aggregate({
+    const pendingPayments = await prisma.booking.aggregate({
       where: {
         paymentStatus: { in: ['PENDING', 'PARTIAL'] },
       },
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
       const nextDate = new Date(date)
       nextDate.setDate(nextDate.getDate() + 1)
 
-      const dayRevenue = await prisma.bill.aggregate({
+      const dayRevenue = await prisma.booking.aggregate({
         where: {
           createdAt: {
             gte: date,
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
       const monthStart = new Date(today.getFullYear(), today.getMonth() - i, 1)
       const monthEnd = new Date(today.getFullYear(), today.getMonth() - i + 1, 0)
 
-      const monthData = await prisma.bill.aggregate({
+      const monthData = await prisma.booking.aggregate({
         where: {
           createdAt: {
             gte: monthStart,
@@ -262,14 +262,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Recent bookings
+    // Recent bookings (billing info now in Booking itself)
     const recentBookings = await prisma.booking.findMany({
       take: 5,
       orderBy: { bookingDate: 'desc' },
       include: {
         room: true,
         guest: true,
-        bill: true,
       },
     })
 

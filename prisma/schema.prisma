@@ -111,36 +111,51 @@ model RoomSlot {
 
 // Guest
 model Guest {
-  id          String      @id @default(cuid())
-  name        String
-  phone       String
-  idProof     String?
-  address     String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id            String      @id @default(cuid())
+  name          String
+  phone         String
+  idProof       String?
+  idProofType   String?     @default("AADHAR") // AADHAR, PAN_CARD, PASSPORT, DRIVING_LICENSE, VOTER_ID, OTHER
+  guestType     String?     @default("WALK_IN") // WALK_IN, CORPORATE, OTA, GOVERNMENT, REGULAR, AGENT, FAMILY
+  address       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  bookings    Booking[]
+  bookings      Booking[]
 }
 
-// Booking
+// Booking (includes billing info - merged Bill table)
 model Booking {
-  id          String      @id @default(cuid())
-  roomId      String
-  slotId      String
-  guestId     String
-  bookingDate DateTime    @default(now())
-  checkIn     DateTime
-  checkOut    DateTime
-  totalAmount Float
-  status      BookingStatus @default(PENDING)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id              String        @id @default(cuid())
+  roomId          String
+  slotId          String
+  guestId         String
+  bookingDate     DateTime      @default(now())
+  checkIn         DateTime
+  checkOut        DateTime
+  numberOfGuests  Int           @default(1)
+  totalAmount     Float
+  advanceAmount   Float         @default(0)
+  balanceAmount   Float?
+  gstAmount       Float         @default(0)
+  applyGst        Boolean       @default(true)
+  status          BookingStatus @default(PENDING)
+  
+  // Billing fields (merged from Bill table)
+  billNumber      String?       @unique
+  subtotal        Float?
+  tax             Float         @default(0)
+  discount        Float         @default(0)
+  paidAmount      Float         @default(0)
+  paymentStatus   PaymentStatus @default(PENDING)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  room        Room        @relation(fields: [roomId], references: [id])
-  slot        RoomSlot    @relation(fields: [slotId], references: [id])
-  guest       Guest       @relation(fields: [guestId], references: [id])
-  bill        Bill?
-  history     BookingHistory[]
+  room            Room          @relation(fields: [roomId], references: [id])
+  slot            RoomSlot      @relation(fields: [slotId], references: [id])
+  guest           Guest         @relation(fields: [guestId], references: [id])
+  history         BookingHistory[]
 
   // Indexes for performance (Phase 2)
   @@index([roomId, status])
@@ -148,24 +163,7 @@ model Booking {
   @@index([checkIn, checkOut])
   @@index([status, checkIn])
   @@index([status])
-}
-
-// Bill
-model Bill {
-  id            String        @id @default(cuid())
-  bookingId     String        @unique
-  billNumber    String        @unique
-  subtotal      Float
-  tax           Float         @default(0)
-  discount      Float         @default(0)
-  totalAmount   Float
-  paidAmount    Float         @default(0)
-  balanceAmount Float
-  paymentStatus PaymentStatus @default(PENDING)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  @@index([paymentStatus])
 }
 
 // Inventory

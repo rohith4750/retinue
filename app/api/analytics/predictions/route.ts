@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      const hotelRevenue = await prisma.bill.aggregate({
+      // Bill merged into Booking
+      const hotelRevenue = await prisma.booking.aggregate({
         where: {
           createdAt: { gte: monthStart, lte: monthEnd }
         },

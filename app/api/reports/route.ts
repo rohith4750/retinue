@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
         include: {
           guest: true,
           room: true,
-          bill: true,
         },
         orderBy: { createdAt: 'desc' },
       })
@@ -117,8 +116,8 @@ export async function GET(request: NextRequest) {
         XLSX.utils.book_append_sheet(workbook, guestsSheet, 'Guests')
       }
 
-      // 4. Hotel Revenue Summary
-      const hotelRevenueSummary = await prisma.bill.aggregate({
+      // 4. Hotel Revenue Summary (Bill merged into Booking)
+      const hotelRevenueSummary = await prisma.booking.aggregate({
         where: {
           createdAt: {
             gte: start,
@@ -421,11 +420,11 @@ export async function GET(request: NextRequest) {
         XLSX.utils.book_append_sheet(workbook, salarySheet, 'Salary Payments')
       }
 
-      // 13. Combined Revenue Summary
+      // 13. Combined Revenue Summary (Bill merged into Booking)
       let hotelRevenue = 0
       let conventionRevenue = 0
 
-      const hotelBills = await prisma.bill.aggregate({
+      const hotelBookings = await prisma.booking.aggregate({
         where: {
           createdAt: {
             gte: start,
@@ -436,7 +435,7 @@ export async function GET(request: NextRequest) {
           paidAmount: true,
         },
       })
-      hotelRevenue = hotelBills._sum.paidAmount || 0
+      hotelRevenue = hotelBookings._sum.paidAmount || 0
 
       try {
         // @ts-ignore

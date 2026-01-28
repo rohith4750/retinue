@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const hotelBills = await (prisma.bill as any).findMany({
+    // Bill merged into Booking
+    const hotelBookings = await (prisma.booking as any).findMany({
       where: hotelRevenueQuery,
       select: {
         paidAmount: true,
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const hotelRevenue = hotelBills.reduce((sum: number, bill: any) => sum + bill.paidAmount, 0)
+    const hotelRevenue = hotelBookings.reduce((sum: number, booking: any) => sum + (booking.paidAmount || 0), 0)
 
     // Get convention revenue (from FunctionHallBooking with paid amounts)
     const conventionRevenueQuery: any = {

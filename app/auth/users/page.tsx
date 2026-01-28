@@ -4,14 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { FaUsers, FaUserShield, FaUserTie, FaUserCheck, FaUser, FaPlus, FaKey, FaUserPlus, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaUsers, FaUserShield, FaUserTie, FaUserCheck, FaUser, FaUserPlus, FaEdit, FaTrash } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect } from '@/components/FormComponents'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
+import Link from 'next/link'
 
 export default function UsersPage() {
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showNewUserModal, setShowNewUserModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingUser, setEditingUser] = useState<any>(null)
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; userId: string | null }>({ show: false, userId: null })
@@ -29,30 +28,6 @@ export default function UsersPage() {
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.get('/auth/users'),
-  })
-
-  const createUsersMutation = useMutation({
-    mutationFn: () => api.post('/auth/create-users'),
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      toast.success(data.message || 'Users created successfully')
-      setShowCreateModal(false)
-    },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Failed to create users')
-    },
-  })
-
-  const createUserMutation = useMutation({
-    mutationFn: (data: any) => api.post('/auth/users', data),
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      toast.success(data.message || 'User created successfully')
-      setShowNewUserModal(false)
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Failed to create user')
-    },
   })
 
   const updateUserMutation = useMutation({
@@ -124,24 +99,15 @@ export default function UsersPage() {
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         <div className="flex justify-between items-center mb-4">
           <p className="text-sm text-slate-400">Manage user accounts and roles</p>
-          <div className="flex items-center space-x-2">
-            {isAdmin && (
-              <button
-                onClick={() => setShowNewUserModal(true)}
-                className="btn-primary flex items-center space-x-2"
-              >
-                <FaUserPlus className="w-4 h-4" />
-                <span>Create User</span>
-              </button>
-            )}
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-secondary flex items-center space-x-2"
+          {isAdmin && (
+            <Link
+              href="/auth/users/new"
+              className="btn-primary flex items-center space-x-2"
             >
-              <FaKey className="w-4 h-4" />
-              <span>Create Default Users</span>
-            </button>
-          </div>
+              <FaUserPlus className="w-4 h-4" />
+              <span>Create User</span>
+            </Link>
+          )}
         </div>
 
         {users && users.length > 0 ? (
@@ -197,24 +163,17 @@ export default function UsersPage() {
             <div className="flex flex-col items-center">
               <FaUsers className="text-4xl mb-3 text-slate-500" />
               <p className="text-base font-semibold text-slate-300 mb-1.5">No users found</p>
-              <p className="text-xs text-slate-500 mb-4">Click "Create Default Users" to create users for all roles</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="btn-primary text-sm px-4 py-2"
-              >
-                <span>Create Default Users</span>
-              </button>
+              <p className="text-xs text-slate-500 mb-4">Click "Create User" to add a new user</p>
+              {isAdmin && (
+                <Link
+                  href="/auth/users/new"
+                  className="btn-primary text-sm px-4 py-2"
+                >
+                  <span>Create User</span>
+                </Link>
+              )}
             </div>
           </div>
-        )}
-
-        {/* Create New User Modal (Admin Only) */}
-        {showNewUserModal && isAdmin && (
-          <CreateUserModal
-            onClose={() => setShowNewUserModal(false)}
-            onCreate={(userData: any) => createUserMutation.mutate(userData)}
-            isLoading={createUserMutation.isPending}
-          />
         )}
 
         {/* Edit User Modal (Admin Only) */}
@@ -246,235 +205,8 @@ export default function UsersPage() {
           isLoading={deleteUserMutation.isPending}
           confirmText="Delete User"
         />
-
-        {/* Create Default Users Modal */}
-        {showCreateModal && (
-          <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="p-4 relative z-10">
-                <div className="card-header">
-                  <h2 className="text-lg font-bold text-slate-100 flex items-center">
-                    <FaKey className="mr-2 w-4 h-4" />
-                    Create Default Users
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    This will create users for all roles with default credentials
-                  </p>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  <div className="bg-slate-800/40 rounded-lg p-3 border border-white/5">
-                    <p className="text-xs font-semibold text-slate-300 mb-2">Default Credentials:</p>
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">SUPER_ADMIN:</span>
-                        <span className="text-slate-200">superadmin / superadmin123</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">ADMIN:</span>
-                        <span className="text-slate-200">admin / admin123</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">RECEPTIONIST:</span>
-                        <span className="text-slate-200">receptionist / receptionist123</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2 pt-4 border-t border-white/5 mt-4">
-                    <button
-                      onClick={() => setShowCreateModal(false)}
-                      className="btn-secondary text-sm px-4 py-2"
-                      disabled={createUsersMutation.isPending}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => createUsersMutation.mutate()}
-                      className="btn-primary text-sm px-4 py-2"
-                      disabled={createUsersMutation.isPending}
-                    >
-                      {createUsersMutation.isPending ? 'Creating...' : 'Create Users'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
-  )
-}
-
-// Create User Modal Component
-function CreateUserModal({
-  onClose,
-  onCreate,
-  isLoading,
-}: {
-  onClose: () => void
-  onCreate: (data: any) => void
-  isLoading: boolean
-}) {
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'RECEPTIONIST',
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.username || formData.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters'
-    }
-
-    // Email is required for login
-    if (!formData.email || formData.email.trim() === '') {
-      newErrors.email = 'Email is required for login'
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address'
-      }
-    }
-
-    if (!formData.password || formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
-    }
-
-    if (!formData.role) {
-      newErrors.role = 'Please select a role'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (validate()) {
-      onCreate({
-        username: formData.username,
-        email: formData.email.trim(),
-        password: formData.password,
-        role: formData.role,
-      })
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 relative z-10">
-          <div className="card-header">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center">
-              <FaUserPlus className="mr-2 w-4 h-4" />
-              Create New User
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Create a new user account with custom credentials
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            <FormInput
-              label="Username *"
-              type="text"
-              value={formData.username}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setFormData({ ...formData, username: e.target.value })
-                if (errors.username) setErrors({ ...errors, username: '' })
-              }}
-              error={errors.username}
-              placeholder="Enter username"
-              required
-            />
-
-            <FormInput
-              label="Email *"
-              type="email"
-              value={formData.email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setFormData({ ...formData, email: e.target.value })
-                if (errors.email) setErrors({ ...errors, email: '' })
-              }}
-              error={errors.email}
-              placeholder="user@example.com (required for login)"
-              required
-            />
-
-            <FormInput
-              label="Password *"
-              type="password"
-              value={formData.password}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setFormData({ ...formData, password: e.target.value })
-                if (errors.password) setErrors({ ...errors, password: '' })
-              }}
-              error={errors.password}
-              placeholder="Minimum 6 characters"
-              required
-            />
-
-            <FormInput
-              label="Confirm Password *"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setFormData({ ...formData, confirmPassword: e.target.value })
-                if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' })
-              }}
-              error={errors.confirmPassword}
-              placeholder="Re-enter password"
-              required
-            />
-
-            <FormSelect
-              label="Role *"
-              value={formData.role}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFormData({ ...formData, role: e.target.value })
-                if (errors.role) setErrors({ ...errors, role: '' })
-              }}
-              error={errors.role}
-              options={[
-                { value: 'RECEPTIONIST', label: 'Receptionist' },
-                { value: 'ADMIN', label: 'Admin' },
-                { value: 'SUPER_ADMIN', label: 'Super Admin' },
-              ]}
-              required
-            />
-
-            <div className="flex justify-end space-x-3 pt-4 border-t border-white/5 mt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn-secondary text-sm px-4 py-2"
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary text-sm px-4 py-2"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Creating...' : 'Create User'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
   )
 }
 

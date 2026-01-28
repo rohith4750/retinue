@@ -350,9 +350,9 @@ export default function BookingsPage() {
                       <span>Cancel</span>
                     </button>
                   )}
-                  {booking.bill && (
+                  {booking.billNumber && (
                     <a
-                      href={`/bills/${booking.bill.id}`}
+                      href={`/bills/${booking.id}`}
                       className="flex-1 min-w-[80px] h-8 text-emerald-400 hover:text-emerald-300 font-medium text-xs rounded-lg hover:bg-emerald-500/10 transition-colors border border-emerald-500/20 flex items-center justify-center space-x-1"
                     >
                       <FaMoneyBillWave className="w-3 h-3" />

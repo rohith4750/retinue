@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, FaTag, FaEye } from 'react-icons/fa'
+import { FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, FaTag, FaEye, FaUsers, FaPercent } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
@@ -26,13 +26,83 @@ function NewBookingContent() {
     guestIdProof: '',
     guestIdProofType: 'AADHAR',
     guestAddress: '',
+    guestType: 'WALK_IN',
+    numberOfGuests: '1',
     checkIn: '',
     checkOut: '',
     paymentMode: 'CASH',
+    advanceAmount: '0',
     discount: '0',
+    applyGst: true,
     extraBed: false,
     extraBedCount: '1',
     extraBedPrice: '500', // Default price, user can change
+  }
+
+  // ID Proof validation patterns for Indian documents
+  const ID_PROOF_PATTERNS: Record<string, { pattern: RegExp; message: string; placeholder: string; maxLength: number; inputType: string }> = {
+    AADHAR: {
+      pattern: /^\d{12}$/,
+      message: 'Aadhaar must be exactly 12 digits',
+      placeholder: '123456789012',
+      maxLength: 12,
+      inputType: 'tel', // Use tel for numeric keyboard on mobile
+    },
+    PAN_CARD: {
+      pattern: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+      message: 'PAN format: ABCDE1234F',
+      placeholder: 'ABCDE1234F',
+      maxLength: 10,
+      inputType: 'text',
+    },
+    PASSPORT: {
+      pattern: /^[A-Z][0-9]{7}$/,
+      message: 'Passport: 1 letter + 7 digits',
+      placeholder: 'A1234567',
+      maxLength: 8,
+      inputType: 'text',
+    },
+    DRIVING_LICENSE: {
+      pattern: /^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,13}$/,
+      message: 'Invalid Driving License format',
+      placeholder: 'MH0120190001234',
+      maxLength: 17,
+      inputType: 'text',
+    },
+    VOTER_ID: {
+      pattern: /^[A-Z]{3}[0-9]{7}$/,
+      message: 'Voter ID: 3 letters + 7 digits',
+      placeholder: 'ABC1234567',
+      maxLength: 10,
+      inputType: 'text',
+    },
+    OTHER: {
+      pattern: /^.{3,}$/,
+      message: 'ID must be at least 3 characters',
+      placeholder: 'Enter ID number',
+      maxLength: 30,
+      inputType: 'text',
+    },
+  }
+
+  const [idProofError, setIdProofError] = useState('')
+
+  // Validate ID proof based on type
+  const validateIdProof = (type: string, value: string) => {
+    if (!value) {
+      setIdProofError('')
+      return true
+    }
+    const validation = ID_PROOF_PATTERNS[type]
+    if (!validation) return true
+    
+    const cleanValue = value.replace(/\s/g, '').toUpperCase()
+    if (!validation.pattern.test(cleanValue)) {
+      setIdProofError(validation.message)
+      return false
+    }
+    setIdProofError('')
+    return true
   }
 
   // Use form validation hook
@@ -113,7 +183,10 @@ function NewBookingContent() {
         const totalBaseAmount = selectedRooms.reduce((total, room) => {
           return total + ((selectedSlot?.price || room?.basePrice || 0) * days)
         }, 0)
-        const totalAmount = Math.max(0, totalBaseAmount + extraBedAmount - discountAmount)
+        const subtotal = totalBaseAmount + extraBedAmount - discountAmount
+        const gstAmount = data.applyGst ? subtotal * 0.18 : 0
+        const totalAmount = Math.max(0, subtotal + gstAmount)
+        const advanceAmount = parseFloat(data.advanceAmount) || 0
 
         return api.post('/bookings', {
           roomIds: data.roomIds,
@@ -123,10 +196,16 @@ function NewBookingContent() {
           guestIdProof: data.guestIdProof,
           guestIdProofType: data.guestIdProofType,
           guestAddress: data.guestAddress,
+          guestType: data.guestType,
+          numberOfGuests: parseInt(data.numberOfGuests) || 1,
           checkIn: checkInISO,
           checkOut: checkOutISO,
           totalAmount,
           discount: discountAmount,
+          gstAmount: gstAmount,
+          applyGst: data.applyGst,
+          advanceAmount: advanceAmount,
+          balanceAmount: Math.max(0, totalAmount - advanceAmount),
           extraBed: data.extraBed,
           extraBedCount: extraBedCount,
           extraBedAmount: extraBedAmount,
@@ -201,8 +280,14 @@ function NewBookingContent() {
     
     const discountAmount = parseFloat(formData.discount) || 0
     const subtotal = baseAmount + extraBedAmount - discountAmount
-    const tax = subtotal * 0.18 // 18% GST
+    
+    // GST only if toggle is on
+    const tax = formData.applyGst ? subtotal * 0.18 : 0 // 18% GST only if applied
     const totalAmount = Math.max(0, subtotal + tax)
+    
+    // Advance and balance
+    const advanceAmount = parseFloat(formData.advanceAmount) || 0
+    const balanceAmount = Math.max(0, totalAmount - advanceAmount)
 
     return {
       days,
@@ -214,6 +299,9 @@ function NewBookingContent() {
       subtotal,
       tax,
       totalAmount,
+      advanceAmount,
+      balanceAmount,
+      gstApplied: formData.applyGst,
     }
   }
 
@@ -248,7 +336,7 @@ function NewBookingContent() {
                 <FaIdCard className="mr-2 w-4 h-4" />
                 Guest Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormInput
                   label="Guest Name *"
                   type="text"
@@ -268,33 +356,91 @@ function NewBookingContent() {
                   placeholder="10 digits"
                 />
                 <FormSelect
+                  label="Guest Type *"
+                  value={formData.guestType}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('guestType', e.target.value)}
+                  options={[
+                    { value: 'WALK_IN', label: 'Walk-in' },
+                    { value: 'CORPORATE', label: 'Corporate' },
+                    { value: 'OTA', label: 'OTA (Online Booking)' },
+                    { value: 'GOVERNMENT', label: 'Government' },
+                    { value: 'REGULAR', label: 'Regular Guest' },
+                    { value: 'AGENT', label: 'Travel Agent' },
+                    { value: 'FAMILY', label: 'Family/Friends' },
+                  ]}
+                />
+                <FormSelect
                   label="ID Proof Type *"
                   value={formData.guestIdProofType}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('guestIdProofType', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                    updateField('guestIdProofType', e.target.value)
+                    // Re-validate ID proof when type changes
+                    if (formData.guestIdProof) {
+                      validateIdProof(e.target.value, formData.guestIdProof)
+                    }
+                  }}
                   options={[
-                    { value: 'AADHAR', label: 'Aadhar' },
+                    { value: 'AADHAR', label: 'Aadhaar Card' },
+                    { value: 'PAN_CARD', label: 'PAN Card' },
                     { value: 'PASSPORT', label: 'Passport' },
                     { value: 'DRIVING_LICENSE', label: 'Driving License' },
-                    { value: 'PAN_CARD', label: 'PAN Card' },
                     { value: 'VOTER_ID', label: 'Voter ID' },
                     { value: 'OTHER', label: 'Other' },
                   ]}
                 />
-                <FormInput
-                  label="ID Proof Number"
-                  type="text"
-                  value={formData.guestIdProof}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('guestIdProof', e.target.value)}
-                  placeholder="ID proof number"
-                />
-                <div className="md:col-span-2">
+                <div>
+                  <label className="form-label">ID Proof Number</label>
+                  <input
+                    type={ID_PROOF_PATTERNS[formData.guestIdProofType]?.inputType || 'text'}
+                    value={formData.guestIdProof}
+                    onChange={(e) => {
+                      let value = e.target.value
+                      // For Aadhaar, only allow digits
+                      if (formData.guestIdProofType === 'AADHAR') {
+                        value = value.replace(/\D/g, '') // Remove non-digits
+                      } else {
+                        value = value.toUpperCase()
+                      }
+                      // Respect max length
+                      const maxLen = ID_PROOF_PATTERNS[formData.guestIdProofType]?.maxLength || 30
+                      if (value.length <= maxLen) {
+                        updateField('guestIdProof', value)
+                        validateIdProof(formData.guestIdProofType, value)
+                      }
+                    }}
+                    onBlur={() => validateIdProof(formData.guestIdProofType, formData.guestIdProof)}
+                    placeholder={ID_PROOF_PATTERNS[formData.guestIdProofType]?.placeholder || 'Enter ID number'}
+                    maxLength={ID_PROOF_PATTERNS[formData.guestIdProofType]?.maxLength || 30}
+                    className={`form-input ${idProofError ? 'border-red-500' : ''}`}
+                  />
+                  {idProofError && (
+                    <p className="text-xs text-red-400 mt-1">{idProofError}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="form-label flex items-center gap-2">
+                    <FaUsers className="w-3 h-3 text-slate-400" />
+                    Number of Guests *
+                  </label>
+                  <select
+                    value={formData.numberOfGuests}
+                    onChange={(e) => updateField('numberOfGuests', e.target.value)}
+                    className="form-select"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                      <option key={n} value={n}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
+                    ))}
+                    <option value="10+">More than 10</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 lg:col-span-3">
                   <FormTextarea
                     label="Address"
                     value={formData.guestAddress}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('guestAddress', e.target.value)}
                     onBlur={() => handleBlur('guestAddress')}
                     error={getError('guestAddress')}
-                    rows={3}
+                    rows={2}
                     placeholder="Guest address"
                   />
                 </div>
@@ -360,10 +506,30 @@ function NewBookingContent() {
                   </span>
                 )}
               </h3>
+
+              {/* Show selected date/time range */}
+              {formData.checkIn && formData.checkOut && (
+                <div className="mb-4 p-3 bg-slate-800/40 rounded-lg border border-white/5">
+                  <p className="text-xs text-slate-400">
+                    Showing rooms available from{' '}
+                    <span className="text-sky-400 font-medium">
+                      {new Date(formData.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {' '}at{' '}
+                      {new Date(formData.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </span>
+                    {' '}to{' '}
+                    <span className="text-sky-400 font-medium">
+                      {new Date(formData.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {' '}at{' '}
+                      {new Date(formData.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </span>
+                  </p>
+                </div>
+              )}
               
               {!formData.checkIn || !formData.checkOut ? (
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 text-center">
-                  <p className="text-sm text-slate-400">Select check-in and check-out dates first</p>
+                  <p className="text-sm text-slate-400">Select check-in and check-out date & time first</p>
                 </div>
               ) : roomsLoading ? (
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 flex items-center justify-center">
@@ -371,7 +537,8 @@ function NewBookingContent() {
                 </div>
               ) : availableRooms?.length === 0 ? (
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-6 text-center">
-                  <p className="text-sm text-yellow-400">No rooms available for selected dates. Try different dates.</p>
+                  <p className="text-sm text-yellow-400">No rooms available for the selected date & time range.</p>
+                  <p className="text-xs text-yellow-400/70 mt-1">Try selecting different dates or times.</p>
                 </div>
               ) : (
                 <>
@@ -493,9 +660,9 @@ function NewBookingContent() {
             <div>
               <h3 className="text-sm font-semibold text-slate-100 mb-4 flex items-center">
                 <FaCreditCard className="mr-2 w-4 h-4" />
-                Payment & Discount
+                Payment Details
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="form-label">Payment Mode *</label>
                   <select
@@ -515,6 +682,20 @@ function NewBookingContent() {
                   </select>
                 </div>
                 <div>
+                  <label className="form-label">Advance Amount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.advanceAmount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, advanceAmount: e.target.value })
+                    }
+                    className="form-input"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
                   <label className="form-label">Discount (₹)</label>
                   <input
                     type="number"
@@ -527,6 +708,26 @@ function NewBookingContent() {
                     className="form-input"
                     placeholder="0.00"
                   />
+                </div>
+                <div>
+                  <label className="form-label flex items-center gap-2">
+                    <FaPercent className="w-3 h-3 text-slate-400" />
+                    GST (18%)
+                  </label>
+                  <div className="flex items-center h-[42px] px-3 bg-slate-800/60 rounded-lg border border-white/10">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.applyGst}
+                        onChange={(e) => setFormData({ ...formData, applyGst: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-sky-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      <span className="ml-2 text-sm text-slate-300">
+                        {formData.applyGst ? 'Applied' : 'Not Applied'}
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -595,17 +796,36 @@ function NewBookingContent() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">GST (18%)</span>
-                    <span className="text-slate-200 font-medium">
-                      ₹{overview.tax.toLocaleString()}
+                    <span className={`${overview.gstApplied ? 'text-slate-400' : 'text-slate-500 line-through'}`}>
+                      GST (18%)
+                      {!overview.gstApplied && <span className="ml-1 text-xs text-slate-500">(Not Applied)</span>}
+                    </span>
+                    <span className={`font-medium ${overview.gstApplied ? 'text-slate-200' : 'text-slate-500'}`}>
+                      {overview.gstApplied ? `₹${overview.tax.toLocaleString()}` : '₹0'}
                     </span>
                   </div>
                   <div className="flex justify-between pt-3 border-t border-white/5">
                     <span className="text-slate-200 font-semibold">Total Amount</span>
-                    <span className="text-2xl font-bold text-sky-400">
+                    <span className="text-xl font-bold text-sky-400">
                       ₹{overview.totalAmount.toLocaleString()}
                     </span>
                   </div>
+                  {overview.advanceAmount > 0 && (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-emerald-400">Advance Paid</span>
+                        <span className="text-emerald-400 font-medium">
+                          -₹{overview.advanceAmount.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-white/5">
+                        <span className="text-orange-400 font-semibold">Balance Due</span>
+                        <span className="text-xl font-bold text-orange-400">
+                          ₹{overview.balanceAmount.toLocaleString()}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

@@ -194,9 +194,9 @@ export default function BookingDetailPage() {
                   <span>Edit Booking</span>
                 </button>
               )}
-              {booking.bill && (
+              {booking.billNumber && (
                 <a
-                  href={`/bills/${booking.bill.id}`}
+                  href={`/bills/${booking.id}`}
                   className="flex-1 h-10 bg-sky-600 text-white font-medium text-sm rounded-lg flex items-center justify-center space-x-2"
                 >
                   <FaMoneyBillWave className="w-4 h-4" />

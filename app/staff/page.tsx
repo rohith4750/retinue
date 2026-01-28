@@ -64,6 +64,24 @@ export default function StaffPage() {
     refetchOnWindowFocus: true
   })
 
+  // Fetch salary payments for current month to check payment status
+  const { data: salaryPaymentsData, refetch: refetchSalaryPayments } = useQuery({
+    queryKey: ['salary-payments', currentDate.getMonth() + 1, currentDate.getFullYear()],
+    queryFn: () => api.get(`/salary-payments?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
+  })
+
+  // Get list of staff IDs who have been paid this month
+  const paidStaffIds = new Set(
+    (salaryPaymentsData?.data || salaryPaymentsData || [])
+      .map((p: any) => p.staffId)
+  )
+
+  // Check if staff member is paid for current month
+  const isStaffPaidThisMonth = (staffId: string) => paidStaffIds.has(staffId)
+
   // Save mutation
   const saveMutation = useMutationWithInvalidation({
     mutationFn: (data: any) => {
@@ -103,12 +121,13 @@ export default function StaffPage() {
   const paySalaryMutation = useMutationWithInvalidation({
     mutationFn: (data: any) => api.post('/salary-payments', data),
     endpoint: '/salary-payments',
-    additionalInvalidations: [['expenses'], ['expenses-summary']],
+    additionalInvalidations: [['expenses'], ['expenses-summary'], ['salary-payments']],
     onSuccess: async () => {
       setPayingStaff(null)
       resetSalaryForm()
       toast.success('Salary payment recorded successfully')
       await refetch()
+      await refetchSalaryPayments()
     },
     onError: (error: any) => {
       toast.error(error?.message || 'Failed to record salary payment')
@@ -617,6 +636,7 @@ export default function StaffPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Business</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Pay</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">This Month</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
                 {isAdmin && <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>}
               </tr>
@@ -659,6 +679,20 @@ export default function StaffPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
+                    {isStaffPaidThisMonth(member.id) ? (
+                      <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 w-fit">
+                        <FaMoneyBillWave className="w-3 h-3" />
+                        Paid
+                      </span>
+                    ) : member.status === 'ACTIVE' ? (
+                      <span className="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        Pending
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-500">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       member.status === 'ACTIVE'
                         ? 'bg-emerald-500/20 text-emerald-400'
@@ -670,7 +704,7 @@ export default function StaffPage() {
                   {isAdmin && (
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {member.status === 'ACTIVE' && (
+                        {member.status === 'ACTIVE' && !isStaffPaidThisMonth(member.id) && (
                           <button
                             onClick={() => openPaySalary(member)}
                             className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
@@ -678,6 +712,11 @@ export default function StaffPage() {
                           >
                             <FaRupeeSign className="w-4 h-4" />
                           </button>
+                        )}
+                        {member.status === 'ACTIVE' && isStaffPaidThisMonth(member.id) && (
+                          <span className="p-2 text-emerald-500" title="Already paid this month">
+                            <FaMoneyBillWave className="w-4 h-4" />
+                          </span>
                         )}
                         <button
                           onClick={() => handleEdit(member)}
@@ -702,7 +741,7 @@ export default function StaffPage() {
               ))}
               {(!staff || staff.length === 0) && (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} className="text-center py-12 text-slate-400">
+                  <td colSpan={isAdmin ? 9 : 8} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center">
                       <FaUsers className="text-4xl mb-2 text-slate-500" />
                       <p className="text-lg font-medium text-slate-300">No staff members found</p>

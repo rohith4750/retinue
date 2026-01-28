@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt, FaFileExcel, FaBrain, FaCog, FaWallet, FaClipboardList, FaUniversity } from 'react-icons/fa'
+import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt, FaFileExcel, FaBrain, FaCog, FaWallet, FaClipboardList, FaUniversity, FaDatabase } from 'react-icons/fa'
 
 export function Sidebar() {
   const router = useRouter()
@@ -64,6 +64,7 @@ export function Sidebar() {
   // Settings menu items
   const settingsMenuItems = [
     { href: '/auth/users', icon: FaUserShield, label: 'User Management', roles: ['SUPER_ADMIN'] },
+    { href: '/admin/db-analytics', icon: FaDatabase, label: 'DB Analytics', roles: ['SUPER_ADMIN'] },
   ]
 
   // Filter menu items based on user role

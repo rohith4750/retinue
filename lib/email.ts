@@ -171,3 +171,159 @@ export async function sendTestEmail(to: string): Promise<boolean> {
     return false
   }
 }
+
+// Convert JSON data to CSV format
+function jsonToCSV(data: any[]): string {
+  if (!data || data.length === 0) return ''
+  
+  const headers = Object.keys(data[0])
+  const csvRows = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(h => {
+        const val = row[h]
+        if (val === null || val === undefined) return ''
+        if (typeof val === 'object') return `"${JSON.stringify(val).replace(/"/g, '""')}"`
+        if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
+          return `"${val.replace(/"/g, '""')}"`
+        }
+        return val
+      }).join(',')
+    )
+  ]
+  return csvRows.join('\n')
+}
+
+// Send database backup email with CSV attachments
+export async function sendDatabaseBackupEmail(
+  backupData: {
+    bookingHistory?: any[]
+    inventoryTransactions?: any[]
+    attendance?: any[]
+    passwordResets?: any[]
+  },
+  summary: {
+    totalRecords: number
+    cleanedTables: string[]
+    timestamp: string
+  }
+): Promise<boolean> {
+  // Get admin email from environment or use SMTP_USER
+  const adminEmail = process.env.ADMIN_BACKUP_EMAIL || process.env.SMTP_USER
+  
+  if (!adminEmail || !SMTP_USER || !SMTP_PASS) {
+    console.warn('Email not configured for backups. Skipping backup email.')
+    return false
+  }
+
+  const fromEmail = SMTP_FROM || SMTP_USER
+  const attachments: any[] = []
+  const dateStr = new Date().toISOString().split('T')[0]
+
+  // Create CSV attachments for each data type
+  if (backupData.bookingHistory && backupData.bookingHistory.length > 0) {
+    attachments.push({
+      filename: `booking_history_backup_${dateStr}.csv`,
+      content: jsonToCSV(backupData.bookingHistory),
+      contentType: 'text/csv',
+    })
+  }
+
+  if (backupData.inventoryTransactions && backupData.inventoryTransactions.length > 0) {
+    attachments.push({
+      filename: `inventory_transactions_backup_${dateStr}.csv`,
+      content: jsonToCSV(backupData.inventoryTransactions),
+      contentType: 'text/csv',
+    })
+  }
+
+  if (backupData.attendance && backupData.attendance.length > 0) {
+    attachments.push({
+      filename: `attendance_backup_${dateStr}.csv`,
+      content: jsonToCSV(backupData.attendance),
+      contentType: 'text/csv',
+    })
+  }
+
+  if (backupData.passwordResets && backupData.passwordResets.length > 0) {
+    attachments.push({
+      filename: `password_resets_backup_${dateStr}.csv`,
+      content: jsonToCSV(backupData.passwordResets),
+      contentType: 'text/csv',
+    })
+  }
+
+  const mailOptions = {
+    from: `"The Retinue Backup" <${fromEmail}>`,
+    to: adminEmail,
+    subject: `Database Cleanup Backup - ${dateStr} - The Retinue`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .container { background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 30px; border-radius: 10px; }
+            .content { background: white; padding: 30px; border-radius: 8px; }
+            .stat-box { background: #f8fafc; padding: 15px; border-radius: 8px; margin: 10px 0; }
+            .footer { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.8); text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1 style="color: white; margin: 0 0 20px 0; text-align: center;">📦 Database Backup</h1>
+            <div class="content">
+              <h2 style="color: #6366f1; margin-top: 0;">Automatic Cleanup Completed</h2>
+              <p>The scheduled database cleanup has completed. Old records have been backed up and removed.</p>
+              
+              <div class="stat-box">
+                <strong>📅 Cleanup Date:</strong> ${new Date(summary.timestamp).toLocaleString('en-IN')}
+              </div>
+              
+              <div class="stat-box">
+                <strong>📊 Total Records Backed Up:</strong> ${summary.totalRecords}
+              </div>
+              
+              <div class="stat-box">
+                <strong>🗂️ Tables Cleaned:</strong><br/>
+                ${summary.cleanedTables.map(t => `• ${t}`).join('<br/>')}
+              </div>
+              
+              <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <strong>⚠️ Important:</strong> CSV backup files are attached to this email. 
+                Please save them to your records if needed.
+              </div>
+              
+              <p style="margin-top: 20px; color: #666; font-size: 14px;">
+                ${attachments.length} CSV file(s) attached to this email.
+              </p>
+            </div>
+            <div class="footer">
+              <p>The Retinue Hotel Management System - Automatic Backup</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Database Cleanup Backup - The Retinue
+
+Cleanup Date: ${new Date(summary.timestamp).toLocaleString('en-IN')}
+Total Records Backed Up: ${summary.totalRecords}
+Tables Cleaned: ${summary.cleanedTables.join(', ')}
+
+${attachments.length} CSV backup file(s) attached.
+    `,
+    attachments,
+  }
+
+  try {
+    const info = await transporter.sendMail(mailOptions)
+    console.log('Database backup email sent:', info.messageId)
+    return true
+  } catch (error) {
+    console.error('Error sending database backup email:', error)
+    return false
+  }
+}

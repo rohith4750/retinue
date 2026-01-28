@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
           room: true,
           slot: true,
           guest: true,
-          bill: true,
         },
         orderBy: { bookingDate: 'desc' },
       }),
@@ -161,6 +160,8 @@ export async function POST(request: NextRequest) {
             name: validatedData.guestName,
             phone: validatedData.guestPhone,
             idProof: validatedData.guestIdProof,
+            idProofType: data.guestIdProofType || 'AADHAR',
+            guestType: data.guestType || 'WALK_IN',
             address: validatedData.guestAddress,
           },
         })
@@ -171,13 +172,14 @@ export async function POST(request: NextRequest) {
           data: {
             name: validatedData.guestName,
             idProof: validatedData.guestIdProof || guest.idProof,
+            idProofType: data.guestIdProofType || guest.idProofType || 'AADHAR',
+            guestType: data.guestType || guest.guestType || 'WALK_IN',
             address: validatedData.guestAddress || guest.address,
           },
         })
       }
 
       const bookings: any[] = []
-      const bills: any[] = []
       
       // Calculate discount per room (distribute evenly)
       const discountPerRoom = (parseFloat(String(validatedData.discount)) || 0) / roomIds.length
@@ -235,7 +237,15 @@ export async function POST(request: NextRequest) {
         // Generate custom booking ID
         const bookingId = await generateBookingId(tx)
 
-        // Create booking
+        // Calculate advance and balance for this booking
+        const advancePerRoom = (parseFloat(String(data.advanceAmount)) || 0) / roomIds.length
+        const gstPerRoom = (parseFloat(String(data.gstAmount)) || 0) / roomIds.length
+        const balanceForRoom = priceCalculation.totalAmount - advancePerRoom
+
+        // Generate bill number
+        const billNumber = `BILL-${Date.now()}-${roomId.slice(-4)}`
+
+        // Create booking with billing info (merged Bill fields)
         const booking = await tx.booking.create({
           data: {
             id: bookingId,
@@ -244,8 +254,20 @@ export async function POST(request: NextRequest) {
             guestId: guest.id,
             checkIn: checkInDate,
             checkOut: checkOutDate,
+            numberOfGuests: parseInt(String(data.numberOfGuests)) || 1,
             totalAmount: priceCalculation.totalAmount,
+            advanceAmount: advancePerRoom,
+            balanceAmount: Math.max(0, balanceForRoom),
+            gstAmount: gstPerRoom,
+            applyGst: data.applyGst !== false, // Default true
             status: 'CONFIRMED',
+            // Billing fields (merged from Bill)
+            billNumber,
+            subtotal: priceCalculation.subtotal,
+            tax: data.applyGst !== false ? priceCalculation.tax : 0,
+            discount: priceCalculation.discountAmount,
+            paidAmount: advancePerRoom,
+            paymentStatus: advancePerRoom >= priceCalculation.totalAmount ? 'PAID' : (advancePerRoom > 0 ? 'PARTIAL' : 'PENDING'),
           },
           include: {
             room: true,
@@ -265,22 +287,6 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // Generate bill
-        const billNumber = `BILL-${Date.now()}-${roomId.slice(-4)}`
-
-        const bill = await tx.bill.create({
-          data: {
-            bookingId: booking.id,
-            billNumber,
-            subtotal: priceCalculation.subtotal,
-            tax: priceCalculation.tax,
-            discount: priceCalculation.discountAmount,
-            totalAmount: priceCalculation.totalAmount,
-            balanceAmount: priceCalculation.totalAmount,
-            paymentStatus: 'PENDING',
-          },
-        })
-
         // Log booking creation
         await logBookingChange(
           booking.id,
@@ -295,11 +301,10 @@ export async function POST(request: NextRequest) {
           `Booking created for Room ${room.roomNumber}`
         )
 
-        bookings.push({ ...booking, bill })
-        bills.push(bill)
+        bookings.push(booking)
       }
 
-      return { bookings, bills, guest }
+      return { bookings, guest }
     })
 
     // Return response based on number of rooms
@@ -307,13 +312,13 @@ export async function POST(request: NextRequest) {
       return Response.json(
         successResponse(
           result.bookings[0],
-          'Booking created and bill generated successfully'
+          'Booking created successfully'
         )
       )
     }
 
     // Multiple rooms booked
-    const totalAmount = result.bills.reduce((sum: number, bill: any) => sum + bill.totalAmount, 0)
+    const totalAmount = result.bookings.reduce((sum: number, booking: any) => sum + booking.totalAmount, 0)
     return Response.json(
       successResponse(
         {
