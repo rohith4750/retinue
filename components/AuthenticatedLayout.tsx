@@ -90,7 +90,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       return
     }
     
-    // Validate token with server
+    // Validate token with server (but don't block on network errors)
     validationInProgress.current = true
     validateToken(accessToken).then((isValid) => {
       validationInProgress.current = false
@@ -112,11 +112,19 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
         initSessionTimeout(handleSessionTimeout)
         sessionInitialized.current = true
       }, 500)
-    }).catch(() => {
+    }).catch((error) => {
       validationInProgress.current = false
-      // On error, still allow if we have local data (offline support)
+      console.log('Token validation error (network/DB issue), allowing access:', error)
+      // On error (network/DB sleeping), still allow if we have local data
+      // This prevents logout when Neon DB is sleeping
       setIsAuthenticated(true)
       setIsLoading(false)
+      
+      // Still initialize session timeout
+      setTimeout(() => {
+        initSessionTimeout(handleSessionTimeout)
+        sessionInitialized.current = true
+      }, 500)
     })
   }, [router, isPublicPath, handleSessionTimeout, validateToken, clearAuthAndRedirect])
 

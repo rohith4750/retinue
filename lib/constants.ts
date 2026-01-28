@@ -55,7 +55,7 @@ export const DISPLAY_DATE_FORMAT = 'DD MMM YYYY'
 export const DISPLAY_DATETIME_FORMAT = 'DD MMM YYYY, HH:mm'
 
 // Session & Auth
-export const SESSION_TIMEOUT = 60 * 60 * 1000 // 1 hour (matches JWT expiry)
+export const SESSION_TIMEOUT = 8 * 60 * 60 * 1000 // 8 hours (full work day)
 export const REMEMBER_ME_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
 
 // Password Requirements

@@ -257,121 +257,181 @@ export default function BookingsPage() {
 
         {bookings && bookings.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {bookings.map((booking: any) => (
-              <div
-                key={booking.id}
-                className="card group hover:scale-105 transition-transform duration-200"
-              >
-                <div className="flex items-start justify-between mb-4 relative z-10">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <FaCalendarAlt className="w-4 h-4 text-sky-400 flex-shrink-0" />
-                      <h3 className="text-base font-bold text-slate-100 truncate">
-                        {booking.guest.name}
-                      </h3>
-                    </div>
-                    <div className="flex items-center space-x-1.5 mb-1.5">
-                      <FaUser className="w-3 h-3 text-slate-400" />
-                      <span className="text-xs text-slate-400">{booking.guest.phone}</span>
-                    </div>
-                  </div>
-                  <span className={`badge ${
-                    booking.status === 'CONFIRMED' ? 'badge-success' :
-                    booking.status === 'CHECKED_IN' ? 'badge-info' :
-                    booking.status === 'CHECKED_OUT' ? 'badge-gray' :
-                    booking.status === 'CANCELLED' ? 'badge-danger' :
-                    'badge-warning'
-                  } text-[10px] px-2 py-0.5 ml-2 flex-shrink-0`}>
-                    {booking.status}
-                  </span>
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <FaCheckCircle className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs text-emerald-400 font-medium">Confirmed</span>
                 </div>
-
-                <div className="space-y-2 mb-4 relative z-10">
-                  <div className="flex items-center space-x-2 text-xs">
-                    <FaHome className="w-3 h-3 text-slate-400" />
-                    <span className="text-slate-400">Room</span>
-                    <span className="text-slate-200 font-semibold">
-                      {booking.room.roomNumber} ({booking.room.roomType})
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs whitespace-nowrap">
-                    <FaClock className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                    <span className="text-slate-400">Check-in:</span>
-                    <span className="text-slate-200 font-medium">
-                      {new Date(booking.checkIn).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs whitespace-nowrap">
-                    <FaClock className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                    <span className="text-slate-400">Check-out:</span>
-                    <span className="text-slate-200 font-medium">
-                      {new Date(booking.checkOut).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                    <span className="text-slate-400 text-xs">Total Amount</span>
-                    <span className="text-lg font-bold text-sky-400">
-                      ₹{booking.totalAmount.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-3 border-t border-white/5 relative z-10">
-                  <a
-                    href={`/bookings/${booking.id}`}
-                    className="flex-1 min-w-[80px] h-8 text-sky-400 hover:text-sky-300 font-medium text-xs rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1"
-                  >
-                    <FaEdit className="w-3 h-3" />
-                    <span>View</span>
-                  </a>
-                  {booking.status === 'CONFIRMED' && (
-                    <button
-                      onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')}
-                      className="flex-1 min-w-[80px] h-8 text-sky-400 hover:text-sky-300 font-medium text-xs rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1"
-                    >
-                      <FaCheckCircle className="w-3 h-3" />
-                      <span>Check In</span>
-                    </button>
-                  )}
-                  {booking.status === 'CHECKED_IN' && (
-                    <button
-                      onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')}
-                      className="flex-1 min-w-[80px] h-8 text-sky-400 hover:text-sky-300 font-medium text-xs rounded-lg hover:bg-sky-500/10 transition-colors border border-sky-500/20 flex items-center justify-center space-x-1"
-                    >
-                      <FaDoorOpen className="w-3 h-3" />
-                      <span>Check Out</span>
-                    </button>
-                  )}
-                  {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
-                    <button
-                      onClick={() => setCancelModal({ show: true, bookingId: booking.id })}
-                      className="flex-1 min-w-[80px] h-8 text-red-400 hover:text-red-300 font-medium text-xs rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1"
-                    >
-                      <FaTrash className="w-3 h-3" />
-                      <span>Cancel</span>
-                    </button>
-                  )}
-                  {booking.billNumber && (
-                    <a
-                      href={`/bills/${booking.id}`}
-                      className="flex-1 min-w-[80px] h-8 text-emerald-400 hover:text-emerald-300 font-medium text-xs rounded-lg hover:bg-emerald-500/10 transition-colors border border-emerald-500/20 flex items-center justify-center space-x-1"
-                    >
-                      <FaMoneyBillWave className="w-3 h-3" />
-                      <span>Bill</span>
-                    </a>
-                  )}
-                  {booking.status === 'CHECKED_OUT' && (
-                    <button
-                      onClick={() => setDeleteModal({ show: true, bookingId: booking.id })}
-                      className="flex-1 min-w-[80px] h-8 text-red-400 hover:text-red-300 font-medium text-xs rounded-lg hover:bg-red-500/10 transition-colors border border-red-500/20 flex items-center justify-center space-x-1"
-                    >
-                      <FaTrash className="w-3 h-3" />
-                      <span>Delete</span>
-                    </button>
-                  )}
-                </div>
+                <p className="text-2xl font-bold text-white">{bookings.filter((b: any) => b.status === 'CONFIRMED').length}</p>
               </div>
+              <div className="bg-gradient-to-br from-sky-500/10 to-sky-600/5 border border-sky-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <FaDoorOpen className="w-4 h-4 text-sky-400" />
+                  <span className="text-xs text-sky-400 font-medium">Checked In</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{bookings.filter((b: any) => b.status === 'CHECKED_IN').length}</p>
+              </div>
+              <div className="bg-gradient-to-br from-slate-500/10 to-slate-600/5 border border-slate-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <FaClock className="w-4 h-4 text-slate-400" />
+                  <span className="text-xs text-slate-400 font-medium">Checked Out</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{bookings.filter((b: any) => b.status === 'CHECKED_OUT').length}</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <FaMoneyBillWave className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs text-amber-400 font-medium">Total Revenue</span>
+                </div>
+                <p className="text-xl font-bold text-white">₹{bookings.reduce((sum: number, b: any) => sum + (b.totalAmount || 0), 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            {/* Bookings Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {bookings.map((booking: any) => (
+                <div
+                  key={booking.id}
+                  className={`relative overflow-hidden rounded-2xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl ${
+                    booking.status === 'CONFIRMED' ? 'bg-gradient-to-br from-slate-800/80 to-emerald-900/20 border-emerald-500/20 hover:border-emerald-500/40' :
+                    booking.status === 'CHECKED_IN' ? 'bg-gradient-to-br from-slate-800/80 to-sky-900/20 border-sky-500/20 hover:border-sky-500/40' :
+                    booking.status === 'CHECKED_OUT' ? 'bg-gradient-to-br from-slate-800/80 to-slate-700/20 border-slate-500/20 hover:border-slate-500/40' :
+                    booking.status === 'CANCELLED' ? 'bg-gradient-to-br from-slate-800/80 to-red-900/20 border-red-500/20 hover:border-red-500/40' :
+                    'bg-gradient-to-br from-slate-800/80 to-amber-900/20 border-amber-500/20 hover:border-amber-500/40'
+                  }`}
+                >
+                  {/* Status Ribbon */}
+                  <div className={`absolute top-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-bl-xl ${
+                    booking.status === 'CONFIRMED' ? 'bg-emerald-500 text-white' :
+                    booking.status === 'CHECKED_IN' ? 'bg-sky-500 text-white' :
+                    booking.status === 'CHECKED_OUT' ? 'bg-slate-500 text-white' :
+                    booking.status === 'CANCELLED' ? 'bg-red-500 text-white' :
+                    'bg-amber-500 text-white'
+                  }`}>
+                    {booking.status.replace('_', ' ')}
+                  </div>
+
+                  <div className="p-5">
+                    {/* Guest Info */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg ${
+                        booking.status === 'CONFIRMED' ? 'bg-gradient-to-br from-emerald-400 to-emerald-600' :
+                        booking.status === 'CHECKED_IN' ? 'bg-gradient-to-br from-sky-400 to-sky-600' :
+                        booking.status === 'CHECKED_OUT' ? 'bg-gradient-to-br from-slate-400 to-slate-600' :
+                        'bg-gradient-to-br from-amber-400 to-amber-600'
+                      }`}>
+                        {booking.guest.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold text-white truncate">{booking.guest.name}</h3>
+                        <p className="text-sm text-slate-400">{booking.guest.phone}</p>
+                        <p className="text-xs text-slate-500 font-mono">#{booking.bookingId || booking.id.slice(0, 8)}</p>
+                      </div>
+                    </div>
+
+                    {/* Booking Details */}
+                    <div className="space-y-3 mb-4">
+                      {/* Room */}
+                      <div className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-xl">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' : 'bg-slate-700/50 text-slate-400'
+                        }`}>
+                          <FaHome className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Room</p>
+                          <p className="text-base font-semibold text-white">{booking.room.roomNumber} <span className="text-sm font-normal text-slate-400">• {booking.room.roomType}</span></p>
+                        </div>
+                      </div>
+
+                      {/* Dates */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-3 bg-slate-900/50 rounded-xl">
+                          <div className="flex items-center gap-2 mb-1">
+                            <FaCalendarAlt className="w-3 h-3 text-emerald-400" />
+                            <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-medium">Check-in</p>
+                          </div>
+                          <p className="text-sm font-semibold text-white">{new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
+                          <p className="text-xs text-slate-500">{new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <div className="p-3 bg-slate-900/50 rounded-xl">
+                          <div className="flex items-center gap-2 mb-1">
+                            <FaCalendarAlt className="w-3 h-3 text-red-400" />
+                            <p className="text-[10px] text-red-400 uppercase tracking-wider font-medium">Check-out</p>
+                          </div>
+                          <p className="text-sm font-semibold text-white">{new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
+                          <p className="text-xs text-slate-500">{new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+
+                      {/* Amount */}
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-500/10 to-transparent rounded-xl border border-emerald-500/20">
+                        <div>
+                          <p className="text-xs text-slate-400">Total Amount</p>
+                          <p className="text-2xl font-bold text-emerald-400">₹{booking.totalAmount.toLocaleString()}</p>
+                        </div>
+                        {booking.billNumber && (
+                          <a
+                            href={`/bills/${booking.id}`}
+                            className="px-4 py-2 text-xs font-semibold text-emerald-400 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-xl transition-colors flex items-center gap-2"
+                          >
+                            <FaMoneyBillWave className="w-4 h-4" />
+                            Bill
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-3 border-t border-white/5">
+                      <a
+                        href={`/bookings/${booking.id}`}
+                        className="flex-1 py-2.5 text-center text-sm font-medium text-white bg-slate-700/50 hover:bg-slate-600/50 rounded-xl transition-colors flex items-center justify-center gap-2"
+                      >
+                        <FaEdit className="w-4 h-4" />
+                        View
+                      </a>
+                      {booking.status === 'CONFIRMED' && (
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')}
+                          className="flex-1 py-2.5 text-center text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2"
+                        >
+                          <FaCheckCircle className="w-4 h-4" />
+                          Check In
+                        </button>
+                      )}
+                      {booking.status === 'CHECKED_IN' && (
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')}
+                          className="flex-1 py-2.5 text-center text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 rounded-xl transition-all shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2"
+                        >
+                          <FaDoorOpen className="w-4 h-4" />
+                          Check Out
+                        </button>
+                      )}
+                      {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                        <button
+                          onClick={() => setCancelModal({ show: true, bookingId: booking.id })}
+                          className="py-2.5 px-3 text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-colors"
+                          title="Cancel"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </button>
+                      )}
+                      {booking.status === 'CHECKED_OUT' && (
+                        <button
+                          onClick={() => setDeleteModal({ show: true, bookingId: booking.id })}
+                          className="py-2.5 px-3 text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-colors"
+                          title="Delete"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
 
