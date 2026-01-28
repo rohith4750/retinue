@@ -115,8 +115,8 @@ export async function GET(request: NextRequest) {
         category: t.inventory?.category || '',
         type: t.type,
         quantity: t.quantity,
-        reason: t.reason,
-        performedBy: t.performedBy,
+        notes: t.notes || '',
+        reference: t.reference || '',
         createdAt: t.createdAt,
       }))
     } catch (err: any) {
@@ -138,9 +138,8 @@ export async function GET(request: NextRequest) {
         staffRole: a.staff?.role || '',
         date: a.date,
         status: a.status,
-        checkIn: a.checkIn,
-        checkOut: a.checkOut,
-        notes: a.notes,
+        notes: a.notes || '',
+        createdAt: a.createdAt,
       }))
     } catch (err: any) {
       results.errors.push({ table: 'Attendance', error: err.message, phase: 'fetch' })
