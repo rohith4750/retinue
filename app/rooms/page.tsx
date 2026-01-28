@@ -87,6 +87,19 @@ export default function RoomsPage() {
     return date
   })
 
+  // In calendar: show "Checked In" only on today's column, not future days.
+  const getBookingDisplayStatusForDate = (booking: any, date: Date) => {
+    if (!booking) return null
+    if (booking.status !== 'CHECKED_IN') return booking.status
+
+    const day = new Date(date)
+    day.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    return day.getTime() === today.getTime() ? 'CHECKED_IN' : 'CONFIRMED'
+  }
+
   // Check if a room is booked on a specific date
   const getRoomBookingForDate = (roomId: string, date: Date) => {
     const dateStart = new Date(date)
@@ -462,30 +475,31 @@ export default function RoomsPage() {
                       {calendarDays.map((date, i) => {
                         const booking = getRoomBookingForDate(room.id, date)
                         const isToday = date.toDateString() === new Date().toDateString()
+                        const displayStatus = booking ? getBookingDisplayStatusForDate(booking, date) : null
                         return (
                           <td key={i} className={`px-1 py-1 ${isToday ? 'bg-sky-500/5' : ''}`}>
                             {booking ? (
                               <div 
                                 className={`px-2 py-1.5 rounded-lg text-center cursor-pointer transition-all hover:scale-[1.02] ${
-                                  booking.status === 'CHECKED_IN' ? 'bg-sky-500/30 border border-sky-500/50' :
-                                  booking.status === 'CONFIRMED' ? 'bg-emerald-500/30 border border-emerald-500/50' :
+                                  displayStatus === 'CHECKED_IN' ? 'bg-sky-500/30 border border-sky-500/50' :
+                                  displayStatus === 'CONFIRMED' ? 'bg-emerald-500/30 border border-emerald-500/50' :
                                   'bg-amber-500/30 border border-amber-500/50'
                                 }`}
-                                title={`${booking.guest?.name || 'Guest'} - ${booking.status}`}
+                                title={`${booking.guest?.name || 'Guest'} - ${displayStatus}`}
                               >
                                 <p className={`text-[10px] font-semibold truncate ${
-                                  booking.status === 'CHECKED_IN' ? 'text-sky-300' :
-                                  booking.status === 'CONFIRMED' ? 'text-emerald-300' :
+                                  displayStatus === 'CHECKED_IN' ? 'text-sky-300' :
+                                  displayStatus === 'CONFIRMED' ? 'text-emerald-300' :
                                   'text-amber-300'
                                 }`}>
                                   {booking.guest?.name?.split(' ')[0] || 'Guest'}
                                 </p>
                                 <p className={`text-[8px] ${
-                                  booking.status === 'CHECKED_IN' ? 'text-sky-400' :
-                                  booking.status === 'CONFIRMED' ? 'text-emerald-400' :
+                                  displayStatus === 'CHECKED_IN' ? 'text-sky-400' :
+                                  displayStatus === 'CONFIRMED' ? 'text-emerald-400' :
                                   'text-amber-400'
                                 }`}>
-                                  {booking.status === 'CHECKED_IN' ? 'In' : booking.status === 'CONFIRMED' ? 'Conf' : 'Pend'}
+                                  {displayStatus === 'CHECKED_IN' ? 'In' : displayStatus === 'CONFIRMED' ? 'Conf' : 'Pend'}
                                 </p>
                               </div>
                             ) : (
