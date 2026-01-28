@@ -28,6 +28,8 @@ export default function UsersPage() {
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.get('/auth/users'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const updateUserMutation = useMutation({

@@ -134,6 +134,8 @@ function NewBookingContent() {
       // Otherwise, fetch all non-maintenance rooms
       return api.get('/rooms/available')
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Extract rooms array from response

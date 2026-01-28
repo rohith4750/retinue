@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api.get('/dashboard'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   if (isLoading) {

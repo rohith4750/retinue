@@ -31,6 +31,8 @@ export default function BookingHistoryPage() {
   const { data: historyResponse, isLoading } = useQuery({
     queryKey: ['booking-history', page, filters],
     queryFn: () => api.get(`/bookings/history?${queryParams.toString()}`),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const history = historyResponse?.data || []

@@ -23,6 +23,8 @@ export default function BookingDetailPage() {
   const { data: booking, isLoading } = useQuery({
     queryKey: ['booking', bookingId],
     queryFn: () => api.get(`/bookings/${bookingId}`),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Phase 3: Booking modification mutation

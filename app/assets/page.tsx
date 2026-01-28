@@ -147,7 +147,8 @@ export default function AssetsPage() {
     if (userData) {
       const parsed = JSON.parse(userData)
       setUser(parsed)
-      if (parsed.role !== 'SUPER_ADMIN') {
+      // Allow SUPER_ADMIN, ADMIN, and RECEPTIONIST to access
+      if (!['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'].includes(parsed.role)) {
         router.push('/dashboard')
       }
     }
@@ -157,21 +158,27 @@ export default function AssetsPage() {
   const { data: assetsData, isLoading } = useQuery({
     queryKey: ['asset-locations'],
     queryFn: () => api.get('/asset-locations'),
-    enabled: mounted && user?.role === 'SUPER_ADMIN',
+    enabled: mounted && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'RECEPTIONIST'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Fetch rooms
   const { data: roomsData } = useQuery({
     queryKey: ['rooms'],
     queryFn: () => api.get('/rooms'),
-    enabled: mounted && user?.role === 'SUPER_ADMIN'
+    enabled: mounted && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'RECEPTIONIST'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Fetch function halls
   const { data: hallsData } = useQuery({
     queryKey: ['function-halls'],
     queryFn: () => api.get('/function-halls'),
-    enabled: mounted && user?.role === 'SUPER_ADMIN'
+    enabled: mounted && (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'RECEPTIONIST'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Process data

@@ -32,6 +32,8 @@ export default function InventoryPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => api.get('/inventory'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const items = data?.items || []

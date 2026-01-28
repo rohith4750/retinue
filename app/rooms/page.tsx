@@ -58,6 +58,8 @@ export default function RoomsPage() {
       }
       return api.get(`/rooms?${params.toString()}`)
     },
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always',
   })
 
   // Extract rooms array from response (handles both /rooms and /rooms/available responses)

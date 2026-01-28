@@ -49,8 +49,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Allow ADMIN and SUPER_ADMIN to update
-    const authResult = await requireAuth('ADMIN')(request)
+    // Allow RECEPTIONIST, ADMIN, SUPER_ADMIN to update
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const { id } = await params

@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
 // POST - Create/Assign asset to location
 export async function POST(request: NextRequest) {
   try {
-    // Allow ADMIN and SUPER_ADMIN to assign assets
-    const authResult = await requireAuth('ADMIN')(request)
+    // Allow RECEPTIONIST, ADMIN, SUPER_ADMIN to assign assets
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
     const body = await request.json()

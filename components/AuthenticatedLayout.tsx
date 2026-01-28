@@ -18,10 +18,21 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const sessionInitialized = useRef(false)
+  const validationInProgress = useRef(false)
 
   // Pages that don't need authentication
   const publicPaths = ['/login', '/forgot-password', '/reset-password']
   const isPublicPath = publicPaths.some(path => pathname?.startsWith(path))
+
+  // Clear auth and redirect to login
+  const clearAuthAndRedirect = useCallback(() => {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('user')
+    localStorage.removeItem('rememberMe')
+    clearSessionTimeout()
+    sessionInitialized.current = false
+    router.push('/login')
+  }, [router])
 
   // Session timeout handler - only trigger if actually authenticated and session was initialized
   const handleSessionTimeout = useCallback(() => {
@@ -31,15 +42,37 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     }
     
     toast.error('Session expired. Please login again.')
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('user')
-    localStorage.removeItem('rememberMe')
-    clearSessionTimeout()
-    sessionInitialized.current = false
-    router.push('/login')
-  }, [router])
+    clearAuthAndRedirect()
+  }, [clearAuthAndRedirect])
+
+  // Validate token with server using lightweight endpoint
+  const validateToken = useCallback(async (accessToken: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/validate', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      // If we get 401, token is invalid
+      if (response.status === 401) {
+        return false
+      }
+      
+      // Any successful response means token is valid
+      return response.ok
+    } catch (error) {
+      console.error('Token validation error:', error)
+      return false
+    }
+  }, [])
 
   useEffect(() => {
+    // Prevent duplicate validation
+    if (validationInProgress.current) return
+    
     if (isPublicPath) {
       setIsLoading(false)
       clearSessionTimeout() // Clear any existing timeout on public pages
@@ -54,16 +87,38 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       // Not authenticated - redirect to login without showing timeout message
       router.push('/login')
       setIsLoading(false)
-    } else {
+      return
+    }
+    
+    // Validate token with server
+    validationInProgress.current = true
+    validateToken(accessToken).then((isValid) => {
+      validationInProgress.current = false
+      
+      if (!isValid) {
+        // Token is invalid - clear and redirect
+        console.log('Token validation failed, redirecting to login')
+        clearAuthAndRedirect()
+        setIsLoading(false)
+        return
+      }
+      
+      // Token is valid
       setIsAuthenticated(true)
+      setIsLoading(false)
+      
       // Initialize session timeout after a small delay to prevent race conditions
       setTimeout(() => {
         initSessionTimeout(handleSessionTimeout)
         sessionInitialized.current = true
       }, 500)
-    }
-    setIsLoading(false)
-  }, [router, isPublicPath, handleSessionTimeout])
+    }).catch(() => {
+      validationInProgress.current = false
+      // On error, still allow if we have local data (offline support)
+      setIsAuthenticated(true)
+      setIsLoading(false)
+    })
+  }, [router, isPublicPath, handleSessionTimeout, validateToken, clearAuthAndRedirect])
 
   // Setup session listeners when authenticated
   useEffect(() => {

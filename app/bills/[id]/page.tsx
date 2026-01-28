@@ -28,6 +28,8 @@ export default function BillPage({ params }: { params: { id: string } }) {
   const { data: bill, isLoading } = useQuery({
     queryKey: ['bill', billId],
     queryFn: () => api.get(`/bills/${billId}`),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const queryClient = useQueryClient()

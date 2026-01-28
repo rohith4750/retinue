@@ -43,7 +43,9 @@ export default function FunctionHallsPage() {
       const params = new URLSearchParams()
       if (debouncedSearch) params.append('search', debouncedSearch)
       return api.get(`/function-halls?${params.toString()}`)
-    }
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const halls = isCheckingAvailability ? (hallsData?.halls || []) : (hallsData || [])

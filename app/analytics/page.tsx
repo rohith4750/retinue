@@ -24,7 +24,9 @@ export default function AnalyticsPage() {
   const { data: analytics, isLoading } = useQuery({
     queryKey: ['predictions'],
     queryFn: () => api.get('/analytics/predictions'),
-    enabled: user?.role === 'SUPER_ADMIN'
+    enabled: user?.role === 'SUPER_ADMIN',
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   if (user?.role !== 'SUPER_ADMIN') {

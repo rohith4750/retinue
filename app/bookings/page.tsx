@@ -78,6 +78,8 @@ export default function BookingsPage() {
       }
       return api.get(`/bookings?${params.toString()}`)
     },
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always', // Refetch when component mounts
   })
 
   // Handle new API response format: { data: [...], pagination: {...} }

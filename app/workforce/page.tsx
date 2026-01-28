@@ -87,6 +87,8 @@ export default function WorkforcePage() {
     queryKey: ['staff'],
     queryFn: () => api.get('/staff'),
     enabled: !!user && isAllowed,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Fetch salary payments for selected month
@@ -95,6 +97,7 @@ export default function WorkforcePage() {
     queryFn: () => api.get(`/salary-payments?year=${selectedYear}&month=${selectedMonth}`),
     enabled: !!user && isAllowed,
     staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Parse data - handle both array and wrapped responses

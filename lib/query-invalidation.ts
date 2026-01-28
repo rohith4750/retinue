@@ -81,6 +81,8 @@ export function getRelatedQueryKeys(endpoint: string): string[] {
 
 /**
  * Invalidate all related queries for an endpoint
+ * Uses partial matching to invalidate queries that START with the key
+ * e.g., invalidating 'bookings' will also invalidate ['bookings', 1, 'search']
  */
 export function invalidateRelatedQueries(
   queryClient: any,
@@ -89,6 +91,15 @@ export function invalidateRelatedQueries(
   const relatedKeys = getRelatedQueryKeys(endpoint)
   
   relatedKeys.forEach((key) => {
-    queryClient.invalidateQueries({ queryKey: [key] })
+    // Use predicate to match any query that starts with this key
+    queryClient.invalidateQueries({
+      predicate: (query: any) => {
+        const queryKey = query.queryKey
+        if (Array.isArray(queryKey) && queryKey.length > 0) {
+          return queryKey[0] === key
+        }
+        return false
+      }
+    })
   })
 }
