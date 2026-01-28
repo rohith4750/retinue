@@ -4,6 +4,7 @@ import './globals.css'
 import { ReactQueryProvider } from '@/lib/react-query'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AuthenticatedLayout } from '@/components/AuthenticatedLayout'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 const poppins = Poppins({ 
   subsets: ['latin'],
@@ -28,13 +29,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={poppins.variable}>
+    <html lang="en" className={poppins.variable} data-theme="dark" suppressHydrationWarning>
       <body className={`${poppins.className} antialiased`}>
         <ErrorBoundary>
           <ReactQueryProvider>
-            <AuthenticatedLayout>
-              {children}
-            </AuthenticatedLayout>
+            <ThemeProvider>
+              <AuthenticatedLayout>
+                {children}
+              </AuthenticatedLayout>
+            </ThemeProvider>
           </ReactQueryProvider>
         </ErrorBoundary>
       </body>

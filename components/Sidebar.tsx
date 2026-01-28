@@ -94,7 +94,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 bg-slate-900/80 backdrop-blur-xl border-r border-white/5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] z-40 transition-transform duration-300 overflow-y-auto sidebar-scrollbar ${
+        className={`fixed left-0 top-0 h-full w-64 app-sidebar backdrop-blur-xl border-r shadow-[0_18px_60px_rgba(15,23,42,0.25)] z-40 transition-transform duration-300 overflow-y-auto sidebar-scrollbar ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

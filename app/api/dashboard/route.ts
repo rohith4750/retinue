@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const authResult = await requireAuth()(request)
     if (authResult instanceof Response) return authResult
 
+    const now = new Date()
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
@@ -124,6 +125,39 @@ export async function GET(request: NextRequest) {
       _count: true,
     })
 
+    // Customer / Guest type analytics (from bookings via guest)
+    const bookingsWithGuest = await prisma.booking.findMany({
+      where: { status: { not: 'CANCELLED' } },
+      select: {
+        totalAmount: true,
+        paidAmount: true,
+        createdAt: true,
+        guest: { select: { guestType: true } },
+      },
+    })
+    const guestTypeAllTime: Record<string, { count: number; revenue: number }> = {}
+    const guestTypeThisMonth: Record<string, { count: number; revenue: number }> = {}
+    const guestTypeLabels: Record<string, string> = {
+      WALK_IN: 'Walk-in',
+      CORPORATE: 'Corporate',
+      OTA: 'OTA',
+      GOVERNMENT: 'Government',
+      REGULAR: 'Regular',
+      AGENT: 'Agent',
+      FAMILY: 'Family',
+    }
+    for (const b of bookingsWithGuest) {
+      const type = b.guest?.guestType || 'WALK_IN'
+      if (!guestTypeAllTime[type]) guestTypeAllTime[type] = { count: 0, revenue: 0 }
+      guestTypeAllTime[type].count += 1
+      guestTypeAllTime[type].revenue += b.paidAmount || 0
+      if (b.createdAt >= startOfMonth) {
+        if (!guestTypeThisMonth[type]) guestTypeThisMonth[type] = { count: 0, revenue: 0 }
+        guestTypeThisMonth[type].count += 1
+        guestTypeThisMonth[type].revenue += b.paidAmount || 0
+      }
+    }
+
     // Room type distribution
     const roomsByType = await prisma.room.groupBy({
       by: ['roomType'],
@@ -135,6 +169,11 @@ export async function GET(request: NextRequest) {
     let hallBookingsThisMonth = 0
     let hallRevenueThisMonth = 0
     let recentHallBookings: any[] = []
+    let hallTodayBookings = 0
+    let hallUpcoming7Days = 0
+    let hallStatusThisMonth: Record<string, number> = {}
+    let hallEventTypesThisMonth: Array<{ eventType: string; count: number }> = []
+    let topHallsThisMonth: Array<{ hallId: string; name: string; revenue: number; bookings: number }> = []
 
     try {
       // @ts-ignore - Prisma types may not be updated
@@ -160,6 +199,76 @@ export async function GET(request: NextRequest) {
         },
       })
       hallRevenueThisMonth = hallRevenueData._sum.advanceAmount || 0
+
+      // Today events (by eventDate)
+      // @ts-ignore
+      hallTodayBookings = await prisma.functionHallBooking.count({
+        where: {
+          eventDate: { gte: today, lt: tomorrow },
+          status: { notIn: ['CANCELLED'] },
+        },
+      })
+
+      // Upcoming events (next 7 days)
+      const nextWeekForHalls = new Date(today)
+      nextWeekForHalls.setDate(nextWeekForHalls.getDate() + 7)
+      // @ts-ignore
+      hallUpcoming7Days = await prisma.functionHallBooking.count({
+        where: {
+          eventDate: { gte: today, lt: nextWeekForHalls },
+          status: { in: ['PENDING', 'CONFIRMED'] },
+        },
+      })
+
+      // Status breakdown (this month)
+      // @ts-ignore
+      const hallStatusRows = await prisma.functionHallBooking.groupBy({
+        by: ['status'],
+        where: { createdAt: { gte: startOfMonth } },
+        _count: true,
+      })
+      hallStatusThisMonth = hallStatusRows.reduce((acc: any, r: any) => {
+        acc[r.status] = r._count
+        return acc
+      }, {})
+
+      // Event types breakdown (this month)
+      const hallEventTypeRows = (await (prisma as any).functionHallBooking.groupBy({
+        by: ['eventType'],
+        where: { createdAt: { gte: startOfMonth }, status: { notIn: ['CANCELLED'] } },
+        _count: true,
+        take: 20,
+      })) as any[]
+      hallEventTypesThisMonth = hallEventTypeRows
+        .map((r: any) => ({ eventType: r.eventType, count: r._count }))
+        .sort((a: any, b: any) => b.count - a.count)
+        .slice(0, 6)
+
+      // Top halls by booked value this month (sum of totalAmount)
+      // @ts-ignore
+      const topHallGroups = await prisma.functionHallBooking.groupBy({
+        by: ['hallId'],
+        where: { createdAt: { gte: startOfMonth }, status: { notIn: ['CANCELLED'] } },
+        _count: true,
+        _sum: { totalAmount: true },
+        orderBy: { _sum: { totalAmount: 'desc' } },
+        take: 5,
+      })
+      const topHallIds = topHallGroups.map((g: any) => g.hallId)
+      // @ts-ignore
+      const topHallMeta = await prisma.functionHall.findMany({
+        where: { id: { in: topHallIds } },
+        select: { id: true, name: true },
+      })
+      topHallsThisMonth = topHallGroups.map((g: any) => {
+        const meta = topHallMeta.find((h: any) => h.id === g.hallId)
+        return {
+          hallId: g.hallId,
+          name: meta?.name || '—',
+          revenue: g._sum?.totalAmount || 0,
+          bookings: g._count || 0,
+        }
+      })
 
       // @ts-ignore - Prisma types may not include FunctionHallBooking relations
       recentHallBookings = await (prisma.functionHallBooking as any).findMany({
@@ -296,6 +405,82 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    // Payment health (this month)
+    const paymentStatusThisMonth = await prisma.booking.groupBy({
+      by: ['paymentStatus'],
+      where: {
+        createdAt: { gte: startOfMonth },
+        status: { not: 'CANCELLED' },
+      },
+      _count: true,
+    })
+
+    // Operational alerts
+    const overdueCheckouts = await prisma.booking.count({
+      where: {
+        status: 'CHECKED_IN',
+        checkOut: { lt: now },
+      },
+    })
+    // @ts-ignore - Prisma types may be outdated (flexibleCheckout)
+    const flexibleCheckoutActive = await (prisma.booking as any).count({
+      where: { status: 'CHECKED_IN', flexibleCheckout: true },
+    })
+    const maintenanceRooms = await prisma.room.count({
+      where: { status: 'MAINTENANCE' },
+    })
+
+    // Stay metrics (this month)
+    const monthStayRows = await prisma.booking.findMany({
+      where: {
+        createdAt: { gte: startOfMonth },
+        status: { not: 'CANCELLED' },
+      },
+      select: { checkIn: true, checkOut: true, totalAmount: true, paidAmount: true },
+      take: 3000,
+    })
+    let stayHoursSum = 0
+    let stayCount = 0
+    for (const b of monthStayRows) {
+      const diffMs = new Date(b.checkOut).getTime() - new Date(b.checkIn).getTime()
+      if (Number.isFinite(diffMs) && diffMs > 0) {
+        stayHoursSum += diffMs / (1000 * 60 * 60)
+        stayCount += 1
+      }
+    }
+    const avgStayHoursThisMonth = stayCount > 0 ? Math.round((stayHoursSum / stayCount) * 10) / 10 : 0
+    const avgBookingValueThisMonth =
+      monthBookings > 0 ? Math.round(((monthRevenue._sum.paidAmount || 0) / monthBookings) * 100) / 100 : 0
+
+    // Top rooms this month by paid revenue
+    const topRoomGroups = await prisma.booking.groupBy({
+      by: ['roomId'],
+      where: {
+        createdAt: { gte: startOfMonth },
+        status: { not: 'CANCELLED' },
+      },
+      _sum: { paidAmount: true },
+      orderBy: { _sum: { paidAmount: 'desc' } },
+      take: 5,
+    })
+    const topRoomIds = topRoomGroups.map((g) => g.roomId)
+    const topRoomsMeta = topRoomIds.length
+      ? await prisma.room.findMany({
+          where: { id: { in: topRoomIds } },
+          select: { id: true, roomNumber: true, roomType: true, floor: true },
+        })
+      : []
+    const topRoomsThisMonth = topRoomGroups.map((g) => {
+      const meta = topRoomsMeta.find((r) => r.id === g.roomId)
+      return {
+        roomId: g.roomId,
+        roomNumber: meta?.roomNumber || '—',
+        roomType: meta?.roomType || '—',
+        floor: meta?.floor ?? null,
+        revenue: g._sum.paidAmount || 0,
+      }
+    })
+
     // Calculate occupancy rate
     const occupancyRate = totalRooms > 0 ? Math.round((bookedRooms / totalRooms) * 100) : 0
 
@@ -332,6 +517,11 @@ export async function GET(request: NextRequest) {
       totalHalls,
       hallBookingsThisMonth,
       hallRevenueThisMonth,
+      hallTodayBookings,
+      hallUpcoming7Days,
+      hallStatusThisMonth,
+      hallEventTypesThisMonth,
+      topHallsThisMonth,
       
       // Other stats
       lowStockAlerts: lowStockItems.length,
@@ -348,6 +538,9 @@ export async function GET(request: NextRequest) {
         acc[item.roomType] = item._count
         return acc
       }, {}),
+      bookingsByGuestType: guestTypeAllTime,
+      bookingsByGuestTypeThisMonth: guestTypeThisMonth,
+      guestTypeLabels,
       
       // Trends
       weeklyRevenue,
@@ -356,6 +549,18 @@ export async function GET(request: NextRequest) {
       // Recent activities
       recentBookings,
       recentHallBookings,
+
+      // More analytics
+      paymentStatusThisMonth: paymentStatusThisMonth.reduce((acc: any, item) => {
+        acc[item.paymentStatus] = item._count
+        return acc
+      }, {}),
+      avgStayHoursThisMonth,
+      avgBookingValueThisMonth,
+      overdueCheckouts,
+      flexibleCheckoutActive,
+      maintenanceRooms,
+      topRoomsThisMonth,
     }
 
     return Response.json(successResponse(stats))

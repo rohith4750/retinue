@@ -147,7 +147,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen app-shell flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-700 border-t-sky-500 rounded-full animate-spin" />
       </div>
     )
@@ -160,7 +160,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 
   // Authenticated layout
   return (
-    <div className="min-h-screen relative flex bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen relative flex app-shell">
       {/* Sidebar */}
       <Sidebar />
       

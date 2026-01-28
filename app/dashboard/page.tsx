@@ -8,8 +8,19 @@ import {
   FaHome, FaCheckCircle, FaCalendarAlt, FaDollarSign, FaExclamationTriangle, 
   FaBox, FaUsers, FaArrowUp, FaArrowDown, FaBed, FaBuilding, FaClock,
   FaChartLine, FaUserPlus, FaClipboardList, FaMoneyBillWave, FaPercentage,
-  FaCalendarCheck, FaSignOutAlt, FaSignInAlt, FaTachometerAlt
+  FaCalendarCheck, FaSignOutAlt, FaSignInAlt, FaTachometerAlt, FaUserTag
 } from 'react-icons/fa'
+
+const GUEST_TYPE_ORDER = ['WALK_IN', 'CORPORATE', 'OTA', 'REGULAR', 'FAMILY', 'GOVERNMENT', 'AGENT']
+const GUEST_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
+  WALK_IN: { bar: 'bg-violet-500', bg: 'bg-violet-500/20', text: 'text-violet-400' },
+  CORPORATE: { bar: 'bg-sky-500', bg: 'bg-sky-500/20', text: 'text-sky-400' },
+  OTA: { bar: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-400' },
+  REGULAR: { bar: 'bg-emerald-500', bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
+  FAMILY: { bar: 'bg-rose-500', bg: 'bg-rose-500/20', text: 'text-rose-400' },
+  GOVERNMENT: { bar: 'bg-indigo-500', bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
+  AGENT: { bar: 'bg-teal-500', bg: 'bg-teal-500/20', text: 'text-teal-400' },
+}
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
@@ -327,6 +338,303 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Customer Type Analytics */}
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 overflow-hidden">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <FaUserTag className="text-violet-400" />
+                Customer Type Analytics
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Bookings & revenue by guest type</p>
+            </div>
+          </div>
+          <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
+            {/* Bookings by customer type (all time) */}
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-4">Bookings by type (all time)</p>
+              <div className="space-y-4">
+                {GUEST_TYPE_ORDER.map((type) => {
+                  const data = stats?.bookingsByGuestType?.[type] || { count: 0, revenue: 0 }
+                  const label = stats?.guestTypeLabels?.[type] || type.replace(/_/g, ' ')
+                  const totalBookings = Object.values(stats?.bookingsByGuestType || {}).reduce((s: number, v: any) => s + (v?.count || 0), 0)
+                  const pct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 100) : 0
+                  const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
+                  return (
+                    <div key={type}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
+                        <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
+                      </div>
+                      <div className="h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
+                          style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Revenue by customer type this month (admin only) */}
+            {canViewFinance && (
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-4">Revenue this month by type</p>
+                <div className="space-y-4">
+                  {GUEST_TYPE_ORDER.map((type) => {
+                    const data = stats?.bookingsByGuestTypeThisMonth?.[type] || { count: 0, revenue: 0 }
+                    const label = stats?.guestTypeLabels?.[type] || type.replace(/_/g, ' ')
+                    const totalRev = Object.values(stats?.bookingsByGuestTypeThisMonth || {}).reduce((s: number, v: any) => s + (v?.revenue || 0), 0)
+                    const pct = totalRev > 0 ? Math.round((data.revenue / totalRev) * 100) : 0
+                    const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
+                    return (
+                      <div key={type} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-slate-800/40">
+                        <div className={`w-2 h-8 rounded-full ${colors.bar}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${colors.text}`}>{label}</p>
+                          <p className="text-xs text-slate-500">{data.count} booking(s)</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-white">₹{(data.revenue || 0).toLocaleString()}</p>
+                          <p className="text-xs text-slate-500">{pct}% of month</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Hall Analytics */}
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 overflow-hidden">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <FaBuilding className="text-purple-400" />
+                Hall Analytics
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Today, upcoming events, and monthly performance</p>
+            </div>
+          </div>
+
+          {/* KPI Row */}
+          <div className={`grid grid-cols-1 sm:grid-cols-3 ${canViewFinance ? 'lg:grid-cols-4' : ''} gap-4 mb-6`}>
+            <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-4">
+              <p className="text-xs text-slate-400">Today&apos;s events</p>
+              <p className="text-2xl font-bold text-white mt-1">{stats?.hallTodayBookings || 0}</p>
+              <p className="text-[10px] text-slate-500 mt-1">By event date</p>
+            </div>
+            <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-4">
+              <p className="text-xs text-slate-400">Upcoming (7 days)</p>
+              <p className="text-2xl font-bold text-white mt-1">{stats?.hallUpcoming7Days || 0}</p>
+              <p className="text-[10px] text-slate-500 mt-1">Pending + Confirmed</p>
+            </div>
+            <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-4">
+              <p className="text-xs text-slate-400">Bookings this month</p>
+              <p className="text-2xl font-bold text-white mt-1">{stats?.hallBookingsThisMonth || 0}</p>
+              <p className="text-[10px] text-slate-500 mt-1">Created this month</p>
+            </div>
+            {canViewFinance && (
+              <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-4">
+                <p className="text-xs text-slate-400">Revenue this month</p>
+                <p className="text-2xl font-bold text-white mt-1">₹{(stats?.hallRevenueThisMonth || 0).toLocaleString()}</p>
+                <p className="text-[10px] text-slate-500 mt-1">Advance received</p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Status breakdown */}
+            <div className="bg-slate-800/30 border border-white/5 rounded-2xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">Status (this month)</p>
+              <div className="space-y-2">
+                {[
+                  { key: 'CONFIRMED', label: 'Confirmed', color: 'bg-emerald-500', text: 'text-emerald-400' },
+                  { key: 'PENDING', label: 'Pending', color: 'bg-amber-500', text: 'text-amber-400' },
+                  { key: 'COMPLETED', label: 'Completed', color: 'bg-slate-500', text: 'text-slate-300' },
+                  { key: 'CANCELLED', label: 'Cancelled', color: 'bg-red-500', text: 'text-red-400' },
+                ].map((s) => (
+                  <div key={s.key} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-300 flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${s.color}`} />
+                      {s.label}
+                    </span>
+                    <span className={`font-semibold ${s.text}`}>{stats?.hallStatusThisMonth?.[s.key] || 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top halls */}
+            <div className="bg-slate-800/30 border border-white/5 rounded-2xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">Top halls (this month)</p>
+              <div className="space-y-2">
+                {(stats?.topHallsThisMonth || []).slice(0, 5).map((h: any) => (
+                  <div key={h.hallId} className="flex items-center justify-between text-sm">
+                    <div className="min-w-0">
+                      <p className="text-slate-200 font-semibold truncate">{h.name}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{h.bookings || 0} booking(s)</p>
+                    </div>
+                    {canViewFinance ? (
+                      <p className="text-white font-bold">₹{(h.revenue || 0).toLocaleString()}</p>
+                    ) : (
+                      <p className="text-slate-400 font-semibold">{h.bookings || 0}</p>
+                    )}
+                  </div>
+                ))}
+                {(!stats?.topHallsThisMonth || stats.topHallsThisMonth.length === 0) && (
+                  <p className="text-xs text-slate-500">No hall data yet.</p>
+                )}
+              </div>
+              {canViewFinance && (
+                <p className="text-[10px] text-slate-500 mt-2">Ranked by booked value (total amount).</p>
+              )}
+            </div>
+
+            {/* Event types */}
+            <div className="bg-slate-800/30 border border-white/5 rounded-2xl p-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">Top event types (this month)</p>
+              <div className="flex flex-wrap gap-2">
+                {(stats?.hallEventTypesThisMonth || []).slice(0, 6).map((e: any) => (
+                  <span
+                    key={e.eventType}
+                    className="px-2.5 py-1 rounded-full text-xs bg-purple-500/10 border border-purple-500/20 text-purple-300"
+                    title={`${e.count} booking(s)`}
+                  >
+                    {e.eventType} <span className="text-purple-400 font-semibold ml-1">{e.count}</span>
+                  </span>
+                ))}
+                {(!stats?.hallEventTypesThisMonth || stats.hallEventTypesThisMonth.length === 0) && (
+                  <span className="text-xs text-slate-500">No event types yet.</span>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2">Based on bookings created this month.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Operational & Payment Insights */}
+        <div className={`grid grid-cols-1 md:grid-cols-3 ${canViewFinance ? 'lg:grid-cols-4' : ''} gap-4`}>
+          {/* Stay Metrics */}
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-sky-500/20 rounded-xl">
+                  <FaClock className="text-sky-400 text-lg" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">Avg stay (this month)</p>
+                  <p className="text-2xl font-bold text-white">{stats?.avgStayHoursThisMonth || 0}h</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-500">Avg booking value</p>
+                <p className="text-sm font-semibold text-slate-200">₹{(stats?.avgBookingValueThisMonth || 0).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Operational Alerts */}
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <FaExclamationTriangle className="text-amber-400" />
+              <p className="text-sm font-semibold text-white">Operational Alerts</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Overdue checkouts</span>
+                <span className={`font-semibold ${(stats?.overdueCheckouts || 0) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {stats?.overdueCheckouts || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Flexible checkout (TBD)</span>
+                <span className={`font-semibold ${(stats?.flexibleCheckoutActive || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+                  {stats?.flexibleCheckoutActive || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Maintenance rooms</span>
+                <span className={`font-semibold ${(stats?.maintenanceRooms || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+                  {stats?.maintenanceRooms || 0}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Health (Admin only) */}
+          {canViewFinance && (
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FaMoneyBillWave className="text-emerald-400" />
+                <p className="text-sm font-semibold text-white">Payment Health</p>
+              </div>
+              <div className="flex items-end justify-between mb-3">
+                <div>
+                  <p className="text-xs text-slate-400">Outstanding</p>
+                  <p className="text-xl font-bold text-white">₹{(stats?.pendingPayments || 0).toLocaleString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-slate-500">This month</p>
+                  <p className="text-xs text-slate-300">
+                    Paid: <span className="text-emerald-400 font-semibold">{stats?.paymentStatusThisMonth?.PAID || 0}</span>{' '}
+                    • Partial: <span className="text-amber-400 font-semibold">{stats?.paymentStatusThisMonth?.PARTIAL || 0}</span>{' '}
+                    • Pending: <span className="text-red-400 font-semibold">{stats?.paymentStatusThisMonth?.PENDING || 0}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
+                {(() => {
+                  const paid = stats?.paymentStatusThisMonth?.PAID || 0
+                  const partial = stats?.paymentStatusThisMonth?.PARTIAL || 0
+                  const pending = stats?.paymentStatusThisMonth?.PENDING || 0
+                  const total = paid + partial + pending
+                  const paidPct = total > 0 ? (paid / total) * 100 : 0
+                  const partialPct = total > 0 ? (partial / total) * 100 : 0
+                  const pendingPct = total > 0 ? (pending / total) * 100 : 0
+                  return (
+                    <div className="flex h-full w-full">
+                      <div className="bg-emerald-500" style={{ width: `${paidPct}%` }} />
+                      <div className="bg-amber-500" style={{ width: `${partialPct}%` }} />
+                      <div className="bg-red-500" style={{ width: `${pendingPct}%` }} />
+                    </div>
+                  )
+                })()}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2">Split of payment statuses for bookings created this month</p>
+            </div>
+          )}
+
+          {/* Top Rooms (Admin only) */}
+          {canViewFinance && (
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <FaBed className="text-purple-400" />
+                  <p className="text-sm font-semibold text-white">Top Rooms (This Month)</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {(stats?.topRoomsThisMonth || []).slice(0, 5).map((r: any) => (
+                  <div key={r.roomId} className="flex items-center justify-between text-sm">
+                    <div className="min-w-0">
+                      <p className="text-slate-200 font-semibold truncate">Room {r.roomNumber}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{r.roomType}{typeof r.floor === 'number' ? ` • F${r.floor}` : ''}</p>
+                    </div>
+                    <p className="text-white font-bold">₹{(r.revenue || 0).toLocaleString()}</p>
+                  </div>
+                ))}
+                {(!stats?.topRoomsThisMonth || stats.topRoomsThisMonth.length === 0) && (
+                  <p className="text-xs text-slate-500">No revenue data yet.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Actions & Alerts */}
