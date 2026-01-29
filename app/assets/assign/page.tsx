@@ -16,6 +16,7 @@ export default function AssignAssetPage() {
   const editId = searchParams.get('edit')
 
   const [user, setUser] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
   const [locationType, setLocationType] = useState<'room' | 'hall'>('room')
   const [formData, setFormData] = useState({
     inventoryId: '',
@@ -27,6 +28,7 @@ export default function AssignAssetPage() {
   })
 
   useEffect(() => {
+    setMounted(true)
     const userData = localStorage.getItem('user')
     if (userData) {
       const parsed = JSON.parse(userData)
@@ -63,35 +65,52 @@ export default function AssignAssetPage() {
     }
   }, [existingAsset])
 
-  // Fetch rooms
+  // Fetch ALL rooms for asset locator (no status filter – need every room to tag assets)
   const { data: roomsData } = useQuery({
-    queryKey: ['rooms'],
+    queryKey: ['rooms', 'asset-locator'],
     queryFn: () => api.get('/rooms'),
-    enabled: !!canAccess
+    enabled: mounted && !!canAccess,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Fetch function halls
   const { data: hallsData } = useQuery({
     queryKey: ['function-halls'],
     queryFn: () => api.get('/function-halls'),
-    enabled: !!canAccess
+    enabled: mounted && !!canAccess,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   // Fetch inventory items
   const { data: inventoryData } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => api.get('/inventory'),
-    enabled: !!canAccess
+    enabled: mounted && !!canAccess,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
-  // Normalize to arrays (api.get returns data.data; support wrapped shapes)
-  const rooms = Array.isArray(roomsData) ? roomsData : (roomsData as any)?.data ?? []
-  const halls = Array.isArray(hallsData) ? hallsData : (hallsData as any)?.data ?? []
-  const inventoryItems = Array.isArray((inventoryData as any)?.items)
-    ? (inventoryData as any).items
-    : Array.isArray(inventoryData)
-      ? inventoryData
-      : []
+  // Normalize to arrays – api.get returns response.data (array); support wrapped shapes
+  const rooms = (() => {
+    if (!roomsData) return []
+    if (Array.isArray(roomsData)) return roomsData
+    if (Array.isArray((roomsData as any)?.data)) return (roomsData as any).data
+    return (roomsData as any)?.rooms ?? []
+  })()
+  const halls = (() => {
+    if (!hallsData) return []
+    if (Array.isArray(hallsData)) return hallsData
+    if (Array.isArray((hallsData as any)?.data)) return (hallsData as any).data
+    return (hallsData as any)?.halls ?? []
+  })()
+  const inventoryItems = (() => {
+    if (!inventoryData) return []
+    if (Array.isArray((inventoryData as any)?.items)) return (inventoryData as any).items
+    if (Array.isArray(inventoryData)) return inventoryData
+    return []
+  })()
 
   // Mutation
   const mutation = useMutationWithInvalidation({

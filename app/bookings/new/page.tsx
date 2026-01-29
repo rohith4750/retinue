@@ -141,25 +141,28 @@ function NewBookingContent() {
 
   // Auth is handled by root layout
 
-  // Fetch available rooms based on selected dates
-  const { data: availableRoomsData, isLoading: roomsLoading, refetch: refetchRooms } = useQuery({
+  // Fetch available rooms only when dates are selected (booking form shows only available rooms)
+  const { data: roomsResponse, isLoading: roomsLoading, refetch: refetchRooms } = useQuery({
     queryKey: ['available-rooms', formData.checkIn, formData.checkOut],
     queryFn: () => {
-      // If dates are selected, fetch rooms available for those dates
       if (formData.checkIn && formData.checkOut) {
         const checkInDate = new Date(formData.checkIn).toISOString()
         const checkOutDate = new Date(formData.checkOut).toISOString()
         return api.get(`/rooms/available?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}`)
       }
-      // Otherwise, fetch all non-maintenance rooms
-      return api.get('/rooms/available')
+      return Promise.resolve(null)
     },
+    enabled: !!(formData.checkIn && formData.checkOut),
     staleTime: 0,
     refetchOnMount: 'always',
   })
 
-  // Extract rooms array from response
-  const availableRooms = availableRoomsData?.rooms || availableRoomsData || []
+  // Only AVAILABLE rooms for the selected dates (no booked/maintenance in the form)
+  const availableRooms = (() => {
+    if (!roomsResponse) return []
+    const list = Array.isArray(roomsResponse) ? roomsResponse : (roomsResponse as any)?.rooms ?? []
+    return list.filter((r: any) => r.status === 'AVAILABLE')
+  })()
 
   // Update selectedRooms when roomIds or availableRooms change
   useEffect(() => {
@@ -584,7 +587,7 @@ function NewBookingContent() {
                 Select Room
                 {formData.checkIn && formData.checkOut && (
                   <span className="ml-auto text-xs font-normal text-emerald-400">
-                    {roomsLoading ? 'Loading...' : `${availableRooms?.length || 0} available`}
+                    {roomsLoading ? 'Loading...' : `${availableRooms.length} available`}
                   </span>
                 )}
               </h3>
@@ -617,7 +620,7 @@ function NewBookingContent() {
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 flex items-center justify-center">
                   <LoadingSpinner size="md" />
                 </div>
-              ) : availableRooms?.length === 0 ? (
+              ) : availableRooms.length === 0 ? (
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-6 text-center">
                   <p className="text-sm text-yellow-400">No rooms available for the selected date & time range.</p>
                   <p className="text-xs text-yellow-400/70 mt-1">Try selecting different dates or times.</p>
@@ -633,19 +636,17 @@ function NewBookingContent() {
                     </div>
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {availableRooms?.map((room: any) => {
+                    {availableRooms.map((room: any) => {
                       const isSelected = formData.roomIds.includes(room.id)
                       return (
                         <button
                           key={room.id}
                           type="button"
                           onClick={() => {
-                            // Toggle selection: one booking per room, no duplicates
                             if (isSelected) {
                               updateField('roomIds', formData.roomIds.filter((id) => id !== room.id))
                             } else {
-                              const next = [...formData.roomIds, room.id]
-                              updateField('roomIds', Array.from(new Set(next)))
+                              updateField('roomIds', Array.from(new Set([...formData.roomIds, room.id])))
                             }
                           }}
                           className={`p-4 rounded-lg border-2 text-left transition-all ${
@@ -656,7 +657,6 @@ function NewBookingContent() {
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-bold text-slate-100">Room {room.roomNumber}</span>
-                            {/* Checkbox-style indicator for multi-select */}
                             <span className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                               isSelected ? 'border-sky-500 bg-sky-500' : 'border-slate-500'
                             }`}>
@@ -677,7 +677,7 @@ function NewBookingContent() {
                   </div>
                 </>
               )}
-              {formData.roomIds.length === 0 && formData.checkIn && formData.checkOut && availableRooms?.length > 0 && (
+              {formData.roomIds.length === 0 && formData.checkIn && formData.checkOut && availableRooms.length > 0 && (
                 <p className="text-xs text-yellow-400 mt-2">Please select at least one room</p>
               )}
             </div>
