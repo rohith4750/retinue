@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaArrowLeft, FaEdit, FaHistory, FaUser, FaHome } from 'react-icons/fa'
+import { FaCalendarAlt, FaArrowLeft, FaEdit, FaHistory, FaUser, FaHome, FaCalendarPlus, FaTimes } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { EditBookingModal } from '@/components/EditBookingModal'
@@ -16,6 +16,8 @@ export default function BookingDetailPage() {
   const searchParams = useSearchParams()
   const bookingId = params.id as string
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showExtendModal, setShowExtendModal] = useState(false)
+  const [newCheckoutDate, setNewCheckoutDate] = useState('')
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ['booking', bookingId],
@@ -34,6 +36,19 @@ export default function BookingDetailPage() {
     onError: (error: any) => {
       const msg = error?.response?.data?.message || error?.message || 'Failed to update booking'
       toast.error(msg)
+    },
+  })
+
+  const extendStayMutation = useMutationWithInvalidation({
+    mutationFn: (data: { checkOut: string; action: string }) => api.put(`/bookings/${bookingId}`, data),
+    endpoint: '/bookings/',
+    onSuccess: () => {
+      setShowExtendModal(false)
+      setNewCheckoutDate('')
+      toast.success('Stay extended successfully!')
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to extend stay')
     },
   })
 
@@ -156,22 +171,6 @@ export default function BookingDetailPage() {
                     ₹{booking.totalAmount.toLocaleString()}
                   </p>
                 </div>
-                {/* Payment status: receptionist can see if customer paid and balance due (e.g. after early checkout) */}
-                <div className="md:col-span-2 flex flex-wrap gap-4">
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Paid</p>
-                    <p className="text-sm font-medium text-emerald-400">
-                      ₹{(booking.paidAmount ?? 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">Balance due</p>
-                    <p className={`text-sm font-bold ${(booking.totalAmount - (booking.paidAmount ?? 0)) > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                      ₹{Math.max(0, booking.totalAmount - (booking.paidAmount ?? 0)).toLocaleString()}
-                      {(booking.totalAmount - (booking.paidAmount ?? 0)) <= 0 && ' (Fully paid)'}
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -206,19 +205,126 @@ export default function BookingDetailPage() {
             )}
 
             {/* Actions */}
-            <div className="flex items-center space-x-2 pt-4 border-t border-white/5">
+            <div className="flex items-center space-x-2 pt-4 border-t border-white/5 flex-wrap gap-2">
               {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="flex-1 h-10 bg-slate-700 text-slate-200 font-medium text-sm rounded-lg flex items-center justify-center space-x-2"
+                  className="flex-1 min-w-[120px] h-10 bg-slate-700 text-slate-200 font-medium text-sm rounded-lg flex items-center justify-center space-x-2"
                 >
                   <FaEdit className="w-4 h-4" />
                   <span>Edit Booking</span>
                 </button>
               )}
+              {booking.status === 'CHECKED_IN' && (
+                <button
+                  onClick={() => {
+                    setShowExtendModal(true)
+                    const currentCheckout = new Date(booking.checkOut)
+                    currentCheckout.setDate(currentCheckout.getDate() + 1)
+                    const y = currentCheckout.getFullYear()
+                    const m = String(currentCheckout.getMonth() + 1).padStart(2, '0')
+                    const d = String(currentCheckout.getDate()).padStart(2, '0')
+                    const h = String(currentCheckout.getHours()).padStart(2, '0')
+                    const min = String(currentCheckout.getMinutes()).padStart(2, '0')
+                    setNewCheckoutDate(`${y}-${m}-${d}T${h}:${min}`)
+                  }}
+                  className="flex-1 min-w-[120px] h-10 bg-amber-600 text-white font-medium text-sm rounded-lg flex items-center justify-center space-x-2 hover:bg-amber-500"
+                >
+                  <FaCalendarPlus className="w-4 h-4" />
+                  <span>Extend Stay</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Extend Stay Modal */}
+        {showExtendModal && booking && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60" onClick={() => { setShowExtendModal(false); setNewCheckoutDate('') }} />
+            <div className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-amber-600 px-4 py-3 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <FaCalendarPlus className="w-4 h-4" />
+                    Extend Stay
+                  </h3>
+                  <p className="text-xs text-amber-100">{booking.guest?.name} • Room {booking.room?.roomNumber}</p>
+                </div>
+                <button onClick={() => { setShowExtendModal(false); setNewCheckoutDate('') }} className="text-white/80 hover:text-white">
+                  <FaTimes className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-800 rounded-lg p-3">
+                    <p className="text-slate-400 text-xs">Current Check-out</p>
+                    <p className="text-sm font-semibold text-red-400">
+                      {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">New Check-out Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={newCheckoutDate}
+                    min={new Date(booking.checkOut).toISOString().slice(0, 16)}
+                    onChange={(e) => setNewCheckoutDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+                {newCheckoutDate && new Date(newCheckoutDate) > new Date(booking.checkOut) && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-slate-400">Additional Days</span>
+                      <span className="text-white font-semibold">
+                        {Math.ceil((new Date(newCheckoutDate).getTime() - new Date(booking.checkOut).getTime()) / (1000 * 60 * 60 * 24))} day(s)
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Estimated Additional</span>
+                      <span className="text-amber-400 font-semibold">
+                        ₹{(Math.ceil((new Date(newCheckoutDate).getTime() - new Date(booking.checkOut).getTime()) / (1000 * 60 * 60 * 24)) * (booking.room?.basePrice || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-2">* Final amount will be updated on checkout</p>
+                  </div>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => { setShowExtendModal(false); setNewCheckoutDate('') }}
+                    className="flex-1 py-2 text-sm text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!newCheckoutDate) { toast.error('Please select new checkout date'); return }
+                      if (new Date(newCheckoutDate) <= new Date(booking.checkOut)) {
+                        toast.error('New checkout must be after current checkout')
+                        return
+                      }
+                      extendStayMutation.mutate({ checkOut: new Date(newCheckoutDate).toISOString(), action: 'EXTEND_STAY' })
+                    }}
+                    disabled={extendStayMutation.isPending || !newCheckoutDate}
+                    className="flex-1 py-2 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+                  >
+                    {extendStayMutation.isPending ? 'Extending...' : (
+                      <>
+                        <FaCalendarPlus className="w-3 h-3" />
+                        Extend Stay
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Edit Booking modal — same page, same fields as Add Booking */}
         {showEditModal && (
