@@ -194,6 +194,27 @@ export default function RoomsPage() {
     )
   }) || []
 
+  // Group rooms by category (roomType) – only categories that have rooms
+  const categoryOrder = ['STANDARD', 'SUITE', 'SUITE_PLUS']
+  const roomsByCategory = (() => {
+    const map: Record<string, any[]> = {}
+    filteredRooms.forEach((room: any) => {
+      const type = room.roomType || 'OTHER'
+      if (!map[type]) map[type] = []
+      map[type].push(room)
+    })
+    const keys = Object.keys(map)
+    keys.sort((a, b) => {
+      const i = categoryOrder.indexOf(a)
+      const j = categoryOrder.indexOf(b)
+      if (i !== -1 && j !== -1) return i - j
+      if (i !== -1) return -1
+      if (j !== -1) return 1
+      return a.localeCompare(b)
+    })
+    return keys.map((key) => ({ category: key, rooms: map[key] }))
+  })()
+
   // Get unique floors for filter
   const uniqueFloors = Array.from(new Set(filteredRooms.map((r: any) => r.floor))).sort((a: any, b: any) => a - b)
 
@@ -538,115 +559,92 @@ export default function RoomsPage() {
           </div>
         )}
 
-        {/* List View */}
-        {viewMode === 'list' && filteredRooms && filteredRooms.length > 0 ? (
-          <div className="flex flex-col">
-            {/* Group rooms into pairs and render with divider lines */}
-            {Array.from({ length: Math.ceil(filteredRooms.length / 2) }, (_, rowIndex) => {
-              const roomsInRow = filteredRooms.slice(rowIndex * 2, rowIndex * 2 + 2)
-              const isLastRow = rowIndex === Math.ceil(filteredRooms.length / 2) - 1
-              return (
-                <div key={rowIndex}>
-                  {/* Row with 2 chips */}
-                  <div className="flex flex-wrap gap-4 py-3">
-                    {roomsInRow.map((room: any) => (
-                      <div
-                        key={room.id}
-                        className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${
-                          room.status === 'AVAILABLE' 
-                            ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30' 
-                            : room.status === 'BOOKED' 
-                            ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30' 
-                            : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
-                        }`}
-                        onClick={() => {
-                          if (canManageRooms) {
-                            setEditingRoom(room)
-                            setShowModal(true)
-                          }
-                        }}
-                      >
-                        {/* Room Number */}
-                        <span className={`text-sm font-bold ${
-                          room.status === 'AVAILABLE' ? 'text-emerald-300' :
-                          room.status === 'BOOKED' ? 'text-red-300' :
-                          'text-yellow-300'
-                        }`}>{room.roomNumber}</span>
-                        
-                        {/* Divider */}
-                        <span className={`w-px h-5 mx-3 ${
-                          room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                          room.status === 'BOOKED' ? 'bg-red-400' :
-                          'bg-yellow-400'
-                        }`}></span>
-                        
-                        {/* Type */}
-                        <span className="text-xs text-slate-300 uppercase">{room.roomType}</span>
-                        
-                        {/* Divider */}
-                        <span className={`w-px h-5 mx-3 ${
-                          room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                          room.status === 'BOOKED' ? 'bg-red-400' :
-                          'bg-yellow-400'
-                        }`}></span>
-                        
-                        {/* Price */}
-                        <span className="text-sm font-semibold text-white">₹{room.basePrice.toLocaleString()}</span>
-                        
-                        {/* Divider */}
-                        <span className={`w-px h-5 mx-3 ${
-                          room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                          room.status === 'BOOKED' ? 'bg-red-400' :
-                          'bg-yellow-400'
-                        }`}></span>
-                        
-                        {/* Status + Check-out time when BOOKED */}
-                        <span className={`text-[10px] font-semibold uppercase ${
-                          room.status === 'AVAILABLE' ? 'text-emerald-400' :
-                          room.status === 'BOOKED' ? 'text-red-400' :
-                          'text-yellow-400'
-                        }`}>{room.status}</span>
-                        {room.status === 'BOOKED' && room.checkOutAt && (
-                          <>
-                            <span className={`w-px h-5 mx-3 ${
-                              room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'
-                            }`} />
-                            <span className="text-[10px] text-slate-400" title="Check-out time">
-                              Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                            </span>
-                          </>
-                        )}
-
-                        {/* Delete Button - only show for admins */}
-                        {canManageRooms && (
-                          <>
-                            <span className={`w-px h-5 mx-3 ${
-                              room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                              room.status === 'BOOKED' ? 'bg-red-400' :
-                              'bg-yellow-400'
-                            }`}></span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(room.id)
-                              }}
-                              className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
-                              title="Delete"
-                            >
-                              <FaTrash className="w-3 h-3" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {/* Divider line after each row (except last) */}
-                  {!isLastRow && (
-                    <div className="border-b border-slate-700/50"></div>
-                  )}
+        {/* List View – category-wise (only categories that have rooms) */}
+        {viewMode === 'list' && roomsByCategory.length > 0 ? (
+          <div className="flex flex-col gap-6">
+            {roomsByCategory.map(({ category, rooms: categoryRooms }) => (
+              <div key={category} className="rounded-xl border border-white/5 bg-slate-900/40 overflow-hidden">
+                {/* Category header */}
+                <div className="px-4 py-3 bg-slate-800/60 border-b border-white/5">
+                  <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+                    {category.replace(/_/g, ' ')}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {categoryRooms.length} room{categoryRooms.length !== 1 ? 's' : ''}
+                  </p>
                 </div>
-              )
-            })}
+                {/* Room chips in this category */}
+                <div className="flex flex-wrap gap-3 p-4">
+                  {categoryRooms.map((room: any) => (
+                    <div
+                      key={room.id}
+                      className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${
+                        room.status === 'AVAILABLE'
+                          ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30'
+                          : room.status === 'BOOKED'
+                            ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30'
+                            : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
+                      }`}
+                      onClick={() => {
+                        if (canManageRooms) {
+                          setEditingRoom(room)
+                          setShowModal(true)
+                        }
+                      }}
+                    >
+                      <span className={`text-sm font-bold ${
+                        room.status === 'AVAILABLE' ? 'text-emerald-300' :
+                        room.status === 'BOOKED' ? 'text-red-300' :
+                        'text-yellow-300'
+                      }`}>{room.roomNumber}</span>
+                      <span className={`w-px h-5 mx-3 ${
+                        room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                        room.status === 'BOOKED' ? 'bg-red-400' :
+                        'bg-yellow-400'
+                      }`} />
+                      <span className="text-sm font-semibold text-white">₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</span>
+                      <span className={`w-px h-5 mx-3 ${
+                        room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                        room.status === 'BOOKED' ? 'bg-red-400' :
+                        'bg-yellow-400'
+                      }`} />
+                      <span className={`text-[10px] font-semibold uppercase ${
+                        room.status === 'AVAILABLE' ? 'text-emerald-400' :
+                        room.status === 'BOOKED' ? 'text-red-400' :
+                        'text-yellow-400'
+                      }`}>{room.status}</span>
+                      {room.status === 'BOOKED' && room.checkOutAt && (
+                        <>
+                          <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
+                          <span className="text-[10px] text-slate-400" title="Check-out time">
+                            Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                          </span>
+                        </>
+                      )}
+                      {canManageRooms && (
+                        <>
+                          <span className={`w-px h-5 mx-3 ${
+                            room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                            room.status === 'BOOKED' ? 'bg-red-400' :
+                            'bg-yellow-400'
+                          }`} />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDelete(room.id)
+                            }}
+                            className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
+                            title="Delete"
+                          >
+                            <FaTrash className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : viewMode === 'list' ? (
           <div className="card text-center py-12">
