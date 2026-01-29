@@ -687,7 +687,10 @@ export default function BookingsPage() {
                               <p className="font-semibold text-white truncate">{booking.guest?.name}</p>
                               <p className="text-xs text-slate-400 mt-0.5">Room {booking.room?.roomNumber} • ₹{booking.totalAmount?.toLocaleString()}</p>
                               <p className="text-[10px] text-slate-500 mt-1">
-                                Out: {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                In: {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                Out: {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                               </p>
                               <div className="flex flex-wrap gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
                                 {booking.status === 'CONFIRMED' && (

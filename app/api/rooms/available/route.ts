@@ -50,8 +50,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Find bookings that overlap the requested dates.
-    // Check-out day = available: occupancy is [checkIn, startOf(checkOut day)), so a room is free on its check-out date.
+    // Time-based overlap: room is BOOKED if any active booking's [checkIn, checkOut] overlaps [filterCheckIn, filterCheckOut].
+    // Overlap (strict): booking.checkIn < filterCheckOut AND booking.checkOut > filterCheckIn.
+    // All comparisons use full datetime (no date-only logic) so "today" filter respects actual times.
     const overlappingBookings = await prisma.booking.findMany({
       where: {
         status: {
@@ -62,23 +63,18 @@ export async function GET(request: NextRequest) {
           { checkOut: { gt: checkInDate } },
         ],
       },
-      select: { roomId: true, checkOut: true },
+      select: { roomId: true, checkIn: true, checkOut: true },
     })
 
-    const checkInStart = new Date(checkInDate)
-    checkInStart.setHours(0, 0, 0, 0)
-    const blockingBookings = overlappingBookings.filter((b) => {
-      const checkoutDayStart = new Date(b.checkOut)
-      checkoutDayStart.setHours(0, 0, 0, 0)
-      return checkoutDayStart > checkInStart
-    })
-    const bookedIdsSet = new Set(blockingBookings.map((b) => b.roomId))
-    // For each booked room, store check-out time (latest if multiple overlapping)
+    const bookedIdsSet = new Set(overlappingBookings.map((b) => b.roomId))
+    // For each booked room, store check-in and check-out (from same booking; latest check-out wins)
     const checkOutByRoom = new Map<string, Date>()
-    for (const b of blockingBookings) {
-      const existing = checkOutByRoom.get(b.roomId)
-      if (!existing || new Date(b.checkOut) > existing) {
+    const checkInByRoom = new Map<string, Date>()
+    for (const b of overlappingBookings) {
+      const existingOut = checkOutByRoom.get(b.roomId)
+      if (!existingOut || new Date(b.checkOut) > existingOut) {
         checkOutByRoom.set(b.roomId, new Date(b.checkOut))
+        checkInByRoom.set(b.roomId, new Date(b.checkIn))
       }
     }
 
@@ -98,9 +94,11 @@ export async function GET(request: NextRequest) {
       }
       if (bookedIdsSet.has(room.id)) {
         const checkOutAt = checkOutByRoom.get(room.id)
+        const checkInAt = checkInByRoom.get(room.id)
         return {
           ...room,
           status: 'BOOKED' as const,
+          checkInAt: checkInAt ? checkInAt.toISOString() : undefined,
           checkOutAt: checkOutAt ? checkOutAt.toISOString() : undefined,
         }
       }

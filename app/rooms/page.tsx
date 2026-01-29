@@ -483,10 +483,15 @@ export default function RoomsPage() {
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-white">{room.roomNumber}</p>
                             <p className="text-[10px] text-slate-400">{room.roomType} • F{room.floor} • ₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
-                            {room.status === 'BOOKED' && room.checkOutAt && (
-                              <p className="text-[9px] text-red-300/90 mt-0.5" title="Check-out time">
-                                Check out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                              </p>
+                            {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
+                              <div className="text-[9px] text-red-300/90 mt-0.5 space-y-0.5">
+                                {room.checkInAt && (
+                                  <p title="Check-in time">In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                )}
+                                {room.checkOutAt && (
+                                  <p title="Check-out time">Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -613,12 +618,24 @@ export default function RoomsPage() {
                         room.status === 'BOOKED' ? 'text-red-400' :
                         'text-yellow-400'
                       }`}>{room.status}</span>
-                      {room.status === 'BOOKED' && room.checkOutAt && (
+                      {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
                         <>
-                          <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
-                          <span className="text-[10px] text-slate-400" title="Check-out time">
-                            Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                          </span>
+                          {room.checkInAt && (
+                            <>
+                              <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
+                              <span className="text-[10px] text-slate-400" title="Check-in time">
+                                In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </span>
+                            </>
+                          )}
+                          {room.checkOutAt && (
+                            <>
+                              <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
+                              <span className="text-[10px] text-slate-400" title="Check-out time">
+                                Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </span>
+                            </>
+                          )}
                         </>
                       )}
                       {canManageRooms && (
