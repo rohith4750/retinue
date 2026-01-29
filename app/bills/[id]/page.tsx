@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import toast from 'react-hot-toast'
-import { FaDownload, FaPrint, FaHistory, FaCheckCircle, FaArrowLeft, FaMoneyBillWave, FaRupeeSign } from 'react-icons/fa'
+import { FaDownload, FaPrint, FaHistory, FaCheckCircle, FaArrowLeft, FaMoneyBillWave, FaRupeeSign, FaEdit, FaExclamationTriangle } from 'react-icons/fa'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
@@ -17,6 +17,12 @@ export default function BillPage() {
   const queryClient = useQueryClient()
   const [paymentInput, setPaymentInput] = useState('')
   const [paymentMode, setPaymentMode] = useState('CASH')
+  const [correctPaidInput, setCorrectPaidInput] = useState('')
+  const [correctReason, setCorrectReason] = useState('')
+  const [showCorrectSection, setShowCorrectSection] = useState(false)
+  const [editPaymentTx, setEditPaymentTx] = useState<{ historyId: string; amount: number } | null>(null)
+  const [editPaymentAmount, setEditPaymentAmount] = useState('')
+  const [editPaymentReason, setEditPaymentReason] = useState('')
 
   const { data: bill, isLoading } = useQuery({
     queryKey: ['bill', billId],
@@ -35,6 +41,34 @@ export default function BillPage() {
       setPaymentInput('')
     },
     onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Failed to record payment'),
+  })
+
+  const correctPaymentMutation = useMutation({
+    mutationFn: ({ correctPaidAmount, reason }: { correctPaidAmount: number; reason?: string }) =>
+      api.put(`/bills/${billId}`, { action: 'CORRECT_PAID', correctPaidAmount, reason: reason || undefined }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bill', billId] })
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      toast.success('Total paid corrected successfully')
+      setCorrectPaidInput('')
+      setCorrectReason('')
+      setShowCorrectSection(false)
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Failed to correct payment'),
+  })
+
+  const editPaymentMutation = useMutation({
+    mutationFn: ({ historyId, newAmount, reason }: { historyId: string; newAmount: number; reason?: string }) =>
+      api.put(`/bills/${billId}`, { action: 'EDIT_PAYMENT', historyId, newAmount, reason: reason || undefined }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bill', billId] })
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      toast.success('Payment transaction updated successfully')
+      setEditPaymentTx(null)
+      setEditPaymentAmount('')
+      setEditPaymentReason('')
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Failed to edit payment'),
   })
 
   if (isLoading) {
@@ -62,7 +96,8 @@ export default function BillPage() {
   const isPending = balanceDue > 0
 
   // Build payment transactions from booking onwards (meaningful timeline)
-  const paymentTransactions: { type: string; label: string; amount: number; date: string; mode?: string; notes?: string }[] = []
+  type TxRow = { type: string; label: string; amount: number; date: string; mode?: string; notes?: string; historyId?: string }
+  const paymentTransactions: TxRow[] = []
   if (advanceAmount > 0) {
     paymentTransactions.push({
       type: 'ADVANCE',
@@ -85,8 +120,30 @@ export default function BillPage() {
           date: new Date(h.timestamp).toLocaleString('en-IN'),
           mode: h.changes.paymentMode ? String(h.changes.paymentMode).replace('_', ' ') : undefined,
           notes: h.notes,
+          historyId: h.id,
         })
       }
+    }
+    if (h.action === 'PAYMENT_CORRECTED' && h.changes?.paidAmount?.to != null) {
+      const newTotal = Number(h.changes.paidAmount.to)
+      paymentTransactions.push({
+        type: 'CORRECTION',
+        label: 'Payment corrected',
+        amount: newTotal,
+        date: new Date(h.timestamp).toLocaleString('en-IN'),
+        notes: h.notes,
+      })
+    }
+    if (h.action === 'PAYMENT_EDITED' && h.changes) {
+      const prev = Number(h.changes.previousAmount) || 0
+      const newAmt = Number(h.changes.newAmount) || 0
+      paymentTransactions.push({
+        type: 'EDIT',
+        label: 'Payment edited',
+        amount: newAmt,
+        date: new Date(h.timestamp).toLocaleString('en-IN'),
+        notes: h.notes || `Was ₹${prev.toLocaleString()}, now ₹${newAmt.toLocaleString()}`,
+      })
     }
   })
 
@@ -235,6 +292,74 @@ export default function BillPage() {
           </div>
         )}
 
+        {/* Wrong entry? Correct total paid */}
+        {booking.status !== 'CANCELLED' && (
+          <div className="mb-6 rounded-2xl border border-slate-600/80 bg-slate-800/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setShowCorrectSection(!showCorrectSection)
+                if (!showCorrectSection) setCorrectPaidInput(String(bill.paidAmount ?? 0))
+              }}
+              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-700/30 transition-colors"
+            >
+              <span className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                <FaExclamationTriangle className="w-4 h-4 text-amber-400" />
+                Wrong entry? Modify total paid
+              </span>
+              <span className="text-slate-500 text-xs">{showCorrectSection ? 'Hide' : 'Show'}</span>
+            </button>
+            {showCorrectSection && (
+              <div className="px-4 pb-4 pt-0 space-y-3 border-t border-white/5">
+                <p className="text-xs text-slate-500 mt-3">Set the correct total paid amount (e.g. if a payment was entered wrong). Current total paid: ₹{(bill.paidAmount ?? 0).toLocaleString()}. Max: ₹{(bill.totalAmount ?? 0).toLocaleString()}.</p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Correct total paid (₹)</label>
+                    <div className="relative">
+                      <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                      <input
+                        type="number"
+                        min="0"
+                        max={bill.totalAmount ?? 0}
+                        step="0.01"
+                        value={correctPaidInput}
+                        onChange={(e) => setCorrectPaidInput(e.target.value)}
+                        placeholder={String(bill.paidAmount ?? 0)}
+                        className="w-40 pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-600 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs text-slate-400 mb-1">Reason (optional)</label>
+                    <input
+                      type="text"
+                      value={correctReason}
+                      onChange={(e) => setCorrectReason(e.target.value)}
+                      placeholder="e.g. Wrong amount entered"
+                      className="w-full px-3 py-2.5 bg-slate-800 border border-slate-600 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const amount = parseFloat(correctPaidInput)
+                      if (isNaN(amount) || amount < 0 || amount > (bill.totalAmount ?? 0)) {
+                        toast.error('Enter an amount between 0 and total amount')
+                        return
+                      }
+                      correctPaymentMutation.mutate({ correctPaidAmount: amount, reason: correctReason || undefined })
+                    }}
+                    disabled={correctPaymentMutation.isPending || correctPaidInput === ''}
+                    className="px-5 py-2.5 rounded-xl bg-amber-600 text-white font-semibold text-sm hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  >
+                    <FaEdit className="w-3.5 h-3.5" />
+                    {correctPaymentMutation.isPending ? 'Updating...' : 'Update total paid'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Invoice card */}
         <div className="card print:shadow-none">
           <div className="border-b border-white/10 pb-6 mb-6">
@@ -343,12 +468,15 @@ export default function BillPage() {
                     <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Date & time</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">How paid</th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Amount</th>
+                    {booking.status !== 'CANCELLED' && (
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase w-20">Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {paymentTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                      <td colSpan={booking.status !== 'CANCELLED' ? 6 : 5} className="py-8 text-center text-slate-500">
                         No payments recorded yet
                       </td>
                     </tr>
@@ -359,15 +487,38 @@ export default function BillPage() {
                         <td className="py-3 px-4 text-slate-200 font-medium">{tx.label}</td>
                         <td className="py-3 px-4 text-slate-400">{tx.date}</td>
                         <td className="py-3 px-4 text-slate-400">{tx.mode ?? '–'}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-emerald-400">+₹{tx.amount.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-emerald-400">
+                          {tx.type === 'CORRECTION' ? `Set to ₹${tx.amount.toLocaleString()}` : tx.type === 'EDIT' ? `₹${tx.amount.toLocaleString()}` : `+₹${tx.amount.toLocaleString()}`}
+                        </td>
+                        {booking.status !== 'CANCELLED' && (
+                          <td className="py-3 px-4 text-right">
+                            {tx.type === 'PAYMENT' && tx.historyId ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditPaymentTx({ historyId: tx.historyId!, amount: tx.amount })
+                                  setEditPaymentAmount(String(tx.amount))
+                                  setEditPaymentReason('')
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-600 text-slate-200 text-xs font-medium hover:bg-sky-600 hover:text-white transition-colors"
+                              >
+                                <FaEdit className="w-3 h-3" />
+                                Edit
+                              </button>
+                            ) : (
+                              <span className="text-slate-600">–</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-800/60 border-t-2 border-white/10">
-                    <td colSpan={4} className="py-3 px-4 font-semibold text-slate-200">Total received</td>
+                    <td colSpan={booking.status !== 'CANCELLED' ? 5 : 4} className="py-3 px-4 font-semibold text-slate-200">Total received</td>
                     <td className="py-3 px-4 text-right font-bold text-emerald-400">₹{(bill.paidAmount ?? 0).toLocaleString()}</td>
+                    {booking.status !== 'CANCELLED' && <td />}
                   </tr>
                 </tfoot>
               </table>
@@ -384,6 +535,77 @@ export default function BillPage() {
             </Link>
           </div>
         </div>
+
+        {/* Edit Payment Transaction modal */}
+        {editPaymentTx && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => !editPaymentMutation.isPending && setEditPaymentTx(null)}>
+            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                  <FaEdit className="w-5 h-5 text-sky-400" />
+                  Edit payment transaction
+                </h3>
+                <p className="text-sm text-slate-400 mt-1">Change the amount for this recorded payment. Original: ₹{editPaymentTx.amount.toLocaleString()}.</p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1.5">New amount (₹)</label>
+                  <div className="relative">
+                    <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editPaymentAmount}
+                      onChange={(e) => setEditPaymentAmount(e.target.value)}
+                      placeholder={String(editPaymentTx.amount)}
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1.5">Reason (optional)</label>
+                  <input
+                    type="text"
+                    value={editPaymentReason}
+                    onChange={(e) => setEditPaymentReason(e.target.value)}
+                    placeholder="e.g. Wrong amount entered"
+                    className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="p-6 pt-0 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditPaymentTx(null)}
+                  disabled={editPaymentMutation.isPending}
+                  className="px-4 py-2.5 rounded-xl bg-slate-600 text-slate-200 text-sm font-medium hover:bg-slate-500 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const amount = parseFloat(editPaymentAmount)
+                    if (isNaN(amount) || amount < 0) {
+                      toast.error('Enter a valid non-negative amount')
+                      return
+                    }
+                    editPaymentMutation.mutate({
+                      historyId: editPaymentTx.historyId,
+                      newAmount: amount,
+                      reason: editPaymentReason || undefined,
+                    })
+                  }}
+                  disabled={editPaymentMutation.isPending || editPaymentAmount === ''}
+                  className="px-5 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                  {editPaymentMutation.isPending ? 'Updating...' : 'Update payment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

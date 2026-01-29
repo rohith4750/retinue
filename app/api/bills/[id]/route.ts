@@ -94,8 +94,193 @@ export async function PUT(
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()
-    const { paidAmount, paymentMode } = data
+    const { paidAmount, paymentMode, action, correctPaidAmount, reason, historyId, newAmount } = data
 
+    // Try to find by bookingId first, then by billNumber
+    let booking = await prisma.booking.findUnique({
+      where: { id: params.id },
+      include: { history: true },
+    })
+
+    if (!booking) {
+      booking = await prisma.booking.findFirst({
+        where: { billNumber: params.id },
+        include: { history: true },
+      })
+    }
+
+    if (!booking) {
+      return Response.json(
+        errorResponse('Not found', 'Bill not found'),
+        { status: 404 }
+      )
+    }
+
+    if (booking.status === 'CANCELLED') {
+      return Response.json(
+        errorResponse('Validation error', 'Cannot record payment for a cancelled booking'),
+        { status: 400 }
+      )
+    }
+
+    // Correction: set total paid to a specific amount (for wrong entry)
+    if (action === 'CORRECT_PAID' && correctPaidAmount !== undefined) {
+      const newPaid = parseFloat(String(correctPaidAmount))
+      if (isNaN(newPaid) || newPaid < 0 || newPaid > (booking.totalAmount || 0)) {
+        return Response.json(
+          errorResponse('Validation error', 'Correct paid amount must be between 0 and total amount'),
+          { status: 400 }
+        )
+      }
+      const oldPaidAmount = booking.paidAmount
+      const balanceAmount = Math.max(0, booking.totalAmount - newPaid)
+      const paymentStatus =
+        balanceAmount <= 0 ? 'PAID' : newPaid > 0 ? 'PARTIAL' : 'PENDING'
+
+      const updatedBooking = await prisma.$transaction(async (tx: any) => {
+        const updated = await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            paidAmount: newPaid,
+            balanceAmount,
+            paymentStatus,
+          },
+          include: {
+            room: true,
+            slot: true,
+            guest: true,
+          },
+        })
+        await tx.bookingHistory.create({
+          data: {
+            bookingId: booking.id,
+            action: 'PAYMENT_CORRECTED',
+            changedBy: (authResult as any).userId || null,
+            changes: {
+              paidAmount: { from: oldPaidAmount, to: newPaid },
+              reason: reason || null,
+            },
+            notes: reason
+              ? `Total paid corrected to ₹${newPaid.toLocaleString()}. ${reason}`
+              : `Total paid corrected to ₹${newPaid.toLocaleString()} (was ₹${oldPaidAmount.toLocaleString()})`,
+          },
+        })
+        return updated
+      }, { maxWait: 10000, timeout: 30000 })
+
+      const billData = {
+        id: updatedBooking.id,
+        bookingId: updatedBooking.id,
+        billNumber: updatedBooking.billNumber,
+        subtotal: updatedBooking.subtotal,
+        tax: updatedBooking.tax,
+        discount: updatedBooking.discount,
+        totalAmount: updatedBooking.totalAmount,
+        paidAmount: updatedBooking.paidAmount,
+        balanceAmount: updatedBooking.balanceAmount,
+        paymentStatus: updatedBooking.paymentStatus,
+        createdAt: updatedBooking.createdAt,
+        updatedAt: updatedBooking.updatedAt,
+        booking: {
+          id: updatedBooking.id,
+          checkIn: updatedBooking.checkIn,
+          checkOut: updatedBooking.checkOut,
+          status: updatedBooking.status,
+          room: updatedBooking.room,
+          slot: updatedBooking.slot,
+          guest: updatedBooking.guest,
+        },
+      }
+      return Response.json(successResponse(billData, 'Payment corrected successfully'))
+    }
+
+    // Edit a particular payment transaction (replace its amount)
+    if (action === 'EDIT_PAYMENT' && historyId && newAmount !== undefined) {
+      const historyEntry = (booking.history || []).find((h: any) => h.id === historyId)
+      if (!historyEntry || historyEntry.action !== 'PAYMENT_RECEIVED') {
+        return Response.json(
+          errorResponse('Validation error', 'Payment transaction not found or cannot be edited'),
+          { status: 400 }
+        )
+      }
+      let previousAmount = Number(historyEntry.changes?.paymentReceived)
+      if (!previousAmount && historyEntry.changes?.paidAmount?.to != null) {
+        previousAmount = Number(historyEntry.changes.paidAmount.to) - Number(historyEntry.changes.paidAmount.from ?? 0)
+      }
+      previousAmount = previousAmount || 0
+      const newAmt = parseFloat(String(newAmount))
+      if (isNaN(newAmt) || newAmt < 0) {
+        return Response.json(
+          errorResponse('Validation error', 'New amount must be a non-negative number'),
+          { status: 400 }
+        )
+      }
+      const newPaidAmount = Math.max(0, Math.min(booking.totalAmount || 0, booking.paidAmount - previousAmount + newAmt))
+      const balanceAmount = Math.max(0, (booking.totalAmount || 0) - newPaidAmount)
+      const paymentStatus =
+        balanceAmount <= 0 ? 'PAID' : newPaidAmount > 0 ? 'PARTIAL' : 'PENDING'
+
+      const updatedBooking = await prisma.$transaction(async (tx: any) => {
+        const updated = await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            paidAmount: newPaidAmount,
+            balanceAmount,
+            paymentStatus,
+          },
+          include: {
+            room: true,
+            slot: true,
+            guest: true,
+          },
+        })
+        await tx.bookingHistory.create({
+          data: {
+            bookingId: booking.id,
+            action: 'PAYMENT_EDITED',
+            changedBy: (authResult as any).userId || null,
+            changes: {
+              historyId,
+              previousAmount,
+              newAmount: newAmt,
+              paidAmount: { from: booking.paidAmount, to: newPaidAmount },
+              reason: reason || null,
+            },
+            notes: reason
+              ? `Payment edited: was ₹${previousAmount.toLocaleString()}, now ₹${newAmt.toLocaleString()}. ${reason}`
+              : `Payment edited: was ₹${previousAmount.toLocaleString()}, now ₹${newAmt.toLocaleString()}`,
+          },
+        })
+        return updated
+      }, { maxWait: 10000, timeout: 30000 })
+
+      const billData = {
+        id: updatedBooking.id,
+        bookingId: updatedBooking.id,
+        billNumber: updatedBooking.billNumber,
+        subtotal: updatedBooking.subtotal,
+        tax: updatedBooking.tax,
+        discount: updatedBooking.discount,
+        totalAmount: updatedBooking.totalAmount,
+        paidAmount: updatedBooking.paidAmount,
+        balanceAmount: updatedBooking.balanceAmount,
+        paymentStatus: updatedBooking.paymentStatus,
+        createdAt: updatedBooking.createdAt,
+        updatedAt: updatedBooking.updatedAt,
+        booking: {
+          id: updatedBooking.id,
+          checkIn: updatedBooking.checkIn,
+          checkOut: updatedBooking.checkOut,
+          status: updatedBooking.status,
+          room: updatedBooking.room,
+          slot: updatedBooking.slot,
+          guest: updatedBooking.guest,
+        },
+      }
+      return Response.json(successResponse(billData, 'Payment transaction updated successfully'))
+    }
+
+    // Normal: add payment
     if (paidAmount === undefined) {
       return Response.json(
         errorResponse('Validation error', 'Paid amount is required'),
@@ -111,31 +296,6 @@ export async function PUT(
     if (isNaN(paymentReceived) || paymentReceived < 0) {
       return Response.json(
         errorResponse('Validation error', 'Paid amount must be a non-negative number'),
-        { status: 400 }
-      )
-    }
-
-    // Try to find by bookingId first, then by billNumber
-    let booking = await prisma.booking.findUnique({
-      where: { id: params.id },
-    })
-
-    if (!booking) {
-      booking = await prisma.booking.findFirst({
-        where: { billNumber: params.id },
-      })
-    }
-
-    if (!booking) {
-      return Response.json(
-        errorResponse('Not found', 'Bill not found'),
-        { status: 404 }
-      )
-    }
-
-    if (booking.status === 'CANCELLED') {
-      return Response.json(
-        errorResponse('Validation error', 'Cannot record payment for a cancelled booking'),
         { status: 400 }
       )
     }
