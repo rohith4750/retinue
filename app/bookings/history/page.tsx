@@ -29,6 +29,12 @@ function formatDateTime(value: any) {
   })
 }
 
+function getChangeValue(changes: any[], field: string) {
+  const c = Array.isArray(changes) ? changes.find((x: any) => x.field === field) : null
+  const v = c?.newValue
+  return typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN
+}
+
 function isLikelyDateString(v: any) {
   if (typeof v !== 'string') return false
   // ISO or date-ish strings
@@ -299,6 +305,37 @@ export default function BookingHistoryPage() {
                               </div>
                             )}
                           </div>
+
+                          {/* Payment details for CREATED (total, advance paid, balance remaining) */}
+                          {entry.action === 'CREATED' && (() => {
+                            const total = getChangeValue(changes, 'totalAmount') || entry.booking?.totalAmount
+                            const paid = getChangeValue(changes, 'advanceAmount') || getChangeValue(changes, 'paidAmount') || entry.booking?.paidAmount
+                            const totalNum = typeof total === 'number' && !Number.isNaN(total) ? total : Number(total)
+                            const paidNum = typeof paid === 'number' && !Number.isNaN(paid) ? paid : Number(paid)
+                            const hasTotal = typeof totalNum === 'number' && !Number.isNaN(totalNum)
+                            const hasPaid = typeof paidNum === 'number' && !Number.isNaN(paidNum)
+                            if (!hasTotal && !hasPaid) return null
+                            const balance = Math.max(0, (totalNum || 0) - (paidNum || 0))
+                            return (
+                              <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                                <p className="text-[10px] uppercase tracking-wider text-emerald-400/80 mb-2">Payment (at creation)</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                                  <div>
+                                    <p className="text-xs text-slate-500">Total</p>
+                                    <p className="font-semibold text-slate-200">₹{(totalNum || 0).toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-slate-500">Advance paid</p>
+                                    <p className="font-semibold text-emerald-400">₹{(paidNum || 0).toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-slate-500">Balance remaining</p>
+                                    <p className="font-semibold text-amber-400">₹{balance.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })()}
 
                           {/* changes */}
                           {showChanges && (
