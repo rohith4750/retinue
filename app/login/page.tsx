@@ -155,7 +155,7 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-slate-950">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-slate-950">
       {/* Animated Background */}
       <div className="absolute inset-0">
         {/* Gradient Orbs */}
@@ -171,13 +171,13 @@ function LoginContent() {
         }}></div>
       </div>
 
-      {/* Main Content */}
-      <div className="w-full flex items-center justify-center p-4 sm:p-8 relative z-10">
-        <div className="max-w-5xl w-full flex flex-col lg:flex-row items-center lg:items-stretch gap-8 lg:gap-0">
+      {/* Main Content - no scroll: fit viewport */}
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center p-4 sm:p-6 relative z-10 overflow-hidden">
+        <div className="max-w-5xl w-full max-h-full flex flex-col lg:flex-row items-center lg:items-stretch gap-6 lg:gap-0 min-h-0 overflow-hidden">
           
           {/* Left Side - Logo (Hidden on mobile, shown on lg) */}
-          <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-8 lg:p-12 relative -mt-16 lg:-mt-20">
-            <div className="w-full max-w-md flex justify-center items-center">
+          <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-6 lg:p-8 relative -mt-16 lg:-mt-20 min-h-0 overflow-hidden">
+            <div className="w-full max-w-md flex justify-center items-center min-h-0 shrink-0">
               <Image
                 src="/logo-retinue.png"
                 alt="Hotel The Retinue & Buchiraju Convention"
@@ -203,8 +203,8 @@ function LoginContent() {
           </div>
 
           {/* Right Side - Login Form */}
-          <div className="w-full lg:flex-1 flex items-center justify-center">
-            <div className="max-w-md w-full">
+          <div className="w-full lg:flex-1 flex items-center justify-center min-h-0 overflow-hidden py-2">
+            <div className="max-w-md w-full min-h-0">
               {/* Mobile Logo */}
               <div className="lg:hidden text-center mb-8">
                 <div className="flex items-center justify-center gap-3 mb-4">
@@ -349,11 +349,6 @@ function LoginContent() {
               </p>
             </div>
           </div>
-          
-          {/* Copyright */}
-          <p className="text-center text-xs text-slate-600 mt-6">
-            © 2026 The Retinue & Buchirajuu. All rights reserved.
-          </p>
             </div>
           </div>
           
