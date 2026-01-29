@@ -28,16 +28,17 @@ function toDatetimeLocal(iso: string) {
   return `${y}-${m}-${day}T${h}:${min}`
 }
 
+// 24-hour hotel: default checkout = check-in + 24 hours
 function setDefaultCheckout(checkInValue: string) {
   if (!checkInValue) return ''
   const checkInDate = new Date(checkInValue)
-  const nextDay = new Date(checkInDate)
-  nextDay.setDate(nextDay.getDate() + 1)
-  nextDay.setHours(11, 0, 0, 0)
-  const y = nextDay.getFullYear()
-  const m = String(nextDay.getMonth() + 1).padStart(2, '0')
-  const d = String(nextDay.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}T11:00`
+  const checkoutDate = new Date(checkInDate.getTime() + 24 * 60 * 60 * 1000)
+  const y = checkoutDate.getFullYear()
+  const m = String(checkoutDate.getMonth() + 1).padStart(2, '0')
+  const d = String(checkoutDate.getDate()).padStart(2, '0')
+  const h = String(checkoutDate.getHours()).padStart(2, '0')
+  const min = String(checkoutDate.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${d}T${h}:${min}`
 }
 
 const initialFormData = {
@@ -201,8 +202,8 @@ export function EditBookingModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormInput label="Check-in Date & Time *" type="datetime-local" value={formData.checkIn} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckIn = e.target.value; updateField('checkIn', newCheckIn); if (newCheckIn && !formData.checkOut) updateField('checkOut', setDefaultCheckout(newCheckIn)); if (formData.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkIn')} error={getError('checkIn')} />
               <div className="space-y-2">
-                <FormInput label={formData.flexibleCheckout ? 'Expected Check-out (Tentative)' : 'Check-out Date & Time *'} type="datetime-local" value={formData.checkOut} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckOut = e.target.value; updateField('checkOut', newCheckOut); updateField('flexibleCheckout', false); if (formData.checkIn && newCheckOut) { const hoursDiff = (new Date(newCheckOut).getTime() - new Date(formData.checkIn).getTime()) / (1000 * 60 * 60); if (hoursDiff < 12) { toast.error('Minimum stay is 12 hours.'); const corrected = new Date(new Date(formData.checkIn).getTime() + 12 * 60 * 60 * 1000); updateField('checkOut', corrected.toISOString().slice(0, 16)) } }; if (errors.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkOut')} error={getError('checkOut')} />
-                {formData.checkIn && <p className="text-[10px] text-slate-500">Minimum checkout: {new Date(new Date(formData.checkIn).getTime() + 12 * 60 * 60 * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} (12 hours min)</p>}
+                <FormInput label={formData.flexibleCheckout ? 'Expected Check-out (Tentative)' : 'Check-out Date & Time *'} type="datetime-local" value={formData.checkOut} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckOut = e.target.value; updateField('checkOut', newCheckOut); updateField('flexibleCheckout', false); if (formData.checkIn && newCheckOut) { const checkInTime = new Date(formData.checkIn).getTime(); const hoursDiff = (new Date(newCheckOut).getTime() - checkInTime) / (1000 * 60 * 60); if (hoursDiff < 12) { toast.error('Minimum stay is 12 hours.'); updateField('checkOut', new Date(checkInTime + 12 * 60 * 60 * 1000).toISOString().slice(0, 16)) } else if (hoursDiff > 24) { toast.error('Maximum stay is 24 hours.'); updateField('checkOut', new Date(checkInTime + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)) } }; if (errors.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkOut')} error={getError('checkOut')} />
+                {formData.checkIn && <p className="text-[10px] text-slate-500">Stay: 12h min, 24h max. Checkout by {new Date(new Date(formData.checkIn).getTime() + 24 * 60 * 60 * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}.</p>}
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={formData.flexibleCheckout} onChange={(e) => { updateField('flexibleCheckout', e.target.checked); if (e.target.checked && formData.checkIn) updateField('checkOut', setDefaultCheckout(formData.checkIn)) }} className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-800" />
                   <span className="text-xs text-slate-400 group-hover:text-slate-300">Checkout time not confirmed (flexible)</span>

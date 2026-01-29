@@ -155,36 +155,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Phase 1: Transaction management - All operations in one transaction
+    // Each booking gets its own guest record (snapshot). We do NOT find by phone and update,
+    // so creating a new booking never overwrites an existing guest's name on other bookings.
     const result = await prisma.$transaction(async (tx: any) => {
-      // Create or find guest first (shared across all bookings)
-      let guest = await tx.guest.findFirst({
-        where: { phone: validatedData.guestPhone },
+      const guest = await tx.guest.create({
+        data: {
+          name: validatedData.guestName,
+          phone: validatedData.guestPhone,
+          idProof: validatedData.guestIdProof,
+          idProofType: data.guestIdProofType || 'AADHAR',
+          guestType: data.guestType || 'WALK_IN',
+          address: validatedData.guestAddress,
+        },
       })
-
-      if (!guest) {
-        guest = await tx.guest.create({
-          data: {
-            name: validatedData.guestName,
-            phone: validatedData.guestPhone,
-            idProof: validatedData.guestIdProof,
-            idProofType: data.guestIdProofType || 'AADHAR',
-            guestType: data.guestType || 'WALK_IN',
-            address: validatedData.guestAddress,
-          },
-        })
-      } else {
-        // Update guest info if provided
-        guest = await tx.guest.update({
-          where: { id: guest.id },
-          data: {
-            name: validatedData.guestName,
-            idProof: validatedData.guestIdProof || guest.idProof,
-            idProofType: data.guestIdProofType || guest.idProofType || 'AADHAR',
-            guestType: data.guestType || guest.guestType || 'WALK_IN',
-            address: validatedData.guestAddress || guest.address,
-          },
-        })
-      }
 
       const bookings: any[] = []
 

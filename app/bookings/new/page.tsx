@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, FaTag, FaEye, FaUsers, FaPercent } from 'react-icons/fa'
@@ -18,41 +18,44 @@ function NewBookingContent() {
   const queryClient = useQueryClient()
 
   const roomIdParam = searchParams.get('roomId')
-  const initialFormData = {
-    roomIds: roomIdParam ? [roomIdParam] : [] as string[],
-    slotId: searchParams.get('slotId') || '',
-    guestName: '',
-    guestPhone: '',
-    guestIdProof: '',
-    guestIdProofType: 'AADHAR',
-    guestAddress: '',
-    guestType: 'WALK_IN',
-    numberOfGuests: '1',
-    checkIn: '',
-    checkOut: '',
-    flexibleCheckout: false, // When true, checkout time is tentative/TBD
-    paymentMode: 'CASH',
-    advanceAmount: '0',
-    discount: '0',
-    applyGst: false,
-    extraBed: false,
-    extraBedCount: '1',
-    extraBedPrice: '500', // Default price, user can change
-  }
+  const slotIdParam = searchParams.get('slotId')
+  // Stable initial state: only depends on URL params so form isn't reset on every render
+  const initialFormData = useMemo(
+    () => ({
+      roomIds: roomIdParam ? [roomIdParam] : [] as string[],
+      slotId: slotIdParam || '',
+      guestName: '',
+      guestPhone: '',
+      guestIdProof: '',
+      guestIdProofType: 'AADHAR' as const,
+      guestAddress: '',
+      guestType: 'WALK_IN' as const,
+      numberOfGuests: '1',
+      checkIn: '',
+      checkOut: '',
+      flexibleCheckout: false,
+      paymentMode: 'CASH' as const,
+      advanceAmount: '0',
+      discount: '0',
+      applyGst: false,
+      extraBed: false,
+      extraBedCount: '1',
+      extraBedPrice: '500',
+    }),
+    [roomIdParam, slotIdParam]
+  )
 
-  // Auto-set default checkout time when flexible checkout is enabled
+  // 24-hour hotel: default checkout = check-in + 24 hours
   const setDefaultCheckout = (checkInValue: string) => {
     if (!checkInValue) return ''
     const checkInDate = new Date(checkInValue)
-    // Default: Next day at 11:00 AM (standard hotel checkout)
-    const nextDay = new Date(checkInDate)
-    nextDay.setDate(nextDay.getDate() + 1)
-    nextDay.setHours(11, 0, 0, 0)
-    // Format for datetime-local input
-    const year = nextDay.getFullYear()
-    const month = String(nextDay.getMonth() + 1).padStart(2, '0')
-    const day = String(nextDay.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}T11:00`
+    const checkoutDate = new Date(checkInDate.getTime() + 24 * 60 * 60 * 1000)
+    const year = checkoutDate.getFullYear()
+    const month = String(checkoutDate.getMonth() + 1).padStart(2, '0')
+    const day = String(checkoutDate.getDate()).padStart(2, '0')
+    const hours = String(checkoutDate.getHours()).padStart(2, '0')
+    const mins = String(checkoutDate.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${mins}`
   }
 
   // ID Proof validation patterns for Indian documents
@@ -121,7 +124,7 @@ function NewBookingContent() {
     return true
   }
 
-  // Use form validation hook
+  // Use form validation hook (reset available to clear form after create)
   const {
     formData,
     errors,
@@ -130,6 +133,7 @@ function NewBookingContent() {
     handleBlur,
     getError,
     setFormData,
+    reset: resetForm,
   } = useFormValidation(initialFormData, bookingValidationRules)
 
   const [selectedRooms, setSelectedRooms] = useState<any[]>([])
@@ -239,6 +243,7 @@ function NewBookingContent() {
     onSuccess: (result: any) => {
       const roomCount = result?.bookings?.length || 1
       toast.success(`${roomCount} room${roomCount > 1 ? 's' : ''} booked successfully!`)
+      resetForm() // Clear form state so no stale data if user navigates back to /bookings/new
       router.push('/bookings')
     },
     onError: (error: any) => {
@@ -279,14 +284,8 @@ function NewBookingContent() {
   const calculateOverview = () => {
     if (selectedRooms.length === 0) return null
 
-    const days =
-      formData.checkIn && formData.checkOut
-        ? Math.max(
-            1,
-            (new Date(formData.checkOut).getTime() - new Date(formData.checkIn).getTime()) /
-              (1000 * 60 * 60 * 24)
-          )
-        : 1
+    // 24-hour hotel: one 24hr slot = 1 day rate
+    const days = 1
 
     // Calculate total base amount for all selected rooms
     const baseAmount = selectedRooms.reduce((total, room) => {
@@ -510,22 +509,19 @@ function NewBookingContent() {
                       updateField('checkOut', newCheckOut)
                       updateField('flexibleCheckout', false) // Disable flexible if manually changed
                       
-                      // Validate minimum stay (at least 12 hours)
+                      // 24-hour hotel: min 12h, max 24h stay
                       if (formData.checkIn && newCheckOut) {
                         const checkInTime = new Date(formData.checkIn).getTime()
                         const checkOutTime = new Date(newCheckOut).getTime()
                         const hoursDiff = (checkOutTime - checkInTime) / (1000 * 60 * 60)
-                        
                         if (hoursDiff < 12) {
-                          toast.error('Minimum stay is 12 hours. Check-out must be at least 12 hours after check-in.')
-                          // Auto-correct to 12 hours after check-in
-                          const correctedCheckout = new Date(checkInTime + (12 * 60 * 60 * 1000))
-                          const year = correctedCheckout.getFullYear()
-                          const month = String(correctedCheckout.getMonth() + 1).padStart(2, '0')
-                          const day = String(correctedCheckout.getDate()).padStart(2, '0')
-                          const hours = String(correctedCheckout.getHours()).padStart(2, '0')
-                          const mins = String(correctedCheckout.getMinutes()).padStart(2, '0')
-                          updateField('checkOut', `${year}-${month}-${day}T${hours}:${mins}`)
+                          toast.error('Minimum stay is 12 hours.')
+                          const corrected = new Date(checkInTime + 12 * 60 * 60 * 1000)
+                          updateField('checkOut', corrected.toISOString().slice(0, 16))
+                        } else if (hoursDiff > 24) {
+                          toast.error('Maximum stay is 24 hours.')
+                          const corrected = new Date(checkInTime + 24 * 60 * 60 * 1000)
+                          updateField('checkOut', corrected.toISOString().slice(0, 16))
                         }
                       }
                       
@@ -542,10 +538,10 @@ function NewBookingContent() {
                     onBlur={() => handleBlur('checkOut')}
                     error={getError('checkOut')}
                   />
-                  {/* Minimum checkout hint */}
+                  {/* 24-hour hotel: 12h min, 24h max */}
                   {formData.checkIn && (
                     <p className="text-[10px] text-slate-500">
-                      Minimum checkout: {new Date(new Date(formData.checkIn).getTime() + 12*60*60*1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} (12 hours min)
+                      Stay: 12 hours min, 24 hours max. Checkout by {new Date(new Date(formData.checkIn).getTime() + 24*60*60*1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}.
                     </p>
                   )}
                   
@@ -574,7 +570,7 @@ function NewBookingContent() {
                   </label>
                   {formData.flexibleCheckout && (
                     <p className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
-                      Default: Next day 11 AM. Can be updated later when guest confirms.
+                      Default: 24 hours from check-in. Can be updated when guest confirms.
                     </p>
                   )}
                 </div>
@@ -754,9 +750,7 @@ function NewBookingContent() {
                   <select
                     required
                     value={formData.paymentMode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, paymentMode: e.target.value })
-                    }
+                    onChange={(e) => updateField('paymentMode', e.target.value)}
                     className="form-select"
                   >
                     <option value="CASH">Cash</option>

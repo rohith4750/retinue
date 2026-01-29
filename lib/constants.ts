@@ -56,9 +56,9 @@ export const DATETIME_FORMAT = 'YYYY-MM-DD HH:mm:ss'
 export const DISPLAY_DATE_FORMAT = 'DD MMM YYYY'
 export const DISPLAY_DATETIME_FORMAT = 'DD MMM YYYY, HH:mm'
 
-// Session & Auth
-export const IDLE_TIMEOUT_MS = 2 * 60 * 1000 // 2 min idle → logout (set to 15 * 60 * 1000 for production)
-export const SESSION_TIMEOUT = 8 * 60 * 60 * 1000 // 8 hours (fallback / legacy)
+// Session & Auth (15 minutes)
+export const IDLE_TIMEOUT_MS = 15 * 60 * 1000 // 15 min idle → logout
+export const SESSION_TIMEOUT = 15 * 60 * 1000 // 15 minutes
 export const REMEMBER_ME_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
 
 // Password Requirements

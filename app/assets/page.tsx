@@ -181,16 +181,27 @@ export default function AssetsPage() {
     refetchOnMount: 'always',
   })
 
-  // Process data
+  // Process data – handle API response shape (api.get returns data.data; fallback for wrapped)
   const assets = useMemo(() => {
     if (!assetsData) return []
     if (Array.isArray(assetsData)) return assetsData
     if (Array.isArray(assetsData?.data)) return assetsData.data
     return []
   }, [assetsData])
-  
-  const rooms = useMemo(() => roomsData || [], [roomsData])
-  const halls = useMemo(() => hallsData || [], [hallsData])
+
+  const rooms = useMemo(() => {
+    if (!roomsData) return []
+    if (Array.isArray(roomsData)) return roomsData
+    if (Array.isArray(roomsData?.data)) return roomsData.data
+    return (roomsData as any)?.rooms || []
+  }, [roomsData])
+
+  const halls = useMemo(() => {
+    if (!hallsData) return []
+    if (Array.isArray(hallsData)) return hallsData
+    if (Array.isArray(hallsData?.data)) return hallsData.data
+    return (hallsData as any)?.halls || []
+  }, [hallsData])
 
   // Filter assets by search
   const filteredAssets = useMemo(() => {
@@ -276,7 +287,8 @@ export default function AssetsPage() {
     )
   }
 
-  if (user?.role !== 'SUPER_ADMIN') {
+  const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']
+  if (!user || !allowedRoles.includes(user.role)) {
     return null
   }
 

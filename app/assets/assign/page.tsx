@@ -31,17 +31,20 @@ export default function AssignAssetPage() {
     if (userData) {
       const parsed = JSON.parse(userData)
       setUser(parsed)
-      if (parsed.role !== 'SUPER_ADMIN') {
+      const allowed = ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']
+      if (!allowed.includes(parsed.role)) {
         router.push('/dashboard')
       }
     }
   }, [router])
 
+  const canAccess = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'RECEPTIONIST'
+
   // Fetch existing asset location if editing
   const { data: existingAsset } = useQuery({
     queryKey: ['asset-location', editId],
     queryFn: () => api.get(`/asset-locations/${editId}`),
-    enabled: !!editId && user?.role === 'SUPER_ADMIN'
+    enabled: !!editId && !!canAccess
   })
 
   // Pre-fill form when editing - handle both wrapped and unwrapped responses
@@ -64,26 +67,31 @@ export default function AssignAssetPage() {
   const { data: roomsData } = useQuery({
     queryKey: ['rooms'],
     queryFn: () => api.get('/rooms'),
-    enabled: user?.role === 'SUPER_ADMIN'
+    enabled: !!canAccess
   })
 
   // Fetch function halls
   const { data: hallsData } = useQuery({
     queryKey: ['function-halls'],
     queryFn: () => api.get('/function-halls'),
-    enabled: user?.role === 'SUPER_ADMIN'
+    enabled: !!canAccess
   })
 
   // Fetch inventory items
   const { data: inventoryData } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => api.get('/inventory'),
-    enabled: user?.role === 'SUPER_ADMIN'
+    enabled: !!canAccess
   })
 
-  const rooms = roomsData || []
-  const halls = hallsData || []
-  const inventoryItems = inventoryData?.items || []
+  // Normalize to arrays (api.get returns data.data; support wrapped shapes)
+  const rooms = Array.isArray(roomsData) ? roomsData : (roomsData as any)?.data ?? []
+  const halls = Array.isArray(hallsData) ? hallsData : (hallsData as any)?.data ?? []
+  const inventoryItems = Array.isArray((inventoryData as any)?.items)
+    ? (inventoryData as any).items
+    : Array.isArray(inventoryData)
+      ? inventoryData
+      : []
 
   // Mutation
   const mutation = useMutationWithInvalidation({
@@ -120,7 +128,7 @@ export default function AssignAssetPage() {
     mutation.mutate(submitData)
   }
 
-  if (user?.role !== 'SUPER_ADMIN') {
+  if (!user || !canAccess) {
     return null
   }
 
