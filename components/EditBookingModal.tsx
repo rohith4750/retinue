@@ -1,11 +1,8 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { FaEdit, FaIdCard, FaUsers } from 'react-icons/fa'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
 import { useFormValidation } from '@/hooks/useFormValidation'
 import { editBookingValidationRules } from '@/lib/form-validation'
@@ -121,22 +118,8 @@ export function EditBookingModal({
     })
   }, [booking, setFormData])
 
-  const { data: availableRoomsData, isLoading: roomsLoading } = useQuery({
-    queryKey: ['available-rooms', formData.checkIn, formData.checkOut],
-    queryFn: () => {
-      if (formData.checkIn && formData.checkOut) {
-        const checkInDate = new Date(formData.checkIn).toISOString()
-        const checkOutDate = new Date(formData.checkOut).toISOString()
-        return api.get(`/rooms/available?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}`)
-      }
-      return api.get('/rooms/available')
-    },
-    staleTime: 0,
-    enabled: !!formData.checkIn && !!formData.checkOut,
-  })
-
-  const availableRooms = availableRoomsData?.rooms || availableRoomsData || []
-  const selectedRoomId = formData.roomIds[0] || null
+  // Edit: only show the room already in the booking — do not fetch or show remaining/other rooms
+  const selectedRoomId = formData.roomIds[0] || booking?.room?.id || null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -216,53 +199,33 @@ export function EditBookingModal({
               Select Dates
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormInput label="Check-in Date & Time *" type="datetime-local" value={formData.checkIn} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckIn = e.target.value; updateField('checkIn', newCheckIn); if (newCheckIn && !formData.checkOut) updateField('checkOut', setDefaultCheckout(newCheckIn)); if (formData.roomIds.length > 0) updateField('roomIds', []); if (formData.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkIn')} error={getError('checkIn')} />
+              <FormInput label="Check-in Date & Time *" type="datetime-local" value={formData.checkIn} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckIn = e.target.value; updateField('checkIn', newCheckIn); if (newCheckIn && !formData.checkOut) updateField('checkOut', setDefaultCheckout(newCheckIn)); if (formData.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkIn')} error={getError('checkIn')} />
               <div className="space-y-2">
-                <FormInput label={formData.flexibleCheckout ? 'Expected Check-out (Tentative)' : 'Check-out Date & Time *'} type="datetime-local" value={formData.checkOut} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckOut = e.target.value; updateField('checkOut', newCheckOut); updateField('flexibleCheckout', false); if (formData.checkIn && newCheckOut) { const hoursDiff = (new Date(newCheckOut).getTime() - new Date(formData.checkIn).getTime()) / (1000 * 60 * 60); if (hoursDiff < 12) { toast.error('Minimum stay is 12 hours.'); const corrected = new Date(new Date(formData.checkIn).getTime() + 12 * 60 * 60 * 1000); updateField('checkOut', corrected.toISOString().slice(0, 16)) } }; if (formData.roomIds.length > 0) updateField('roomIds', []); if (errors.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkOut')} error={getError('checkOut')} />
+                <FormInput label={formData.flexibleCheckout ? 'Expected Check-out (Tentative)' : 'Check-out Date & Time *'} type="datetime-local" value={formData.checkOut} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckOut = e.target.value; updateField('checkOut', newCheckOut); updateField('flexibleCheckout', false); if (formData.checkIn && newCheckOut) { const hoursDiff = (new Date(newCheckOut).getTime() - new Date(formData.checkIn).getTime()) / (1000 * 60 * 60); if (hoursDiff < 12) { toast.error('Minimum stay is 12 hours.'); const corrected = new Date(new Date(formData.checkIn).getTime() + 12 * 60 * 60 * 1000); updateField('checkOut', corrected.toISOString().slice(0, 16)) } }; if (errors.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkOut')} error={getError('checkOut')} />
                 {formData.checkIn && <p className="text-[10px] text-slate-500">Minimum checkout: {new Date(new Date(formData.checkIn).getTime() + 12 * 60 * 60 * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} (12 hours min)</p>}
                 <label className="flex items-center gap-2 cursor-pointer group">
-                  <input type="checkbox" checked={formData.flexibleCheckout} onChange={(e) => { updateField('flexibleCheckout', e.target.checked); if (e.target.checked && formData.checkIn) { updateField('checkOut', setDefaultCheckout(formData.checkIn)); if (formData.roomIds.length > 0) updateField('roomIds', []) } }} className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-800" />
+                  <input type="checkbox" checked={formData.flexibleCheckout} onChange={(e) => { updateField('flexibleCheckout', e.target.checked); if (e.target.checked && formData.checkIn) updateField('checkOut', setDefaultCheckout(formData.checkIn)) }} className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-800" />
                   <span className="text-xs text-slate-400 group-hover:text-slate-300">Checkout time not confirmed (flexible)</span>
                 </label>
               </div>
             </div>
           </div>
 
-          {/* Room selection */}
+          {/* Room: edit shows only the added room (no remaining/other rooms to choose) */}
           <div>
             <h3 className="text-sm font-semibold text-slate-100 mb-4 flex items-center">
-              <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold mr-2 ${formData.checkIn && formData.checkOut ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-400'}`}>2</span>
-              Select Room
-              {formData.checkIn && formData.checkOut && <span className="ml-auto text-xs font-normal text-emerald-400">{roomsLoading ? 'Loading...' : `${availableRooms?.length || 0} available`}</span>}
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold mr-2">2</span>
+              Room (fixed for this booking)
             </h3>
-            {formData.checkIn && formData.checkOut && (
-              <div className="mb-4 p-3 bg-slate-800/40 rounded-lg border border-white/5">
-                <p className="text-xs text-slate-400">Rooms available from <span className="text-sky-400 font-medium">{new Date(formData.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> to <span className="text-sky-400 font-medium">{new Date(formData.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></p>
+            {booking?.room ? (
+              <div className="p-4 rounded-lg border-2 border-sky-500/50 bg-sky-500/10">
+                <p className="font-bold text-slate-100">Room {booking.room.roomNumber} ({booking.room.roomType})</p>
+                <p className="text-sm text-slate-400 mt-1">Floor {booking.room.floor} • ₹{booking.room.basePrice ?? 0}/day</p>
+                <p className="text-xs text-slate-500 mt-2">Room cannot be changed when editing. Create a new booking to assign a different room.</p>
               </div>
-            )}
-            {!formData.checkIn || !formData.checkOut ? (
-              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 text-center"><p className="text-sm text-slate-400">Select check-in and check-out first</p></div>
-            ) : roomsLoading ? (
-              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 flex items-center justify-center"><LoadingSpinner size="md" /></div>
-            ) : availableRooms?.length === 0 ? (
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-6 text-center"><p className="text-sm text-yellow-400">No rooms available for the selected dates.</p></div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {availableRooms?.map((room: any) => {
-                  const isSelected = selectedRoomId === room.id
-                  return (
-                    <button key={room.id} type="button" onClick={() => updateField('roomIds', [room.id])} className={`p-4 rounded-lg border-2 text-left transition-all ${isSelected ? 'border-sky-500 bg-sky-500/10 ring-2 ring-sky-500/30' : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'}`}>
-                      <div className="flex justify-between mb-2">
-                        <span className="font-bold text-slate-100">Room {room.roomNumber}</span>
-                        <span className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'border-sky-500 bg-sky-500' : 'border-slate-500'}`}>{isSelected && <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}</span>
-                      </div>
-                      <div className="text-xs text-slate-400 space-y-1"><p>{room.roomType} • Floor {room.floor}</p><p className="text-sky-400 font-semibold">₹{room.basePrice}/day</p></div>
-                    </button>
-                  )
-                })}
-              </div>
+              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-center"><p className="text-sm text-slate-400">No room assigned</p></div>
             )}
-            {formData.roomIds.length === 0 && formData.checkIn && formData.checkOut && availableRooms?.length > 0 && <p className="text-xs text-yellow-400 mt-2">Please select a room</p>}
           </div>
 
           <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">

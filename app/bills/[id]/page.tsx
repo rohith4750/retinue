@@ -401,6 +401,9 @@ export default function BillPage() {
               <p className="text-slate-200">Room {room.roomNumber} ({room.roomType}) • Floor {room.floor}</p>
               <p className="text-sm text-slate-400">Check-in: {new Date(booking.checkIn).toLocaleString('en-IN')}</p>
               <p className="text-sm text-slate-400">Check-out: {new Date(booking.checkOut).toLocaleString('en-IN')}</p>
+              {(bill.bookedByUser ?? booking.bookedByUser) && (
+                <p className="text-sm text-slate-400 mt-1">Booked by: <span className="text-sky-400 font-medium">{(bill.bookedByUser ?? booking.bookedByUser).username}</span></p>
+              )}
               <p className="text-xs text-slate-500 mt-1">Booking ID: {booking.id}</p>
             </div>
           </div>

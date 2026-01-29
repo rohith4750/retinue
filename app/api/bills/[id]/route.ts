@@ -47,6 +47,18 @@ export async function GET(
       )
     }
 
+    // Who booked: first CREATED history entry's changedBy → User username
+    let bookedByUser: { id: string; username: string } | null = null
+    const createdEntry = (booking.history || []).find((h: { action: string }) => h.action === 'CREATED')
+    if (createdEntry && (createdEntry as { changedBy?: string }).changedBy) {
+      const userId = (createdEntry as { changedBy: string }).changedBy
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true },
+      })
+      if (user) bookedByUser = { id: user.id, username: user.username }
+    }
+
     // Return in a format compatible with old Bill structure for frontend
     const billData = {
       id: booking.id,
@@ -63,6 +75,7 @@ export async function GET(
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
       history: booking.history || [],
+      bookedByUser,
       booking: {
         id: booking.id,
         checkIn: booking.checkIn,
@@ -71,6 +84,7 @@ export async function GET(
         room: booking.room,
         slot: booking.slot,
         guest: booking.guest,
+        bookedByUser,
       },
     }
 
@@ -203,9 +217,10 @@ export async function PUT(
           { status: 400 }
         )
       }
-      let previousAmount = Number(historyEntry.changes?.paymentReceived)
-      if (!previousAmount && historyEntry.changes?.paidAmount?.to != null) {
-        previousAmount = Number(historyEntry.changes.paidAmount.to) - Number(historyEntry.changes.paidAmount.from ?? 0)
+      const changes = historyEntry.changes as { paymentReceived?: number; paidAmount?: { from?: number; to?: number } } | null
+      let previousAmount = Number(changes?.paymentReceived)
+      if (!previousAmount && changes?.paidAmount?.to != null) {
+        previousAmount = Number(changes.paidAmount.to) - Number(changes.paidAmount.from ?? 0)
       }
       previousAmount = previousAmount || 0
       const newAmt = parseFloat(String(newAmount))
