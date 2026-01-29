@@ -12,9 +12,9 @@ export interface QueryInvalidationMap {
  * When a mutation succeeds, all related queries are automatically invalidated
  */
 export const QUERY_INVALIDATION_MAP: QueryInvalidationMap = {
-  // Bookings - affects rooms status, so invalidate both
-  '/bookings': ['bookings', 'rooms', 'available-rooms', 'dashboard'],
-  '/bookings/': ['bookings', 'rooms', 'available-rooms', 'dashboard'], // Matches /bookings/{id}
+  // Bookings - affects rooms, calendar, and dashboard
+  '/bookings': ['bookings', 'bookings-calendar', 'rooms', 'available-rooms', 'dashboard'],
+  '/bookings/': ['bookings', 'bookings-calendar', 'rooms', 'available-rooms', 'dashboard'], // Matches /bookings/{id}
   
   // Rooms - affects availability
   '/rooms': ['rooms', 'available-rooms', 'dashboard'],

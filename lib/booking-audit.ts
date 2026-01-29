@@ -4,6 +4,7 @@
  */
 
 import { prisma } from './prisma'
+import type { Prisma } from '@prisma/client'
 
 export interface BookingChange {
   field: string
@@ -11,18 +12,25 @@ export interface BookingChange {
   newValue: any
 }
 
+/** Use transaction client when inside $transaction so history insert sees the new booking (avoids FK violation) */
+type TxClient = Prisma.TransactionClient
+
 /**
- * Log booking change to history
+ * Log booking change to history.
+ * When called inside a transaction, pass the transaction client (tx) so the history
+ * row is created in the same transaction and sees the booking row (avoids FK violation).
  */
 export async function logBookingChange(
   bookingId: string,
   action: string,
   userId?: string,
   changes?: BookingChange[],
-  notes?: string
+  notes?: string,
+  tx?: TxClient
 ) {
+  const client = tx ?? prisma
   try {
-    await prisma.bookingHistory.create({
+    await client.bookingHistory.create({
       data: {
         bookingId,
         action,

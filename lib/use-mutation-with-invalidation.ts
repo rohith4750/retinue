@@ -6,7 +6,7 @@
  */
 
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query'
-import { invalidateRelatedQueries } from './query-invalidation'
+import { getRelatedQueryKeys } from './query-invalidation'
 
 /**
  * Enhanced useMutation hook with automatic query invalidation
@@ -43,10 +43,16 @@ export function useMutationWithInvalidation<TData = any, TVariables = any, TErro
   return useMutation<TData, TError, TVariables>({
     ...mutationOptions,
     onSuccess: async (data, variables, context, mutation) => {
-      // Automatically invalidate all related queries
-      invalidateRelatedQueries(queryClient, endpoint)
-      
-      // Invalidate additional query keys if provided
+      const relatedKeys = getRelatedQueryKeys(endpoint)
+      relatedKeys.forEach((key) => {
+        queryClient.invalidateQueries({
+          predicate: (query: any) => {
+            const qk = query?.queryKey
+            return Array.isArray(qk) && qk.length > 0 && qk[0] === key
+          },
+        })
+      })
+
       if (additionalInvalidations && additionalInvalidations.length > 0) {
         for (const key of additionalInvalidations) {
           if (Array.isArray(key)) {
@@ -56,9 +62,16 @@ export function useMutationWithInvalidation<TData = any, TVariables = any, TErro
           }
         }
       }
-      
-      // Refetch all queries to ensure immediate update
-      await queryClient.refetchQueries({ type: 'active' })
+
+      // Refetch related queries so Rooms/list update even when user navigates later
+      for (const key of relatedKeys) {
+        await queryClient.refetchQueries({
+          predicate: (query: any) => {
+            const qk = query?.queryKey
+            return Array.isArray(qk) && qk.length > 0 && qk[0] === key
+          },
+        })
+      }
       
       // Call custom onSuccess if provided
       if (onSuccess) {

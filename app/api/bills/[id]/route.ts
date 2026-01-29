@@ -94,11 +94,23 @@ export async function PUT(
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()
-    const { paidAmount } = data
+    const { paidAmount, paymentMode } = data
 
     if (paidAmount === undefined) {
       return Response.json(
         errorResponse('Validation error', 'Paid amount is required'),
+        { status: 400 }
+      )
+    }
+
+    const paymentReceived = parseFloat(paidAmount)
+    const validModes = ['CASH', 'CARD', 'UPI', 'NET_BANKING', 'WALLET', 'CHEQUE']
+    const mode = paymentMode && validModes.includes(String(paymentMode).toUpperCase())
+      ? String(paymentMode).toUpperCase()
+      : 'CASH'
+    if (isNaN(paymentReceived) || paymentReceived < 0) {
+      return Response.json(
+        errorResponse('Validation error', 'Paid amount must be a non-negative number'),
         { status: 400 }
       )
     }
@@ -121,8 +133,14 @@ export async function PUT(
       )
     }
 
+    if (booking.status === 'CANCELLED') {
+      return Response.json(
+        errorResponse('Validation error', 'Cannot record payment for a cancelled booking'),
+        { status: 400 }
+      )
+    }
+
     const oldPaidAmount = booking.paidAmount
-    const paymentReceived = parseFloat(paidAmount)
     const newPaidAmount = oldPaidAmount + paymentReceived
     const balanceAmount = booking.totalAmount - newPaidAmount
     const paymentStatus =
@@ -144,7 +162,7 @@ export async function PUT(
         },
       })
       
-      // Record payment in history
+      // Record payment in history (include how they paid)
       await tx.bookingHistory.create({
         data: {
           bookingId: booking.id,
@@ -153,9 +171,10 @@ export async function PUT(
           changes: {
             paidAmount: { from: oldPaidAmount, to: newPaidAmount },
             paymentReceived: paymentReceived,
+            paymentMode: mode,
             paymentStatus: { from: booking.paymentStatus, to: paymentStatus },
           },
-          notes: `Payment of ₹${paymentReceived.toLocaleString()} received`,
+          notes: `Payment of ₹${paymentReceived.toLocaleString()} received (${mode.replace('_', ' ')})`,
         },
       })
       

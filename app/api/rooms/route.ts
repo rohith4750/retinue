@@ -5,7 +5,7 @@ import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
 type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
-// GET /api/rooms - List all rooms
+// GET /api/rooms - List all rooms (status derived from actual bookings so early checkout = available)
 export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth()(request)
@@ -17,10 +17,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
 
     const where: any = {}
-    if (status) where.status = status
     if (roomType) where.roomType = roomType
-    
-    // Search functionality
     if (search) {
       where.OR = [
         { roomNumber: { contains: search, mode: 'insensitive' } },
@@ -33,7 +30,42 @@ export async function GET(request: NextRequest) {
       orderBy: { roomNumber: 'asc' },
     })
 
-    return Response.json(successResponse(rooms))
+    // Derive effective status from actual bookings: only PENDING/CONFIRMED/CHECKED_IN block a room.
+    // If booking was CHECKED_OUT (early or on time), room is AVAILABLE regardless of Room.status.
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const overlapping = await prisma.booking.findMany({
+      where: {
+        status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
+        AND: [
+          { checkIn: { lt: tomorrow } },
+          { checkOut: { gt: today } },
+        ],
+      },
+      select: { roomId: true, checkOut: true },
+    })
+    const blocking = overlapping.filter((b) => {
+      const checkoutDayStart = new Date(b.checkOut)
+      checkoutDayStart.setHours(0, 0, 0, 0)
+      return checkoutDayStart > today
+    })
+    const bookedRoomIds = new Set(blocking.map((b) => b.roomId))
+
+    const roomsWithEffectiveStatus = rooms.map((room) => {
+      if (room.status === 'MAINTENANCE') return { ...room, status: 'MAINTENANCE' as const }
+      const effectiveStatus = bookedRoomIds.has(room.id) ? 'BOOKED' : 'AVAILABLE'
+      return { ...room, status: effectiveStatus }
+    })
+
+    // Optional filter by status (applied after deriving effective status)
+    const filtered =
+      status === undefined
+        ? roomsWithEffectiveStatus
+        : roomsWithEffectiveStatus.filter((r) => r.status === status)
+
+    return Response.json(successResponse(filtered))
   } catch (error) {
     console.error('Error fetching rooms:', error)
     return Response.json(

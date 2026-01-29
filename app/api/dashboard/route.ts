@@ -22,23 +22,39 @@ export async function GET(request: NextRequest) {
     // Total rooms
     const totalRooms = await prisma.room.count()
 
-    // Available rooms today
-    const availableRooms = await prisma.room.count({
-      where: { status: 'AVAILABLE' },
+    // Maintenance rooms (excluded from available/booked counts)
+    const maintenanceRooms = await prisma.room.count({
+      where: { status: 'MAINTENANCE' },
     })
 
-    // Booked rooms
-    const bookedRooms = await prisma.room.count({
-      where: { status: 'BOOKED' },
+    // Booked/available TODAY: same logic as GET /api/rooms/available
+    // Check-out day = available: occupancy ends at start of check-out day
+    const overlappingToday = await prisma.booking.findMany({
+      where: {
+        status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
+        AND: [
+          { checkIn: { lt: tomorrow } },
+          { checkOut: { gt: today } },
+        ],
+      },
+      select: { roomId: true, checkOut: true },
     })
+    const bookedRoomIdsToday = overlappingToday.filter((b) => {
+      const checkoutDayStart = new Date(b.checkOut)
+      checkoutDayStart.setHours(0, 0, 0, 0)
+      return checkoutDayStart > today
+    })
+    const bookedRooms = new Set(bookedRoomIdsToday.map((b) => b.roomId)).size
+    const availableRooms = Math.max(0, totalRooms - maintenanceRooms - bookedRooms)
 
-    // Today's bookings
+    // Today's check-ins that are still active (exclude checked-out / cancelled)
     const todayBookings = await prisma.booking.count({
       where: {
         checkIn: {
           gte: today,
           lt: tomorrow,
         },
+        status: { notIn: ['CHECKED_OUT', 'CANCELLED'] },
       },
     })
 
@@ -110,14 +126,9 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Low inventory alerts
-    const lowStockItems = await prisma.inventory.findMany({
-      where: {
-        quantity: {
-          lte: prisma.inventory.fields.minStock,
-        },
-      },
-    })
+    // Low inventory alerts (quantity <= minStock; Prisma can't compare two columns in where)
+    const allInventory = await prisma.inventory.findMany()
+    const lowStockItems = allInventory.filter((item) => item.quantity <= item.minStock)
 
     // Booking status breakdown
     const bookingsByStatus = await prisma.booking.groupBy({
@@ -232,28 +243,28 @@ export async function GET(request: NextRequest) {
         return acc
       }, {})
 
-      // Event types breakdown (this month)
+      // Event types breakdown (this month) - no orderBy/take in groupBy; sort/slice in JS
       const hallEventTypeRows = (await (prisma as any).functionHallBooking.groupBy({
         by: ['eventType'],
         where: { createdAt: { gte: startOfMonth }, status: { notIn: ['CANCELLED'] } },
         _count: true,
-        take: 20,
       })) as any[]
       hallEventTypesThisMonth = hallEventTypeRows
         .map((r: any) => ({ eventType: r.eventType, count: r._count }))
         .sort((a: any, b: any) => b.count - a.count)
         .slice(0, 6)
 
-      // Top halls by booked value this month (sum of totalAmount)
+      // Top halls by booked value this month - sort/slice in JS (groupBy orderBy requires by-fields)
       // @ts-ignore
-      const topHallGroups = await prisma.functionHallBooking.groupBy({
+      const topHallGroupsRaw = await prisma.functionHallBooking.groupBy({
         by: ['hallId'],
         where: { createdAt: { gte: startOfMonth }, status: { notIn: ['CANCELLED'] } },
         _count: true,
         _sum: { totalAmount: true },
-        orderBy: { _sum: { totalAmount: 'desc' } },
-        take: 5,
       })
+      const topHallGroups = topHallGroupsRaw
+        .sort((a: any, b: any) => (b._sum?.totalAmount ?? 0) - (a._sum?.totalAmount ?? 0))
+        .slice(0, 5)
       const topHallIds = topHallGroups.map((g: any) => g.hallId)
       // @ts-ignore
       const topHallMeta = await prisma.functionHall.findMany({
@@ -426,9 +437,7 @@ export async function GET(request: NextRequest) {
     const flexibleCheckoutActive = await (prisma.booking as any).count({
       where: { status: 'CHECKED_IN', flexibleCheckout: true },
     })
-    const maintenanceRooms = await prisma.room.count({
-      where: { status: 'MAINTENANCE' },
-    })
+    // maintenanceRooms already computed at top (used for available/booked today)
 
     // Stay metrics (this month)
     const monthStayRows = await prisma.booking.findMany({
@@ -452,17 +461,18 @@ export async function GET(request: NextRequest) {
     const avgBookingValueThisMonth =
       monthBookings > 0 ? Math.round(((monthRevenue._sum.paidAmount || 0) / monthBookings) * 100) / 100 : 0
 
-    // Top rooms this month by paid revenue
-    const topRoomGroups = await prisma.booking.groupBy({
+    // Top rooms this month by paid revenue - sort/slice in JS (groupBy orderBy requires by-fields)
+    const topRoomGroupsRaw = await prisma.booking.groupBy({
       by: ['roomId'],
       where: {
         createdAt: { gte: startOfMonth },
         status: { not: 'CANCELLED' },
       },
       _sum: { paidAmount: true },
-      orderBy: { _sum: { paidAmount: 'desc' } },
-      take: 5,
     })
+    const topRoomGroups = topRoomGroupsRaw
+      .sort((a, b) => (b._sum?.paidAmount ?? 0) - (a._sum?.paidAmount ?? 0))
+      .slice(0, 5)
     const topRoomIds = topRoomGroups.map((g) => g.roomId)
     const topRoomsMeta = topRoomIds.length
       ? await prisma.room.findMany({

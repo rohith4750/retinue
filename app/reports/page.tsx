@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { getToken, getStoredUser } from '@/lib/auth-storage'
 import { 
   FaFileExcel, FaDownload, FaHotel, FaBuilding, FaChartBar, 
   FaCalendarAlt, FaSpinner, FaClipboardList, FaMoneyBillWave,
@@ -17,10 +18,7 @@ export default function ReportsPage() {
   })
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      setUser(JSON.parse(userData))
-    }
+    setUser(getStoredUser())
 
     // Set default date range - last 2 months
     const end = new Date()
@@ -36,7 +34,7 @@ export default function ReportsPage() {
   const downloadReport = async (type: 'hotel' | 'convention' | 'all') => {
     setLoading(type)
     try {
-      const token = localStorage.getItem('accessToken')
+      const token = getToken()
       const params = new URLSearchParams({
         type,
         startDate: dateRange.startDate,

@@ -1,49 +1,13 @@
 import { API_BASE, API_TIMEOUT, ERROR_CODES } from './constants'
-
-let refreshTokenPromise: Promise<string | null> | null = null
+import { getToken, clearAuth } from './auth-storage'
 
 /**
- * Refresh access token using refresh token
+ * Redirect to login with optional reason (session_expired / timeout).
+ * Caller should clear auth before this when appropriate.
  */
-async function refreshAccessToken(): Promise<string | null> {
-  // Prevent multiple simultaneous refresh requests
-  if (refreshTokenPromise) {
-    return refreshTokenPromise
-  }
-
-  refreshTokenPromise = (async () => {
-    try {
-      const response = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include', // Include cookies
-      })
-
-      if (!response.ok) {
-        // Refresh failed, clear auth
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
-        return null
-      }
-
-      const data = await response.json()
-      if (data.success && data.data?.accessToken) {
-        localStorage.setItem('accessToken', data.data.accessToken)
-        return data.data.accessToken
-      }
-
-      return null
-    } catch (error) {
-      console.error('Token refresh failed:', error)
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
-      return null
-    } finally {
-      refreshTokenPromise = null
-    }
-  })()
-
-  return refreshTokenPromise
+function redirectToLogin(reason?: string) {
+  const url = reason ? `/login?reason=${encodeURIComponent(reason)}` : '/login'
+  window.location.href = url
 }
 
 /**
@@ -51,10 +15,9 @@ async function refreshAccessToken(): Promise<string | null> {
  */
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {},
-  retryCount = 0
+  options: RequestInit = {}
 ): Promise<T> {
-  const accessToken = localStorage.getItem('accessToken')
+  const accessToken = getToken()
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -64,7 +27,6 @@ export async function apiRequest<T = any>(
     ...options.headers,
   }
 
-  // Create abort controller for timeout
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT)
 
@@ -72,19 +34,19 @@ export async function apiRequest<T = any>(
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
-      credentials: 'include', // Include cookies for refresh token
+      credentials: 'include',
       signal: controller.signal,
     })
 
     clearTimeout(timeoutId)
 
-    // Handle 401 Unauthorized - try to refresh token
-    if (response.status === 401 && retryCount === 0) {
-      const newToken = await refreshAccessToken()
-      if (newToken) {
-        // Retry request with new token
-        return apiRequest<T>(endpoint, options, retryCount + 1)
-      }
+    // 401: clear auth and redirect to login with reason (backend rejected token)
+    if (response.status === 401) {
+      clearAuth()
+      redirectToLogin('session_expired')
+      const data = await response.json().catch(() => ({}))
+      const errorMessage = data.message || data.error || 'Unauthorized'
+      throw new Error(errorMessage)
     }
 
     const data = await response.json()

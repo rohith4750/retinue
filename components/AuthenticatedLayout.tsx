@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { Footer } from './Footer'
 import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
-import toast from 'react-hot-toast'
+import { getToken, isLoggedIn, clearAuth } from '@/lib/auth-storage'
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode
@@ -20,48 +20,33 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const sessionInitialized = useRef(false)
   const validationInProgress = useRef(false)
 
-  // Pages that don't need authentication
   const publicPaths = ['/login', '/forgot-password', '/reset-password']
   const isPublicPath = publicPaths.some(path => pathname?.startsWith(path))
 
-  // Clear auth and redirect to login
-  const clearAuthAndRedirect = useCallback(() => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('user')
-    localStorage.removeItem('rememberMe')
+  const clearAuthAndRedirect = useCallback((reason?: string) => {
+    clearAuth()
     clearSessionTimeout()
     sessionInitialized.current = false
-    router.push('/login')
+    const url = reason ? `/login?reason=${encodeURIComponent(reason)}` : '/login'
+    router.push(url)
   }, [router])
 
-  // Session timeout handler - only trigger if actually authenticated and session was initialized
+  // 15 min idle → logout; redirect with ?reason=timeout so login page shows "Session expired" once
   const handleSessionTimeout = useCallback(() => {
-    // Only show timeout if session was properly initialized
-    if (!sessionInitialized.current) {
-      return
-    }
-    
-    toast.error('Session expired. Please login again.')
-    clearAuthAndRedirect()
+    if (!sessionInitialized.current) return
+    clearAuthAndRedirect('timeout')
   }, [clearAuthAndRedirect])
 
-  // Validate token with server using lightweight endpoint
   const validateToken = useCallback(async (accessToken: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/auth/validate', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       })
-      
-      // If we get 401, token is invalid
-      if (response.status === 401) {
-        return false
-      }
-      
-      // Any successful response means token is valid
+      if (response.status === 401) return false
       return response.ok
     } catch (error) {
       console.error('Token validation error:', error)
@@ -70,57 +55,46 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   }, [])
 
   useEffect(() => {
-    // Prevent duplicate validation
     if (validationInProgress.current) return
-    
+
     if (isPublicPath) {
       setIsLoading(false)
-      clearSessionTimeout() // Clear any existing timeout on public pages
+      clearSessionTimeout()
       sessionInitialized.current = false
       return
     }
 
-    const user = localStorage.getItem('user')
-    const accessToken = localStorage.getItem('accessToken')
-    
-    if (!user || !accessToken) {
-      // Not authenticated - redirect to login without showing timeout message
+    const token = getToken()
+    const loggedIn = isLoggedIn()
+
+    if (!loggedIn || !token) {
+      if (loggedIn && !token) clearAuth()
       router.push('/login')
       setIsLoading(false)
       return
     }
-    
-    // Validate token with server (but don't block on network errors)
+
     validationInProgress.current = true
-    validateToken(accessToken).then((isValid) => {
+    validateToken(token).then((isValid) => {
       validationInProgress.current = false
-      
+
       if (!isValid) {
-        // Token is invalid - clear and redirect
-        console.log('Token validation failed, redirecting to login')
-        clearAuthAndRedirect()
+        clearAuthAndRedirect('session_expired')
         setIsLoading(false)
         return
       }
-      
-      // Token is valid
+
       setIsAuthenticated(true)
       setIsLoading(false)
-      
-      // Initialize session timeout after a small delay to prevent race conditions
       setTimeout(() => {
         initSessionTimeout(handleSessionTimeout)
         sessionInitialized.current = true
       }, 500)
     }).catch((error) => {
       validationInProgress.current = false
-      console.log('Token validation error (network/DB issue), allowing access:', error)
-      // On error (network/DB sleeping), still allow if we have local data
-      // This prevents logout when Neon DB is sleeping
+      console.error('Token validation error (network/DB), allowing access:', error)
       setIsAuthenticated(true)
       setIsLoading(false)
-      
-      // Still initialize session timeout
       setTimeout(() => {
         initSessionTimeout(handleSessionTimeout)
         sessionInitialized.current = true

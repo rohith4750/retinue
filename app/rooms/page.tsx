@@ -74,8 +74,6 @@ export default function RoomsPage() {
     return today
   })
   const [calendarFloorFilter, setCalendarFloorFilter] = useState<string>('all')
-  const [calendarPage, setCalendarPage] = useState(0)
-  const ROOMS_PER_PAGE = 10
 
   useEffect(() => {
     const user = localStorage.getItem('user')
@@ -84,15 +82,18 @@ export default function RoomsPage() {
     }
   }, [])
 
-  // Fetch bookings for calendar view
-  const { data: bookingsData } = useQuery({
+  // Fetch bookings for calendar view – refetch on focus so calendar updates after checkout elsewhere
+  const { data: bookingsResponse } = useQuery({
     queryKey: ['bookings-calendar', calendarStartDate.toISOString()],
     queryFn: () => api.get('/bookings?limit=500'),
-    enabled: viewMode === 'calendar',
     staleTime: 0,
   })
-  
-  const bookings = bookingsData?.data || bookingsData || []
+  // Handle both { data: [...], pagination } and direct array from API
+  const bookings = Array.isArray(bookingsResponse?.data)
+    ? bookingsResponse.data
+    : Array.isArray(bookingsResponse)
+      ? bookingsResponse
+      : []
 
   // Generate 7 days for calendar
   const calendarDays = Array.from({ length: 7 }, (_, i) => {
@@ -120,14 +121,13 @@ export default function RoomsPage() {
     dateStart.setHours(0, 0, 0, 0)
     const dateEnd = new Date(date)
     dateEnd.setHours(23, 59, 59, 999)
-    
+
     return bookings.find((booking: any) => {
-      if (booking.room?.id !== roomId) return false
-      // Don't show cancelled or checked-out bookings in calendar
+      const bookingRoomId = booking.room?.id ?? booking.roomId
+      if (bookingRoomId !== roomId) return false
       if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') return false
       const checkIn = new Date(booking.checkIn)
       const checkOut = new Date(booking.checkOut)
-      // Check if booking overlaps with this date
       return checkIn <= dateEnd && checkOut >= dateStart
     })
   }
@@ -152,7 +152,7 @@ export default function RoomsPage() {
 
   const queryClient = useQueryClient()
 
-  // Fetch rooms - either all rooms or available rooms based on date/time
+  // Fetch rooms - refetch on mount, window focus (so list updates after checkout in another tab), and when filters change
   const { data: rooms, isLoading, refetch } = useQuery({
     queryKey: ['rooms', debouncedSearch, filterCheckIn, filterCheckOut, isCheckingAvailability],
     queryFn: () => {
@@ -160,7 +160,6 @@ export default function RoomsPage() {
       if (debouncedSearch) {
         params.append('search', debouncedSearch)
       }
-      // If checking availability with date/time, use the available endpoint
       if (isCheckingAvailability && filterCheckIn && filterCheckOut) {
         const checkInDate = new Date(filterCheckIn).toISOString()
         const checkOutDate = new Date(filterCheckOut).toISOString()
@@ -168,8 +167,9 @@ export default function RoomsPage() {
       }
       return api.get(`/rooms?${params.toString()}`)
     },
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 0,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true, // Refetch when user returns to tab so list updates after checkout elsewhere
   })
 
   // Extract rooms array from response (handles both /rooms and /rooms/available responses)
@@ -197,17 +197,10 @@ export default function RoomsPage() {
   // Get unique floors for filter
   const uniqueFloors = Array.from(new Set(filteredRooms.map((r: any) => r.floor))).sort((a: any, b: any) => a - b)
 
-  // Filter rooms for calendar by floor
-  const calendarFilteredRooms = calendarFloorFilter === 'all' 
-    ? filteredRooms 
+  // Calendar shows the SAME rooms as the list (optionally by floor)
+  const calendarRooms = calendarFloorFilter === 'all'
+    ? filteredRooms
     : filteredRooms.filter((r: any) => r.floor === parseInt(calendarFloorFilter))
-
-  // Paginate rooms for calendar
-  const totalCalendarPages = Math.ceil(calendarFilteredRooms.length / ROOMS_PER_PAGE)
-  const paginatedCalendarRooms = calendarFilteredRooms.slice(
-    calendarPage * ROOMS_PER_PAGE,
-    (calendarPage + 1) * ROOMS_PER_PAGE
-  )
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/rooms/${id}`),
@@ -373,46 +366,52 @@ export default function RoomsPage() {
           </div>
         )}
 
-        {/* Calendar View */}
+        {/* Calendar View - same rooms as list, more interesting UI */}
         {viewMode === 'calendar' && (
-          <div className="bg-slate-800/60 rounded-xl border border-white/10 overflow-hidden mb-4">
+          <div className="rounded-2xl border border-white/10 overflow-hidden mb-4 bg-gradient-to-b from-slate-800/80 to-slate-900/80 shadow-xl">
+            {calendarRooms.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <FaCalendarAlt className="w-14 h-14 text-slate-500 mb-4" />
+                <p className="text-base font-semibold text-slate-300 mb-1">No rooms to show</p>
+                <p className="text-sm text-slate-500">Same rooms as the list. Add or adjust filters to see rooms here.</p>
+              </div>
+            ) : (
+          <>
             {/* Calendar Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-900/50 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigateCalendar('prev')}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                  <FaChevronLeft className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-white">
+            <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 bg-slate-900/60 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 rounded-xl bg-slate-800/80 p-1 border border-white/10">
+                  <button
+                    onClick={() => navigateCalendar('prev')}
+                    className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
+                  >
+                    <FaChevronLeft className="w-4 h-4" />
+                  </button>
+                  <h3 className="text-base font-bold text-white min-w-[120px] text-center">
                     {calendarStartDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
                   </h3>
                   <button
-                    onClick={goToToday}
-                    className="px-2 py-1 text-[10px] font-medium text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 rounded border border-sky-500/30"
+                    onClick={() => navigateCalendar('next')}
+                    className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
                   >
-                    Today
+                    <FaChevronRight className="w-4 h-4" />
                   </button>
                 </div>
                 <button
-                  onClick={() => navigateCalendar('next')}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  onClick={goToToday}
+                  className="px-3 py-2 text-xs font-semibold text-sky-300 bg-sky-500/20 hover:bg-sky-500/30 rounded-xl border border-sky-500/40 transition-all"
                 >
-                  <FaChevronRight className="w-4 h-4" />
+                  Today
                 </button>
               </div>
-              
-              {/* Floor Filter & Room Count */}
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500">
-                  {calendarFilteredRooms.length} rooms
+                <span className="text-xs font-medium text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-white/5">
+                  {calendarRooms.length} room{calendarRooms.length !== 1 ? 's' : ''}
                 </span>
                 <select
                   value={calendarFloorFilter}
-                  onChange={(e) => { setCalendarFloorFilter(e.target.value); setCalendarPage(0) }}
-                  className="px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white focus:border-sky-500 outline-none"
+                  onChange={(e) => setCalendarFloorFilter(e.target.value)}
+                  className="px-3 py-2 text-xs bg-slate-800 border border-slate-600 rounded-xl text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 outline-none"
                 >
                   <option value="all">All Floors</option>
                   {uniqueFloors.map((floor: any) => (
@@ -426,19 +425,19 @@ export default function RoomsPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px]">
                 <thead>
-                  <tr className="bg-slate-900/30">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-32 sticky left-0 bg-slate-800/90 z-10">Room</th>
+                  <tr className="bg-slate-900/40">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-36 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">Room</th>
                     {calendarDays.map((date, i) => {
                       const isToday = date.toDateString() === new Date().toDateString()
                       return (
-                        <th key={i} className={`px-2 py-3 text-center min-w-[100px] ${isToday ? 'bg-sky-500/10' : ''}`}>
-                          <div className={`text-[10px] uppercase tracking-wider ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
+                        <th key={i} className={`px-2 py-3 text-center min-w-[110px] border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''}`}>
+                          <div className={`text-[10px] uppercase tracking-wider font-medium ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
                             {date.toLocaleDateString('en-IN', { weekday: 'short' })}
                           </div>
-                          <div className={`text-sm font-bold ${isToday ? 'text-sky-400' : 'text-slate-300'}`}>
+                          <div className={`text-lg font-bold mt-0.5 ${isToday ? 'text-sky-300' : 'text-slate-300'}`}>
                             {date.getDate()}
                           </div>
-                          <div className={`text-[10px] ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
+                          <div className={`text-[10px] ${isToday ? 'text-sky-400/80' : 'text-slate-500'}`}>
                             {date.toLocaleDateString('en-IN', { month: 'short' })}
                           </div>
                         </th>
@@ -447,18 +446,27 @@ export default function RoomsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedCalendarRooms.map((room: any) => (
-                    <tr key={room.id} className="border-t border-white/5 hover:bg-slate-700/20">
-                      <td className="px-4 py-2 sticky left-0 bg-slate-800/90 z-10">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full ${
+                  {calendarRooms.map((room: any) => (
+                    <tr key={room.id} className="border-t border-white/5 hover:bg-slate-700/10 transition-colors">
+                      <td className="px-3 py-2.5 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">
+                        <div className={`inline-flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 w-full ${
+                          room.status === 'AVAILABLE' ? 'bg-emerald-500/10 border-emerald-500/40' :
+                          room.status === 'BOOKED' ? 'bg-red-500/10 border-red-500/40' :
+                          'bg-amber-500/10 border-amber-500/40'
+                        }`}>
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                             room.status === 'AVAILABLE' ? 'bg-emerald-400' :
                             room.status === 'BOOKED' ? 'bg-red-400' :
-                            room.status === 'MAINTENANCE' ? 'bg-amber-400' : 'bg-slate-400'
+                            'bg-amber-400'
                           }`} />
-                          <div>
-                            <p className="text-sm font-semibold text-white">{room.roomNumber}</p>
-                            <p className="text-[10px] text-slate-500">{room.roomType} • F{room.floor}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white">{room.roomNumber}</p>
+                            <p className="text-[10px] text-slate-400">{room.roomType} • F{room.floor} • ₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
+                            {room.status === 'BOOKED' && room.checkOutAt && (
+                              <p className="text-[9px] text-red-300/90 mt-0.5" title="Check-out time">
+                                Check out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -467,34 +475,34 @@ export default function RoomsPage() {
                         const isToday = date.toDateString() === new Date().toDateString()
                         const displayStatus = booking ? getBookingDisplayStatusForDate(booking, date) : null
                         return (
-                          <td key={i} className={`px-1 py-1 ${isToday ? 'bg-sky-500/5' : ''}`}>
+                          <td key={i} className={`px-1.5 py-1.5 align-top border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/8' : ''}`}>
                             {booking ? (
-                              <div 
-                                className={`px-2 py-1.5 rounded-lg text-center cursor-pointer transition-all hover:scale-[1.02] ${
-                                  displayStatus === 'CHECKED_IN' ? 'bg-sky-500/30 border border-sky-500/50' :
-                                  displayStatus === 'CONFIRMED' ? 'bg-emerald-500/30 border border-emerald-500/50' :
-                                  'bg-amber-500/30 border border-amber-500/50'
+                              <div
+                                className={`px-2 py-2 rounded-xl text-center cursor-pointer transition-all hover:scale-[1.03] shadow-sm ${
+                                  displayStatus === 'CHECKED_IN' ? 'bg-sky-500/25 border border-sky-500/50 shadow-sky-500/10' :
+                                  displayStatus === 'CONFIRMED' ? 'bg-emerald-500/25 border border-emerald-500/50 shadow-emerald-500/10' :
+                                  'bg-amber-500/25 border border-amber-500/50 shadow-amber-500/10'
                                 }`}
                                 title={`${booking.guest?.name || 'Guest'} - ${displayStatus}`}
                               >
-                                <p className={`text-[10px] font-semibold truncate ${
-                                  displayStatus === 'CHECKED_IN' ? 'text-sky-300' :
-                                  displayStatus === 'CONFIRMED' ? 'text-emerald-300' :
-                                  'text-amber-300'
+                                <p className={`text-[11px] font-semibold truncate ${
+                                  displayStatus === 'CHECKED_IN' ? 'text-sky-200' :
+                                  displayStatus === 'CONFIRMED' ? 'text-emerald-200' :
+                                  'text-amber-200'
                                 }`}>
                                   {booking.guest?.name?.split(' ')[0] || 'Guest'}
                                 </p>
-                                <p className={`text-[8px] ${
+                                <p className={`text-[9px] font-medium mt-0.5 ${
                                   displayStatus === 'CHECKED_IN' ? 'text-sky-400' :
                                   displayStatus === 'CONFIRMED' ? 'text-emerald-400' :
                                   'text-amber-400'
                                 }`}>
-                                  {displayStatus === 'CHECKED_IN' ? 'In' : displayStatus === 'CONFIRMED' ? 'Conf' : 'Pend'}
+                                  {displayStatus === 'CHECKED_IN' ? 'Checked In' : displayStatus === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
                                 </p>
                               </div>
                             ) : (
-                              <div className="px-2 py-1.5 rounded-lg text-center bg-slate-700/20 border border-slate-700/30">
-                                <p className="text-[10px] text-slate-500">-</p>
+                              <div className="px-2 py-2 rounded-xl text-center bg-slate-700/15 border border-slate-600/30">
+                                <p className="text-[10px] font-medium text-slate-500">Free</p>
                               </div>
                             )}
                           </td>
@@ -506,50 +514,27 @@ export default function RoomsPage() {
               </table>
             </div>
 
-            {/* Legend & Pagination */}
-            <div className="px-4 py-3 bg-slate-900/30 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500/50" />
-                  <span className="text-slate-400">Confirmed</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded bg-sky-500/30 border border-sky-500/50" />
-                  <span className="text-slate-400">Checked In</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded bg-amber-500/30 border border-amber-500/50" />
-                  <span className="text-slate-400">Pending</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="w-3 h-3 rounded bg-slate-700/30 border border-slate-700/50" />
-                  <span className="text-slate-400">Available</span>
-                </div>
+            {/* Legend */}
+            <div className="px-5 py-3 bg-slate-900/40 border-t border-white/10 flex flex-wrap items-center gap-6">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-4 h-4 rounded-lg bg-emerald-500/30 border border-emerald-500/50 shadow-sm" />
+                <span className="text-slate-400 font-medium">Confirmed</span>
               </div>
-              
-              {/* Pagination */}
-              {totalCalendarPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCalendarPage(p => Math.max(0, p - 1))}
-                    disabled={calendarPage === 0}
-                    className="px-2 py-1 text-xs text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <FaChevronLeft className="w-3 h-3" />
-                  </button>
-                  <span className="text-xs text-slate-400">
-                    {calendarPage + 1} / {totalCalendarPages}
-                  </span>
-                  <button
-                    onClick={() => setCalendarPage(p => Math.min(totalCalendarPages - 1, p + 1))}
-                    disabled={calendarPage >= totalCalendarPages - 1}
-                    className="px-2 py-1 text-xs text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <FaChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-4 h-4 rounded-lg bg-sky-500/30 border border-sky-500/50 shadow-sm" />
+                <span className="text-slate-400 font-medium">Checked In</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-4 h-4 rounded-lg bg-amber-500/30 border border-amber-500/50 shadow-sm" />
+                <span className="text-slate-400 font-medium">Pending</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-4 h-4 rounded-lg bg-slate-700/40 border border-slate-600/50" />
+                <span className="text-slate-400 font-medium">Free</span>
+              </div>
             </div>
+          </>
+            )}
           </div>
         )}
 
@@ -615,12 +600,22 @@ export default function RoomsPage() {
                           'bg-yellow-400'
                         }`}></span>
                         
-                        {/* Status Text */}
+                        {/* Status + Check-out time when BOOKED */}
                         <span className={`text-[10px] font-semibold uppercase ${
                           room.status === 'AVAILABLE' ? 'text-emerald-400' :
                           room.status === 'BOOKED' ? 'text-red-400' :
                           'text-yellow-400'
                         }`}>{room.status}</span>
+                        {room.status === 'BOOKED' && room.checkOutAt && (
+                          <>
+                            <span className={`w-px h-5 mx-3 ${
+                              room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'
+                            }`} />
+                            <span className="text-[10px] text-slate-400" title="Check-out time">
+                              Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </span>
+                          </>
+                        )}
 
                         {/* Delete Button - only show for admins */}
                         {canManageRooms && (

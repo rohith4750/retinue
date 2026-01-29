@@ -1,6 +1,6 @@
 'use client'
 
-import { SESSION_TIMEOUT, REMEMBER_ME_DURATION } from './constants'
+import { IDLE_TIMEOUT_MS } from './constants'
 
 let sessionTimeoutId: NodeJS.Timeout | null = null
 let lastActivityTime = Date.now()
@@ -11,21 +11,16 @@ let visibilityHandler: (() => void) | null = null
 const INITIALIZATION_GRACE_PERIOD = 5000
 
 /**
- * Initialize session timeout
+ * Initialize session timeout (15 min idle → logout)
  */
 export function initSessionTimeout(onTimeout: () => void) {
-  // Clear existing timeout
   if (sessionTimeoutId) {
     clearTimeout(sessionTimeoutId)
   }
 
-  const rememberMe = localStorage.getItem('rememberMe') === 'true'
-  const timeout = rememberMe ? REMEMBER_ME_DURATION : SESSION_TIMEOUT
-
-  // Reset timeout
   sessionTimeoutId = setTimeout(() => {
     onTimeout()
-  }, timeout)
+  }, IDLE_TIMEOUT_MS)
 
   // Update last activity time
   lastActivityTime = Date.now()
@@ -57,18 +52,14 @@ export function clearSessionTimeout() {
 }
 
 /**
- * Check if session is expired
+ * Check if session is expired (idle past 15 min)
  */
 export function isSessionExpired(): boolean {
-  // Don't report expired during initialization grace period
   if (!isInitialized) {
     return false
   }
-  
-  const rememberMe = localStorage.getItem('rememberMe') === 'true'
-  const timeout = rememberMe ? REMEMBER_ME_DURATION : SESSION_TIMEOUT
   const timeSinceLastActivity = Date.now() - lastActivityTime
-  return timeSinceLastActivity > timeout
+  return timeSinceLastActivity > IDLE_TIMEOUT_MS
 }
 
 /**

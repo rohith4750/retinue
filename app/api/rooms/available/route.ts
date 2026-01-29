@@ -50,64 +50,75 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Find rooms that have overlapping bookings for the selected dates
-    // Two date ranges overlap if: startA < endB AND startB < endA
-    const bookedRoomIds = await prisma.booking.findMany({
+    // Find bookings that overlap the requested dates.
+    // Check-out day = available: occupancy is [checkIn, startOf(checkOut day)), so a room is free on its check-out date.
+    const overlappingBookings = await prisma.booking.findMany({
       where: {
         status: {
           in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'],
         },
-        // Date overlap: existing.checkIn < newCheckOut AND newCheckIn < existing.checkOut
         AND: [
           { checkIn: { lt: checkOutDate } },
           { checkOut: { gt: checkInDate } },
         ],
       },
-      select: {
-        roomId: true,
-      },
-      distinct: ['roomId'], // Ensure unique room IDs
+      select: { roomId: true, checkOut: true },
     })
 
-    const bookedIds = bookedRoomIds.map((b) => b.roomId)
-
-    // Build query for available rooms
-    const where: any = {
-      status: { not: 'MAINTENANCE' },
+    const checkInStart = new Date(checkInDate)
+    checkInStart.setHours(0, 0, 0, 0)
+    const blockingBookings = overlappingBookings.filter((b) => {
+      const checkoutDayStart = new Date(b.checkOut)
+      checkoutDayStart.setHours(0, 0, 0, 0)
+      return checkoutDayStart > checkInStart
+    })
+    const bookedIdsSet = new Set(blockingBookings.map((b) => b.roomId))
+    // For each booked room, store check-out time (latest if multiple overlapping)
+    const checkOutByRoom = new Map<string, Date>()
+    for (const b of blockingBookings) {
+      const existing = checkOutByRoom.get(b.roomId)
+      if (!existing || new Date(b.checkOut) > existing) {
+        checkOutByRoom.set(b.roomId, new Date(b.checkOut))
+      }
     }
 
-    // Exclude booked rooms
-    if (bookedIds.length > 0) {
-      where.id = { notIn: bookedIds }
-    }
-
-    // Filter by room type if provided
+    const where: any = {}
     if (roomType) {
       where.roomType = roomType
     }
 
-    // Get available rooms
-    const availableRooms = await prisma.room.findMany({
+    const allRooms = await prisma.room.findMany({
       where,
       orderBy: { roomNumber: 'asc' },
     })
 
-    // Override status to show actual availability for the selected date
-    // If room is returned here, it means it's available for these dates
-    const roomsWithCorrectStatus = availableRooms.map(room => ({
-      ...room,
-      status: room.status === 'MAINTENANCE' ? 'MAINTENANCE' : 'AVAILABLE',
-    }))
+    const roomsWithStatus = allRooms.map((room) => {
+      if (room.status === 'MAINTENANCE') {
+        return { ...room, status: 'MAINTENANCE' as const }
+      }
+      if (bookedIdsSet.has(room.id)) {
+        const checkOutAt = checkOutByRoom.get(room.id)
+        return {
+          ...room,
+          status: 'BOOKED' as const,
+          checkOutAt: checkOutAt ? checkOutAt.toISOString() : undefined,
+        }
+      }
+      return { ...room, status: 'AVAILABLE' as const }
+    })
+
+    const availableCount = roomsWithStatus.filter((r) => r.status === 'AVAILABLE').length
+    const bookedCount = roomsWithStatus.filter((r) => r.status === 'BOOKED').length
 
     return Response.json(
       successResponse({
-        rooms: roomsWithCorrectStatus,
+        rooms: roomsWithStatus,
         dateRange: {
           checkIn: checkInDate.toISOString(),
           checkOut: checkOutDate.toISOString(),
         },
-        bookedRoomCount: bookedIds.length,
-        availableRoomCount: availableRooms.length,
+        bookedRoomCount: bookedCount,
+        availableRoomCount: availableCount,
       })
     )
   } catch (error) {

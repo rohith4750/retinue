@@ -55,6 +55,7 @@ export async function getSessionUser(request: NextRequest): Promise<{ id: string
 
     return {
       id: user.id,
+      userId: user.id, // Alias for audit / changedBy usage across API routes
       role: user.role,
       username: user.username,
     }

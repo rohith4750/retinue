@@ -3,10 +3,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory, FaDownload, FaPlus, FaTimes, FaReceipt, FaRupeeSign, FaPrint, FaCalendarPlus } from 'react-icons/fa'
+import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory, FaDownload, FaPlus, FaTimes, FaReceipt, FaPrint, FaCalendarPlus } from 'react-icons/fa'
 import { useMutation } from '@tanstack/react-query'
 import { createPortal } from 'react-dom'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
@@ -17,6 +17,8 @@ import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut'
 
 export default function BookingsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const dateFilter = searchParams.get('date') || '' // e.g. YYYY-MM-DD from dashboard "Today's Bookings"
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
@@ -46,9 +48,6 @@ export default function BookingsPage() {
     bookingId: null,
   })
 
-  // Bill Modal State
-  const [billModal, setBillModal] = useState<{ show: boolean; booking: any | null }>({ show: false, booking: null })
-  const [paymentInput, setPaymentInput] = useState('')
   const [mounted, setMounted] = useState(false)
 
   // Extend Stay Modal State
@@ -60,19 +59,6 @@ export default function BookingsPage() {
   // Auth is handled by root layout
 
   const queryClient = useQueryClient()
-
-  // Payment mutation
-  const paymentMutation = useMutation({
-    mutationFn: ({ bookingId, amount }: { bookingId: string; amount: number }) =>
-      api.put(`/bills/${bookingId}`, { paidAmount: amount }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
-      toast.success('Payment updated!')
-      setBillModal({ show: false, booking: null })
-      setPaymentInput('')
-    },
-    onError: () => toast.error('Failed to update payment'),
-  })
 
   // Extend stay mutation
   const extendStayMutation = useMutation({
@@ -104,9 +90,9 @@ export default function BookingsPage() {
     callback: () => router.push('/bookings/new'),
   })
 
-  // Phase 2: Pagination support with search
+  // Phase 2: Pagination support with search and optional date filter (today's check-ins from dashboard)
   const { data: bookingsResponse, isLoading } = useQuery({
-    queryKey: ['bookings', page, debouncedSearch],
+    queryKey: ['bookings', page, debouncedSearch, dateFilter],
     queryFn: () => {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -114,6 +100,9 @@ export default function BookingsPage() {
       })
       if (debouncedSearch) {
         params.append('search', debouncedSearch)
+      }
+      if (dateFilter) {
+        params.append('date', dateFilter)
       }
       return api.get(`/bookings?${params.toString()}`)
     },
@@ -136,9 +125,18 @@ export default function BookingsPage() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.put(`/bookings/${id}`, { status }),
     endpoint: '/bookings/', // Automatically invalidates: bookings, rooms, available-rooms, dashboard
-    onSuccess: () => {
+    onSuccess: (updatedBooking: any, variables: any) => {
       setConfirmModal({ show: false, bookingId: null, status: null, action: null })
       toast.success('Booking status updated successfully')
+
+      // If receptionist checked out and payment is pending, go to Bill page to collect
+      if (variables?.status === 'CHECKED_OUT' && updatedBooking) {
+        const balance = Math.max(0, (updatedBooking.totalAmount || 0) - (updatedBooking.paidAmount || 0))
+        if (balance > 0) {
+          toast(`Payment pending: ₹${balance.toLocaleString()} — Opening Bill page`, { icon: '💰' })
+          router.push(`/bills/${updatedBooking.id}`)
+        }
+      }
     },
     onError: (error: any) => {
       // Phase 2: Better error handling
@@ -294,6 +292,22 @@ export default function BookingsPage() {
           </div>
         </div>
 
+        {/* When opened from dashboard "Today's Bookings": show filter badge and link to clear */}
+        {dateFilter && (
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30">
+              <FaCalendarAlt className="w-3.5 h-3.5" />
+              Today&apos;s check-ins — click a card to Check Out
+            </span>
+            <Link
+              href="/bookings"
+              className="text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              Show all bookings
+            </Link>
+          </div>
+        )}
+
         {bookings && bookings.length > 0 ? (
           <>
             {/* Summary Stats */}
@@ -328,12 +342,16 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* Bookings Grid - Compact Cards */}
+            {/* Bookings Grid - Compact Cards: click card to open full booking data */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
               {bookings.map((booking: any) => (
                 <div
                   key={booking.id}
-                  className={`relative overflow-hidden rounded-xl border transition-all duration-200 hover:scale-[1.02] hover:shadow-xl ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/bookings/${booking.id}`)}
+                  onKeyDown={(e) => e.key === 'Enter' && router.push(`/bookings/${booking.id}`)}
+                  className={`relative overflow-hidden rounded-xl border transition-all duration-200 hover:scale-[1.02] hover:shadow-xl cursor-pointer ${
                     booking.status === 'CONFIRMED' ? 'bg-slate-800/90 border-emerald-500/30' :
                     booking.status === 'CHECKED_IN' ? 'bg-slate-800/90 border-sky-500/30' :
                     booking.status === 'CHECKED_OUT' ? 'bg-slate-800/90 border-slate-500/30' :
@@ -374,24 +392,27 @@ export default function BookingsPage() {
                       </div>
                     </div>
 
-                    {/* Dates Row */}
-                    <div className="flex items-center gap-2 text-xs mb-2 p-2 bg-slate-900/50 rounded-lg">
-                      <div className="flex-1">
-                        <span className="text-emerald-400">In:</span>
-                        <span className="text-slate-300 ml-1">{new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                    {/* Check-in & Check-out data on card */}
+                    <div className="space-y-1.5 text-xs mb-2 p-2.5 bg-slate-900/50 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <span className="text-emerald-400 font-medium shrink-0">Check-in:</span>
+                        <span className="text-slate-300">
+                          {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          <span className="text-slate-500 ml-1">{new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </span>
                       </div>
-                      <div className="text-slate-600">→</div>
-                      <div className="flex-1 text-right">
-                        <span className={booking.flexibleCheckout ? 'text-amber-400' : 'text-red-400'}>Out:</span>
-                        <span className="text-slate-300 ml-1">
-                          {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                      <div className="flex items-start gap-2">
+                        <span className={booking.flexibleCheckout ? 'text-amber-400 font-medium shrink-0' : 'text-red-400 font-medium shrink-0'}>Check-out:</span>
+                        <span className="text-slate-300">
+                          {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          <span className="text-slate-500 ml-1">{new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                           {booking.flexibleCheckout && <span className="text-amber-400 text-[9px] ml-1">(TBD)</span>}
                         </span>
                       </div>
                     </div>
 
                     {/* Amount & Bill */}
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-2" onClick={(e) => e.stopPropagation()}>
                       <div>
                         <p className="text-lg font-bold text-emerald-400">₹{booking.totalAmount.toLocaleString()}</p>
                         {booking.paidAmount > 0 && booking.paidAmount < booking.totalAmount && (
@@ -399,24 +420,34 @@ export default function BookingsPage() {
                         )}
                       </div>
                       {booking.billNumber && (
-                        <button
-                          onClick={() => { setBillModal({ show: true, booking }); setPaymentInput('') }}
+                        <a
+                          href={`/bills/${booking.id}`}
                           className="px-2.5 py-1.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <FaReceipt className="w-3 h-3" />
                           Bill
-                        </button>
+                        </a>
                       )}
                     </div>
 
-                    {/* Quick Actions */}
-                    <div className="flex gap-1.5">
+                    {/* Quick Actions - stop propagation so card click doesn't fire */}
+                    <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <a
                         href={`/bookings/${booking.id}`}
                         className="flex-1 py-1.5 text-center text-[10px] font-medium text-slate-300 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors"
                       >
                         View
                       </a>
+                      {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                        <a
+                          href={`/bookings/${booking.id}?edit=1`}
+                          className="flex-1 py-1.5 text-center text-[10px] font-medium text-slate-200 bg-sky-600/50 hover:bg-sky-500/50 rounded-lg transition-colors flex items-center justify-center gap-1"
+                        >
+                          <FaEdit className="w-3 h-3" />
+                          Edit
+                        </a>
+                      )}
                       {booking.status === 'CONFIRMED' && (
                         <button
                           onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')}
@@ -558,104 +589,6 @@ export default function BookingsPage() {
           isLoading={deleteBookingMutation.isPending}
           confirmText="Delete Permanently"
         />
-
-        {/* Bill Modal - Using Portal */}
-        {mounted && billModal.show && billModal.booking && createPortal(
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60" onClick={() => setBillModal({ show: false, booking: null })} />
-            <div className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-              {/* Header */}
-              <div className="bg-emerald-600 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-white">Bill #{billModal.booking.billNumber}</h3>
-                  <p className="text-xs text-emerald-100">{billModal.booking.guest.name} • Room {billModal.booking.room.roomNumber}</p>
-                </div>
-                <button onClick={() => setBillModal({ show: false, booking: null })} className="text-white/80 hover:text-white">
-                  <FaTimes className="w-5 h-5" />
-                </button>
-              </div>
-              
-              {/* Bill Details */}
-              <div className="p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-slate-800 rounded-lg p-3">
-                    <p className="text-slate-400 text-xs">Total Amount</p>
-                    <p className="text-xl font-bold text-white">₹{billModal.booking.totalAmount.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-slate-800 rounded-lg p-3">
-                    <p className="text-slate-400 text-xs">Paid</p>
-                    <p className="text-xl font-bold text-emerald-400">₹{(billModal.booking.paidAmount || 0).toLocaleString()}</p>
-                  </div>
-                </div>
-                
-                <div className="bg-slate-800 rounded-lg p-3 flex justify-between items-center">
-                  <div>
-                    <p className="text-slate-400 text-xs">Balance Due</p>
-                    <p className={`text-lg font-bold ${(billModal.booking.totalAmount - (billModal.booking.paidAmount || 0)) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                      ₹{Math.max(0, billModal.booking.totalAmount - (billModal.booking.paidAmount || 0)).toLocaleString()}
-                    </p>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${
-                    billModal.booking.paymentStatus === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-                    billModal.booking.paymentStatus === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>{billModal.booking.paymentStatus || 'PENDING'}</span>
-                </div>
-
-                {/* Payment Input */}
-                {billModal.booking.paymentStatus !== 'PAID' && (
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-3 h-3" />
-                        <input
-                          type="number"
-                          value={paymentInput}
-                          onChange={(e) => setPaymentInput(e.target.value)}
-                          placeholder="Enter amount"
-                          className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm focus:border-emerald-500 focus:outline-none"
-                        />
-                      </div>
-                      <button
-                        onClick={() => paymentMutation.mutate({ bookingId: billModal.booking.id, amount: parseFloat(paymentInput) || 0 })}
-                        disabled={paymentMutation.isPending || !paymentInput}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg"
-                      >
-                        {paymentMutation.isPending ? '...' : 'Add'}
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => paymentMutation.mutate({ bookingId: billModal.booking.id, amount: billModal.booking.totalAmount - (billModal.booking.paidAmount || 0) })}
-                      disabled={paymentMutation.isPending}
-                      className="w-full py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2"
-                    >
-                      <FaCheckCircle className="w-3 h-3" />
-                      Pay Full Balance (₹{Math.max(0, billModal.booking.totalAmount - (billModal.booking.paidAmount || 0)).toLocaleString()})
-                    </button>
-                  </div>
-                )}
-
-                {billModal.booking.paymentStatus === 'PAID' && (
-                  <div className="text-center py-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                    <FaCheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-emerald-400 font-semibold">Fully Paid</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="px-4 py-3 bg-slate-800/50 flex gap-2">
-                <a href={`/bills/${billModal.booking.id}`} className="flex-1 py-2 text-center text-xs text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg">
-                  Full Details
-                </a>
-                <button onClick={() => window.print()} className="flex-1 py-2 text-center text-xs text-white bg-sky-600 hover:bg-sky-500 rounded-lg flex items-center justify-center gap-1">
-                  <FaPrint className="w-3 h-3" /> Print
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
 
         {/* Extend Stay Modal */}
         {mounted && extendModal.show && extendModal.booking && createPortal(

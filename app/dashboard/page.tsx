@@ -150,8 +150,11 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Today's Bookings */}
-          <div className="bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-4 relative overflow-hidden">
+          {/* Today's Bookings - click to open bookings page filtered by today (checkout from there) */}
+          <Link
+            href={`/bookings?date=${new Date().toISOString().slice(0, 10)}`}
+            className="block bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-4 relative overflow-hidden hover:border-purple-400/40 hover:from-purple-600/40 hover:to-purple-800/30 transition-all"
+          >
             <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -160,8 +163,9 @@ export default function DashboardPage() {
               </div>
               <p className="text-3xl font-bold text-white">{stats?.todayBookings || 0}</p>
               <p className="text-xs text-slate-400 mt-1">Today&apos;s Bookings</p>
+              <p className="text-[10px] text-purple-300/80 mt-1">Click to view & checkout</p>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Monthly Stats with Growth Indicators - Only for ADMIN/SUPER_ADMIN */}

@@ -8,6 +8,7 @@ type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'C
 import { validateStatusTransition } from '@/lib/booking-state-machine'
 import { BookingError, InvalidStatusTransitionError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
+import { calculateEarlyCheckoutAmount } from '@/lib/booking-validators'
 
 // GET /api/bookings/[id] - Get single booking with history (Phase 3)
 export async function GET(
@@ -59,7 +60,20 @@ export async function PUT(
 
     const userId = (authResult as any).userId
     const data = await request.json()
-    const { status, checkIn, checkOut, roomId } = data
+    const {
+      status,
+      checkIn,
+      checkOut,
+      roomId,
+      guestName,
+      guestPhone,
+      guestIdProof,
+      guestIdProofType,
+      guestAddress,
+      guestType,
+      numberOfGuests,
+      flexibleCheckout,
+    } = data
 
     // Phase 2: Transaction management with extended timeout for slow connections
     const result = await prisma.$transaction(async (tx: any) => {
@@ -80,6 +94,48 @@ export async function PUT(
       const changes: any[] = []
       const updateData: any = {}
 
+      // Guest info update (edit booking – same fields as Add page)
+      const guestUpdates: Record<string, any> = {}
+      if (guestName != null && guestName !== currentBooking.guest?.name) {
+        guestUpdates.name = guestName
+        changes.push({ field: 'guest.name', oldValue: currentBooking.guest?.name, newValue: guestName })
+      }
+      if (guestPhone != null && guestPhone !== currentBooking.guest?.phone) {
+        guestUpdates.phone = guestPhone
+        changes.push({ field: 'guest.phone', oldValue: currentBooking.guest?.phone, newValue: guestPhone })
+      }
+      if (guestIdProof !== undefined && guestIdProof !== currentBooking.guest?.idProof) {
+        guestUpdates.idProof = guestIdProof || null
+        changes.push({ field: 'guest.idProof', oldValue: currentBooking.guest?.idProof, newValue: guestIdProof })
+      }
+      if (guestIdProofType != null && guestIdProofType !== currentBooking.guest?.idProofType) {
+        guestUpdates.idProofType = guestIdProofType
+        changes.push({ field: 'guest.idProofType', oldValue: currentBooking.guest?.idProofType, newValue: guestIdProofType })
+      }
+      if (guestAddress !== undefined && guestAddress !== currentBooking.guest?.address) {
+        guestUpdates.address = guestAddress || null
+        changes.push({ field: 'guest.address', oldValue: currentBooking.guest?.address, newValue: guestAddress })
+      }
+      if (guestType != null && guestType !== currentBooking.guest?.guestType) {
+        guestUpdates.guestType = guestType
+        changes.push({ field: 'guest.guestType', oldValue: currentBooking.guest?.guestType, newValue: guestType })
+      }
+      if (Object.keys(guestUpdates).length > 0 && currentBooking.guestId) {
+        await tx.guest.update({
+          where: { id: currentBooking.guestId },
+          data: guestUpdates,
+        })
+      }
+
+      if (numberOfGuests != null && Number(numberOfGuests) !== currentBooking.numberOfGuests) {
+        updateData.numberOfGuests = Number(numberOfGuests)
+        changes.push({ field: 'numberOfGuests', oldValue: currentBooking.numberOfGuests, newValue: updateData.numberOfGuests })
+      }
+      if (typeof flexibleCheckout === 'boolean' && flexibleCheckout !== currentBooking.flexibleCheckout) {
+        updateData.flexibleCheckout = flexibleCheckout
+        changes.push({ field: 'flexibleCheckout', oldValue: currentBooking.flexibleCheckout, newValue: flexibleCheckout })
+      }
+
       // Phase 2: Status update with state machine validation
       if (status && status !== currentBooking.status) {
         try {
@@ -97,6 +153,50 @@ export async function PUT(
         }
       }
 
+      // Early checkout: recalculate amount (< 12h = minimum charge, >= 12h = day rate). Receptionist finalizes payment.
+      if (status === 'CHECKED_OUT') {
+        const actualCheckOut =
+          data.actualCheckOut != null
+            ? new Date(data.actualCheckOut)
+            : data.checkOut != null
+              ? new Date(data.checkOut)
+              : new Date()
+        const isEarlyCheckout = actualCheckOut.getTime() < currentBooking.checkOut.getTime()
+        if (isEarlyCheckout && currentBooking.room?.basePrice != null) {
+          const early = calculateEarlyCheckoutAmount(
+            currentBooking.checkIn,
+            actualCheckOut,
+            currentBooking.room.basePrice,
+            currentBooking.applyGst !== false
+          )
+          updateData.checkOut = actualCheckOut
+          updateData.totalAmount = early.totalAmount
+          updateData.subtotal = early.subtotal
+          updateData.tax = early.tax
+          const paid = currentBooking.paidAmount || 0
+          const balance = Math.max(0, early.totalAmount - paid)
+          updateData.balanceAmount = balance
+          updateData.paymentStatus =
+            balance <= 0 ? 'PAID' : paid > 0 ? 'PARTIAL' : 'PENDING'
+          changes.push(
+            { field: 'checkOut', oldValue: currentBooking.checkOut, newValue: actualCheckOut },
+            {
+              field: 'totalAmount',
+              oldValue: currentBooking.totalAmount,
+              newValue: early.totalAmount,
+              note: early.breakdown,
+            }
+          )
+        } else if (actualCheckOut.getTime() !== currentBooking.checkOut.getTime()) {
+          updateData.checkOut = actualCheckOut
+          changes.push({
+            field: 'checkOut',
+            oldValue: currentBooking.checkOut,
+            newValue: actualCheckOut,
+          })
+        }
+      }
+
       // Phase 3: Allow date modifications
       if (checkIn && new Date(checkIn).getTime() !== currentBooking.checkIn.getTime()) {
         updateData.checkIn = new Date(checkIn)
@@ -107,7 +207,8 @@ export async function PUT(
         })
       }
 
-      if (checkOut && new Date(checkOut).getTime() !== currentBooking.checkOut.getTime()) {
+      // CheckOut change (skip when status is CHECKED_OUT; early-checkout block above handles that)
+      if (checkOut && new Date(checkOut).getTime() !== currentBooking.checkOut.getTime() && status !== 'CHECKED_OUT') {
         const newCheckOut = new Date(checkOut)
         updateData.checkOut = newCheckOut
         changes.push({
@@ -149,7 +250,6 @@ export async function PUT(
 
       // Phase 3: Allow room change (if not checked in)
       if (roomId && roomId !== currentBooking.roomId && currentBooking.status !== 'CHECKED_IN') {
-        // Check if new room is available
         const newRoom = await tx.room.findUnique({
           where: { id: roomId },
         })
@@ -158,17 +258,61 @@ export async function PUT(
           throw new Error('New room is not available')
         }
 
-        updateData.roomId = roomId
-        changes.push({
-          field: 'roomId',
-          oldValue: currentBooking.roomId,
-          newValue: roomId,
+        // Check new room has no overlapping booking for same dates
+        const conflict = await tx.booking.findFirst({
+          where: {
+            roomId,
+            id: { not: params.id },
+            status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+            OR: [
+              {
+                checkIn: { lte: currentBooking.checkOut },
+                checkOut: { gte: currentBooking.checkIn },
+              },
+            ],
+          },
         })
+        if (conflict) {
+          throw new Error('New room is already booked for these dates')
+        }
+
+        // Create new slot for new room (same date as current booking)
+        const checkInDateOnly = new Date(currentBooking.checkIn)
+        checkInDateOnly.setHours(0, 0, 0, 0)
+        const newSlot = await tx.roomSlot.create({
+          data: {
+            roomId,
+            date: checkInDateOnly,
+            slotType: 'FULL_DAY',
+            price: newRoom.basePrice,
+            isAvailable: false,
+          },
+        })
+        updateData.roomId = roomId
+        updateData.slotId = newSlot.id
+        changes.push(
+          { field: 'roomId', oldValue: currentBooking.roomId, newValue: roomId },
+          { field: 'slotId', oldValue: currentBooking.slotId, newValue: newSlot.id },
+        )
       }
 
       // Update booking if there are changes
       if (Object.keys(updateData).length === 0) {
-        return currentBooking
+        if (changes.length > 0) {
+          await logBookingChange(
+            params.id,
+            'UPDATED',
+            userId,
+            changes,
+            'Guest or booking details updated',
+            tx
+          )
+        }
+        const refreshed = await tx.booking.findUnique({
+          where: { id: params.id },
+          include: { room: true, slot: true, guest: true },
+        })
+        return refreshed ?? currentBooking
       }
 
       const updatedBooking = await tx.booking.update({
@@ -183,25 +327,49 @@ export async function PUT(
 
       // Phase 2: Handle status changes
       if (status === 'CHECKED_OUT') {
-        // Make slot available again
+        // Use updated booking's slot/room (in case room was changed)
+        const slotIdToFree = updateData.slotId ?? currentBooking.slotId
+        const roomIdToFree = updateData.roomId ?? currentBooking.roomId
+        if (slotIdToFree) {
+          await tx.roomSlot.update({
+            where: { id: slotIdToFree },
+            data: { isAvailable: true },
+          })
+        }
+        await tx.room.update({
+          where: { id: roomIdToFree },
+          data: { status: 'AVAILABLE' },
+        })
+      } else if (status === 'CHECKED_IN') {
+        const roomIdToBook = updateData.roomId ?? currentBooking.roomId
+        await tx.room.update({
+          where: { id: roomIdToBook },
+          data: { status: 'BOOKED' },
+        })
+      }
+
+      // When room was changed: free old slot and old room
+      if (updateData.roomId && currentBooking.roomId !== updateData.roomId) {
         if (currentBooking.slotId) {
           await tx.roomSlot.update({
             where: { id: currentBooking.slotId },
             data: { isAvailable: true },
           })
         }
-
-        // Update room status
-        await tx.room.update({
-          where: { id: currentBooking.roomId },
-          data: { status: 'AVAILABLE' },
+        // Free old room only if no other active booking uses it
+        const otherOnOldRoom = await tx.booking.count({
+          where: {
+            roomId: currentBooking.roomId,
+            id: { not: params.id },
+            status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+          },
         })
-      } else if (status === 'CHECKED_IN') {
-        // Ensure room is marked as booked
-        await tx.room.update({
-          where: { id: currentBooking.roomId },
-          data: { status: 'BOOKED' },
-        })
+        if (otherOnOldRoom === 0) {
+          await tx.room.update({
+            where: { id: currentBooking.roomId },
+            data: { status: 'AVAILABLE' },
+          })
+        }
       }
 
       // Phase 3: Log changes to audit trail
@@ -224,7 +392,8 @@ export async function PUT(
           actionType,
           userId,
           changes,
-          notes
+          notes,
+          tx
         )
       }
 
@@ -365,7 +534,7 @@ export async function DELETE(
         data: { status: 'AVAILABLE' },
       })
 
-      // Phase 3: Log cancellation
+      // Phase 3: Log cancellation (use tx so history is in same transaction)
       await logBookingChange(
         params.id,
         'CANCELLED',
@@ -373,7 +542,8 @@ export async function DELETE(
         [
           { field: 'status', oldValue: booking.status, newValue: 'CANCELLED' },
         ],
-        'Booking cancelled'
+        'Booking cancelled',
+        tx
       )
 
       return cancelledBooking

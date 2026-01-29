@@ -192,3 +192,13 @@ export const bookingValidationRules: ValidationRules = {
     max: 100000,
   },
 }
+
+/** Same as bookingValidationRules but allows past check-in (for edit booking page). */
+export const editBookingValidationRules: ValidationRules = {
+  ...bookingValidationRules,
+  checkIn: {
+    required: true,
+    date: true,
+    custom: () => null, // Allow past check-in when editing
+  },
+}

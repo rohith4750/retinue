@@ -1,24 +1,21 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import { useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaArrowLeft, FaEdit, FaHistory, FaUser, FaHome, FaClock, FaMoneyBillWave } from 'react-icons/fa'
+import { FaCalendarAlt, FaArrowLeft, FaEdit, FaHistory, FaUser, FaHome } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
-import { ConfirmationModal } from '@/components/ConfirmationModal'
+import { EditBookingModal } from '@/components/EditBookingModal'
 
 export default function BookingDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const bookingId = params.id as string
   const [showEditModal, setShowEditModal] = useState(false)
-
-  // Auth is handled by root layout
-
-  const queryClient = useQueryClient()
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ['booking', bookingId],
@@ -27,7 +24,6 @@ export default function BookingDetailPage() {
     refetchOnMount: 'always',
   })
 
-  // Phase 3: Booking modification mutation
   const updateBookingMutation = useMutationWithInvalidation({
     mutationFn: (data: any) => api.put(`/bookings/${bookingId}`, data),
     endpoint: '/bookings/',
@@ -36,10 +32,18 @@ export default function BookingDetailPage() {
       toast.success('Booking updated successfully')
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update booking'
-      toast.error(errorMessage)
+      const msg = error?.response?.data?.message || error?.message || 'Failed to update booking'
+      toast.error(msg)
     },
   })
+
+  // Open edit modal when coming from list page with ?edit=1 (Edit button here, not only there)
+  useEffect(() => {
+    if (searchParams.get('edit') && booking && !isLoading) {
+      setShowEditModal(true)
+      router.replace(`/bookings/${bookingId}`, { scroll: false })
+    }
+  }, [searchParams, booking, isLoading, bookingId, router])
 
   if (isLoading) {
     return (
@@ -152,6 +156,22 @@ export default function BookingDetailPage() {
                     ₹{booking.totalAmount.toLocaleString()}
                   </p>
                 </div>
+                {/* Payment status: receptionist can see if customer paid and balance due (e.g. after early checkout) */}
+                <div className="md:col-span-2 flex flex-wrap gap-4">
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Paid</p>
+                    <p className="text-sm font-medium text-emerald-400">
+                      ₹{(booking.paidAmount ?? 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Balance due</p>
+                    <p className={`text-sm font-bold ${(booking.totalAmount - (booking.paidAmount ?? 0)) > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
+                      ₹{Math.max(0, booking.totalAmount - (booking.paidAmount ?? 0)).toLocaleString()}
+                      {(booking.totalAmount - (booking.paidAmount ?? 0)) <= 0 && ' (Fully paid)'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -196,20 +216,11 @@ export default function BookingDetailPage() {
                   <span>Edit Booking</span>
                 </button>
               )}
-              {booking.billNumber && (
-                <a
-                  href={`/bills/${booking.id}`}
-                  className="flex-1 h-10 bg-sky-600 text-white font-medium text-sm rounded-lg flex items-center justify-center space-x-2"
-                >
-                  <FaMoneyBillWave className="w-4 h-4" />
-                  <span>View Bill</span>
-                </a>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Phase 3: Edit Booking Modal */}
+        {/* Edit Booking modal — same page, same fields as Add Booking */}
         {showEditModal && (
           <EditBookingModal
             booking={booking}
@@ -220,98 +231,5 @@ export default function BookingDetailPage() {
         )}
       </div>
     </>
-  )
-}
-
-// Phase 3: Edit Booking Modal Component
-function EditBookingModal({
-  booking,
-  onClose,
-  onSave,
-  isLoading,
-}: {
-  booking: any
-  onClose: () => void
-  onSave: (data: any) => void
-  isLoading: boolean
-}) {
-  const [formData, setFormData] = useState({
-    checkIn: new Date(booking.checkIn).toISOString().slice(0, 16),
-    checkOut: new Date(booking.checkOut).toISOString().slice(0, 16),
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Validate dates
-    const checkInDate = new Date(formData.checkIn)
-    const checkOutDate = new Date(formData.checkOut)
-    
-    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
-      toast.error('Please enter valid dates')
-      return
-    }
-    
-    onSave({
-      checkIn: checkInDate.toISOString(),
-      checkOut: checkOutDate.toISOString(),
-    })
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="p-4 relative z-10">
-          <div className="card-header">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center">
-              <FaEdit className="mr-2 w-4 h-4" />
-              Edit Booking
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">Update booking dates</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            <div>
-              <label className="form-label">Check-in Date & Time *</label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.checkIn}
-                onChange={(e) => setFormData({ ...formData, checkIn: e.target.value })}
-                className="form-input"
-              />
-            </div>
-            <div>
-              <label className="form-label">Check-out Date & Time *</label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.checkOut}
-                onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
-                className="form-input"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-4 border-t border-white/5 mt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn-secondary text-sm px-4 py-2"
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary text-sm px-4 py-2"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
   )
 }

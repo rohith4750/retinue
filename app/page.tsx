@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { getToken, isLoggedIn, clearAuth } from '@/lib/auth-storage'
 
 export default function Home() {
   const router = useRouter()
@@ -10,45 +11,40 @@ export default function Home() {
 
   useEffect(() => {
     const validateAndRedirect = async () => {
-      const user = localStorage.getItem('user')
-      const accessToken = localStorage.getItem('accessToken')
-      
-      // If no credentials, go to login
-      if (!user || !accessToken) {
+      const token = getToken()
+      const loggedIn = isLoggedIn()
+
+      if (!loggedIn || !token) {
+        if (loggedIn) clearAuth()
         router.push('/login')
+        setIsValidating(false)
         return
       }
-      
-      // Validate token with server before redirecting to dashboard
+
       try {
         const response = await fetch('/api/auth/validate', {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         })
-        
+
         if (response.status === 401 || !response.ok) {
-          // Token is invalid - clear storage and go to login
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('user')
-          localStorage.removeItem('rememberMe')
+          clearAuth()
           router.push('/login')
+          setIsValidating(false)
           return
         }
-        
-        // Token is valid - go to dashboard
+
         router.push('/dashboard')
       } catch (error) {
-        // Network error - still try to go to dashboard (offline support)
-        // AuthenticatedLayout will handle further validation
         router.push('/dashboard')
       } finally {
         setIsValidating(false)
       }
     }
-    
+
     validateAndRedirect()
   }, [router])
 

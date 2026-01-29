@@ -1,18 +1,32 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { api } from '@/lib/api-client'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaConciergeBell, FaStar, FaBuilding, FaHotel, FaEye, FaEyeSlash } from 'react-icons/fa'
+import { setAuth, clearAuth } from '@/lib/auth-storage'
+import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaStar, FaBuilding, FaHotel, FaEye, FaEyeSlash } from 'react-icons/fa'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sessionExpiredMessage, setSessionExpiredMessage] = useState(false)
+
+  // Show "Session expired" only when redirected after timeout or 401 (once per visit)
+  useEffect(() => {
+    const reason = searchParams.get('reason')
+    if (reason === 'timeout' || reason === 'session_expired') {
+      setSessionExpiredMessage(true)
+      // Clear param from URL so refresh doesn't show message again
+      const url = new URL(window.location.href)
+      url.searchParams.delete('reason')
+      window.history.replaceState({}, '', url.pathname + (url.search || ''))
+    }
+  }, [searchParams])
 
   // Password visibility states
   const [showPassword, setShowPassword] = useState(false)
@@ -48,16 +62,13 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed')
       }
 
-      // Store auth info
-      if (data.data.accessToken) {
-        localStorage.setItem('accessToken', data.data.accessToken)
+      const accessToken = data.data?.accessToken
+      const user = data.data?.user
+      if (!accessToken || !user) {
+        throw new Error('Invalid login response')
       }
-      localStorage.setItem('user', JSON.stringify(data.data.user))
 
-      // Store remember me preference
-      if (rememberMe) {
-        localStorage.setItem('rememberMe', 'true')
-      }
+      setAuth(accessToken, user, rememberMe)
 
       toast.success('Login successful!')
       router.push('/dashboard')
@@ -252,6 +263,19 @@ export default function LoginPage() {
             </div>
 
             <form className="space-y-5" onSubmit={handleSubmit}>
+              {sessionExpiredMessage && (
+                <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-3 rounded-xl flex items-center justify-between text-sm">
+                  <span>Session expired. Please login again.</span>
+                  <button
+                    type="button"
+                    onClick={() => setSessionExpiredMessage(false)}
+                    className="text-amber-400/70 hover:text-amber-400 p-1"
+                    aria-label="Dismiss"
+                  >
+                    <FaTimes className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl flex items-center text-sm">
                   <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

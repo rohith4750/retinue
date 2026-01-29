@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     const where: any = {
-      // By default, exclude CANCELLED bookings from the list
-      // They can still be accessed via history or with explicit status filter
-      status: { notIn: ['CANCELLED'] }
+      // By default, show only active bookings (exclude CANCELLED and CHECKED_OUT)
+      // Checked-out bookings disappear from main list; use History or ?status=CHECKED_OUT to see them
+      status: { notIn: ['CANCELLED', 'CHECKED_OUT'] }
     }
-    if (status) where.status = status  // Override if specific status requested
+    if (status) where.status = status  // Override if specific status requested (e.g. ?status=CHECKED_OUT for History view)
     if (date) {
       const startOfDay = new Date(date)
       startOfDay.setHours(0, 0, 0, 0)
@@ -37,10 +37,11 @@ export async function GET(request: NextRequest) {
       where.checkIn = { gte: startOfDay, lte: endOfDay }
     }
     
-    // Search functionality
+    // Search functionality (id = booking ID e.g. RETINU0123)
     if (search) {
       where.OR = [
-        { bookingId: { contains: search, mode: 'insensitive' } },
+        { id: { contains: search, mode: 'insensitive' } },
+        { billNumber: { contains: search, mode: 'insensitive' } },
         { guest: { name: { contains: search, mode: 'insensitive' } } },
         { guest: { phone: { contains: search, mode: 'insensitive' } } },
         { room: { roomNumber: { contains: search, mode: 'insensitive' } } },
@@ -97,9 +98,11 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json()
 
-    // Handle both roomId (single) and roomIds (multiple) - convert to array
-    const roomIds: string[] = data.roomIds || (data.roomId ? [data.roomId] : [])
-    
+    // Single booking = one room. Support roomId (single) or roomIds (multi-room).
+    // Deduplicate so we never create two bookings for the same room in one request.
+    const rawRoomIds: string[] = data.roomIds || (data.roomId ? [data.roomId] : [])
+    const roomIds = Array.from(new Set(rawRoomIds))
+
     if (roomIds.length === 0) {
       return Response.json(
         errorResponse('VALIDATION_ERROR', 'At least one room must be selected'),
@@ -184,11 +187,10 @@ export async function POST(request: NextRequest) {
       }
 
       const bookings: any[] = []
-      
-      // Calculate discount per room (distribute evenly)
+
+      // One booking per distinct room (roomIds already deduplicated above)
       const discountPerRoom = (parseFloat(String(validatedData.discount)) || 0) / roomIds.length
 
-      // Create bookings for each room
       for (const roomId of roomIds) {
         // Check room availability
         const room = await tx.room.findUnique({
@@ -292,7 +294,7 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // Log booking creation
+        // Log booking creation (use tx so history is in same transaction and sees the new booking)
         await logBookingChange(
           booking.id,
           'CREATED',
@@ -303,7 +305,8 @@ export async function POST(request: NextRequest) {
             { field: 'checkIn', oldValue: null, newValue: checkInDate },
             { field: 'checkOut', oldValue: null, newValue: checkOutDate },
           ],
-          `Booking created for Room ${room.roomNumber}`
+          `Booking created for Room ${room.roomNumber}`,
+          tx
         )
 
         bookings.push(booking)

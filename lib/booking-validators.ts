@@ -64,7 +64,8 @@ export function validateBookingDates(checkIn: Date, checkOut: Date): { valid: bo
 }
 
 /**
- * Check for date conflicts with existing bookings
+ * Check for date conflicts with existing bookings.
+ * Check-out day = available: existing booking does not block the room on its check-out date.
  */
 export async function checkDateConflicts(
   roomId: string,
@@ -72,33 +73,39 @@ export async function checkDateConflicts(
   checkOut: Date,
   excludeBookingId?: string
 ): Promise<{ hasConflict: boolean; conflictingBooking?: any }> {
-  const conflictingBooking = await prisma.booking.findFirst({
+  const overlapping = await prisma.booking.findMany({
     where: {
       roomId,
       id: excludeBookingId ? { not: excludeBookingId } : undefined,
       status: { in: ['CONFIRMED', 'CHECKED_IN'] },
-      OR: [
-        {
-          // Check-in overlaps
-          checkIn: { lte: checkOut },
-          checkOut: { gte: checkIn }
-        }
-      ]
+      AND: [
+        { checkIn: { lt: checkOut } },
+        { checkOut: { gt: checkIn } },
+      ],
     },
     include: {
       guest: true,
-      room: true
-    }
+      room: true,
+    },
   })
-  
+
+  const checkInStart = new Date(checkIn)
+  checkInStart.setHours(0, 0, 0, 0)
+  const conflictingBooking = overlapping.find((b) => {
+    const checkoutDayStart = new Date(b.checkOut)
+    checkoutDayStart.setHours(0, 0, 0, 0)
+    return checkoutDayStart > checkInStart
+  })
+
   return {
-    hasConflict: conflictingBooking !== null,
-    conflictingBooking: conflictingBooking || undefined
+    hasConflict: conflictingBooking != null,
+    conflictingBooking: conflictingBooking ?? undefined,
   }
 }
 
 /**
- * Comprehensive room availability check
+ * Comprehensive room availability check.
+ * Check-out day = available: occupancy ends at start of check-out day.
  */
 export async function isRoomAvailable(
   roomId: string,
@@ -111,29 +118,34 @@ export async function isRoomAvailable(
       bookings: {
         where: {
           status: { in: ['CONFIRMED', 'CHECKED_IN'] },
-          OR: [
-            {
-              checkIn: { lte: checkOut },
-              checkOut: { gte: checkIn }
-            }
-          ]
-        }
-      }
-    }
+          AND: [
+            { checkIn: { lt: checkOut } },
+            { checkOut: { gt: checkIn } },
+          ],
+        },
+      },
+    },
   })
-  
+
   if (!room) {
     return { available: false, reason: 'Room not found' }
   }
-  
+
   if (room.status === 'MAINTENANCE') {
     return { available: false, reason: 'Room is under maintenance' }
   }
-  
-  if (room.bookings.length > 0) {
+
+  const checkInStart = new Date(checkIn)
+  checkInStart.setHours(0, 0, 0, 0)
+  const blocking = room.bookings.some((b) => {
+    const checkoutDayStart = new Date(b.checkOut)
+    checkoutDayStart.setHours(0, 0, 0, 0)
+    return checkoutDayStart > checkInStart
+  })
+  if (blocking) {
     return { available: false, reason: 'Room is already booked for these dates' }
   }
-  
+
   return { available: true }
 }
 
@@ -152,7 +164,7 @@ export function calculateBookingPrice(
   const subtotal = baseAmount - discountAmount
   const tax = subtotal * 0.18 // 18% GST
   const totalAmount = subtotal + tax
-  
+
   return {
     days,
     baseAmount,
@@ -160,5 +172,57 @@ export function calculateBookingPrice(
     subtotal,
     tax,
     totalAmount
+  }
+}
+
+/** Minimum stay hours threshold: below this we charge minimum (half day); 12+ hours = full day(s) */
+const EARLY_CHECKOUT_MINIMUM_HOURS = 12
+
+/**
+ * Calculate final amount for early checkout.
+ * - Below 12 hours: minimum charge (half day = 50% of base price).
+ * - 12 hours and above: charge by full day(s) (basePrice * ceil(hours/24)).
+ * Receptionist uses this to finalize payment at checkout.
+ */
+export function calculateEarlyCheckoutAmount(
+  checkIn: Date,
+  actualCheckOut: Date,
+  basePrice: number,
+  applyGst: boolean = true
+): { totalAmount: number; subtotal: number; tax: number; chargeType: 'MINIMUM' | 'DAILY'; hours: number; days: number; breakdown: string } {
+  const stayMs = actualCheckOut.getTime() - checkIn.getTime()
+  const hours = stayMs / (1000 * 60 * 60)
+
+  let subtotal: number
+  let chargeType: 'MINIMUM' | 'DAILY'
+  let days = 0
+
+  if (hours < EARLY_CHECKOUT_MINIMUM_HOURS) {
+    // Minimum charge = half day rate
+    subtotal = basePrice * 0.5
+    chargeType = 'MINIMUM'
+  } else {
+    // Full day(s): ceil(hours/24) days
+    days = Math.ceil(hours / 24)
+    subtotal = basePrice * days
+    chargeType = 'DAILY'
+  }
+
+  const tax = applyGst ? Math.round(subtotal * 0.18) : 0
+  const totalAmount = subtotal + tax
+
+  const breakdown =
+    chargeType === 'MINIMUM'
+      ? `Early checkout < 12h: minimum (½ day) ₹${subtotal.toFixed(0)} + GST ₹${tax}`
+      : `Early checkout ${days} day(s): ₹${subtotal.toFixed(0)} + GST ₹${tax}`
+
+  return {
+    totalAmount,
+    subtotal,
+    tax,
+    chargeType,
+    hours,
+    days: chargeType === 'DAILY' ? days : 0,
+    breakdown,
   }
 }

@@ -195,8 +195,9 @@ function NewBookingContent() {
       const extraBedPrice = parseFloat(data.extraBedPrice) || 0
       const extraBedAmount = extraBedCount * extraBedPrice * days
 
-      // If multiple rooms selected, send roomIds array to API
-      if (data.roomIds && data.roomIds.length > 0) {
+      // Single booking per room: send unique room IDs so we never create duplicate bookings
+      const uniqueRoomIds = data.roomIds ? Array.from(new Set(data.roomIds)) : []
+      if (uniqueRoomIds.length > 0) {
         // Calculate total for all rooms
         const totalBaseAmount = selectedRooms.reduce((total, room) => {
           return total + ((selectedSlot?.price || room?.basePrice || 0) * days)
@@ -207,7 +208,7 @@ function NewBookingContent() {
         const advanceAmount = parseFloat(data.advanceAmount) || 0
 
         return api.post('/bookings', {
-          roomIds: data.roomIds,
+          roomIds: uniqueRoomIds,
           slotId: data.slotId || '',
           guestName: data.guestName,
           guestPhone: data.guestPhone,
@@ -643,12 +644,12 @@ function NewBookingContent() {
                           key={room.id}
                           type="button"
                           onClick={() => {
-                            // Toggle selection - add or remove from array
+                            // Toggle selection: one booking per room, no duplicates
                             if (isSelected) {
-                              const newRoomIds = formData.roomIds.filter((id) => id !== room.id)
-                              updateField('roomIds', newRoomIds)
+                              updateField('roomIds', formData.roomIds.filter((id) => id !== room.id))
                             } else {
-                              updateField('roomIds', [...formData.roomIds, room.id])
+                              const next = [...formData.roomIds, room.id]
+                              updateField('roomIds', Array.from(new Set(next)))
                             }
                           }}
                           className={`p-4 rounded-lg border-2 text-left transition-all ${
