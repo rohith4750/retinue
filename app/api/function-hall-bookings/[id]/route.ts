@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
+import { logHallBookingChange } from '@/lib/hall-booking-audit'
 
 // GET /api/function-hall-bookings/[id] - Get single booking
 export async function GET(
@@ -14,8 +15,9 @@ export async function GET(
     const booking = await (prisma as any).functionHallBooking.findUnique({
       where: { id: params.id },
       include: {
-        hall: true
-      }
+        hall: true,
+        history: { orderBy: { timestamp: 'asc' } },
+      },
     })
 
     if (!booking) {
@@ -115,6 +117,26 @@ export async function PUT(
     const grandTotal = hallAmount + (electricityCharges || 0) + maintenance + other
     const balanceAmount = grandTotal - advance
 
+    const userId = (authResult as any).userId
+    const changes: { field: string; oldValue: any; newValue: any }[] = []
+    if (status && status !== existingBooking.status) {
+      changes.push({ field: 'status', oldValue: existingBooking.status, newValue: status })
+    }
+    if (totalAmount !== undefined) {
+      const newTotal = parseFloat(totalAmount)
+      if (newTotal !== existingBooking.totalAmount) {
+        changes.push({ field: 'totalAmount', oldValue: existingBooking.totalAmount, newValue: newTotal })
+      }
+    }
+    if (advanceAmount !== undefined || addPayment !== undefined) {
+      if (advance !== existingBooking.advanceAmount) {
+        changes.push({ field: 'advanceAmount', oldValue: existingBooking.advanceAmount, newValue: advance })
+      }
+    }
+    if (eventDate && new Date(eventDate).getTime() !== new Date(existingBooking.eventDate).getTime()) {
+      changes.push({ field: 'eventDate', oldValue: existingBooking.eventDate, newValue: new Date(eventDate) })
+    }
+
     const booking = await (prisma as any).functionHallBooking.update({
       where: { id: params.id },
       data: {
@@ -145,9 +167,26 @@ export async function PUT(
         grandTotal,
       },
       include: {
-        hall: true
-      }
+        hall: true,
+        history: true,
+      },
     })
+
+    const action = status && status !== existingBooking.status ? 'STATUS_CHANGED' : 'UPDATED'
+    const notes = status && status !== existingBooking.status
+      ? `Status changed from ${existingBooking.status} to ${status}`
+      : changes.length > 0
+        ? `Booking updated. ${changes.map((c) => `${c.field}: ${c.oldValue} → ${c.newValue}`).join('; ')}`
+        : 'Booking updated.'
+    if (changes.length > 0 || action === 'STATUS_CHANGED') {
+      await logHallBookingChange(
+        params.id,
+        action,
+        userId,
+        changes.length > 0 ? changes : undefined,
+        notes,
+      )
+    }
 
     return Response.json(successResponse(booking, 'Booking updated successfully'))
   } catch (error: any) {
@@ -181,10 +220,22 @@ export async function DELETE(
       return Response.json(successResponse(null, 'Booking deleted permanently'))
     } else {
       // Soft delete (cancel)
+      const existing = await (prisma as any).functionHallBooking.findUnique({
+        where: { id: params.id },
+        include: { hall: true },
+      })
       const booking = await (prisma as any).functionHallBooking.update({
         where: { id: params.id },
         data: { status: 'CANCELLED' }
       })
+      const userId = (authResult as any).userId
+      await logHallBookingChange(
+        params.id,
+        'CANCELLED',
+        userId,
+        [{ field: 'status', oldValue: existing?.status, newValue: 'CANCELLED' }],
+        existing?.hall ? `Hall booking cancelled for ${existing.hall.name}.` : 'Booking cancelled.',
+      )
       return Response.json(successResponse(booking, 'Booking cancelled successfully'))
     }
   } catch (error: any) {

@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { pdf } from '@react-pdf/renderer'
 import { BillPDF } from '@/components/BillPDF'
+import { HOTEL_INFO } from '@/lib/hotel-info'
 
 export default function BillPage() {
   const params = useParams()
@@ -368,8 +369,9 @@ export default function BillPage() {
               <p className="text-sm text-slate-400">Luxury Hotel & Hospitality</p>
             </div>
             <div className="text-center text-xs text-slate-500">
-              <p>123 Hotel Street, City, State - 123456</p>
-              <p>Phone: +91 1234567890 | Email: info@theretinue.com</p>
+              <p>{HOTEL_INFO.address}</p>
+              <p>{HOTEL_INFO.landmark}</p>
+              <p>Email: {HOTEL_INFO.email}</p>
             </div>
           </div>
 

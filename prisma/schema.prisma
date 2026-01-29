@@ -5,16 +5,21 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Use DIRECT_URL for migrations (required for Neon pooler; use non-pooler host).
+// For Neon: copy DATABASE_URL and remove "-pooler" from the host (e.g. ep-xxx-pooler... → ep-xxx...).
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum RoomType {
   SINGLE
   DOUBLE
   DELUXE
+  STANDARD
   SUITE
+  SUITE_PLUS
 }
 
 enum RoomStatus {
@@ -378,10 +383,27 @@ model FunctionHallBooking {
   updatedAt       DateTime                 @updatedAt
 
   hall            FunctionHall             @relation(fields: [hallId], references: [id])
+  history         FunctionHallBookingHistory[]
 
   @@index([hallId, status])
   @@index([eventDate])
   @@index([status])
+}
+
+// Function Hall Booking History / Audit Trail (same as hotel BookingHistory)
+model FunctionHallBookingHistory {
+  id            String   @id @default(cuid())
+  bookingId     String   // FunctionHallBooking id
+  action        String   // CREATED, UPDATED, STATUS_CHANGED, CANCELLED, PAYMENT_RECEIVED, etc.
+  changedBy     String?  // User ID
+  changes       Json?    // What changed (before/after)
+  notes         String?
+  timestamp     DateTime @default(now())
+
+  booking       FunctionHallBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([timestamp])
 }
 
 // Expense Category Enum

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
+import { logHallBookingChange } from '@/lib/hall-booking-audit'
 
 // GET /api/function-hall-bookings - List all function hall bookings
 export async function GET(request: NextRequest) {
@@ -164,14 +165,30 @@ export async function POST(request: NextRequest) {
         balanceAmount: grandTotal - advance,
         specialRequests: specialRequests || null,
         status: 'CONFIRMED',
-        // Note: Electricity meter readings are now set from bookings list, not create form
-        // Additional charges also set from bookings list
         grandTotal,
       },
       include: {
         hall: true
       }
     })
+
+    const userId = (authResult as any).userId
+    await logHallBookingChange(
+      booking.id,
+      'CREATED',
+      userId,
+      [
+        { field: 'status', oldValue: null, newValue: 'CONFIRMED' },
+        { field: 'hallId', oldValue: null, newValue: hallId },
+        { field: 'eventType', oldValue: null, newValue: eventType },
+        { field: 'eventDate', oldValue: null, newValue: eventDateObj },
+        { field: 'totalAmount', oldValue: null, newValue: total },
+        { field: 'advanceAmount', oldValue: null, newValue: advance },
+        { field: 'balanceAmount', oldValue: null, newValue: grandTotal - advance },
+        { field: 'customerName', oldValue: null, newValue: customerName },
+      ],
+      `Hall booking created for ${hall.name}. Total ₹${total.toLocaleString()}, advance ₹${advance.toLocaleString()}.`,
+    )
 
     return Response.json(successResponse(booking, 'Function hall booking created successfully'))
   } catch (error: any) {

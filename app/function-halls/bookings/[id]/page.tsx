@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaBuilding, FaUser, FaPhone, FaEnvelope, FaCalendarAlt, FaClock, FaUsers, FaRupeeSign, FaArrowLeft, FaSave } from 'react-icons/fa'
+import { FaBuilding, FaUser, FaPhone, FaEnvelope, FaCalendarAlt, FaClock, FaUsers, FaRupeeSign, FaArrowLeft, FaSave, FaHistory } from 'react-icons/fa'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import Link from 'next/link'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
@@ -353,6 +353,36 @@ export default function EditFunctionHallBookingPage() {
             </button>
           </div>
         </div>
+
+        {/* Booking History */}
+        {booking.history && booking.history.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <FaHistory className="text-sky-400" />
+              Booking History
+            </h2>
+            <div className="space-y-2">
+              {booking.history.map((entry: any, index: number) => (
+                <div
+                  key={entry.id || index}
+                  className="bg-slate-800/40 rounded-lg p-3 border border-white/5"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-200">{entry.action}</p>
+                      {entry.notes && (
+                        <p className="text-xs text-slate-400 mt-1">{entry.notes}</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      {new Date(entry.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </form>
     </div>
   )

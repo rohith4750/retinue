@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { FaPlus, FaCalendarAlt, FaUser, FaPhone, FaBuilding, FaChevronLeft, FaChevronRight, FaTrash, FaCheck, FaTimes, FaBolt, FaEdit, FaFileInvoiceDollar, FaRupeeSign, FaPrint } from 'react-icons/fa'
+import { FaPlus, FaHistory, FaCalendarAlt, FaUser, FaPhone, FaBuilding, FaChevronLeft, FaChevronRight, FaTrash, FaCheck, FaTimes, FaBolt, FaEdit, FaFileInvoiceDollar, FaRupeeSign, FaPrint } from 'react-icons/fa'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
@@ -303,13 +303,22 @@ export default function FunctionHallBookingsPage() {
             />
           </div>
 
-          <Link
-            href="/function-halls/bookings/new"
-            className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
-          >
-            <FaPlus className="w-3 h-3" />
-            <span>New Booking</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/function-halls/bookings/history"
+              className="flex items-center space-x-2 px-4 py-2 bg-slate-700 text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-600 transition-colors"
+            >
+              <FaHistory className="w-3 h-3" />
+              <span>History</span>
+            </Link>
+            <Link
+              href="/function-halls/bookings/new"
+              className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+            >
+              <FaPlus className="w-3 h-3" />
+              <span>New Booking</span>
+            </Link>
+          </div>
         </div>
 
         {/* Inline Meter & Charges Form */}

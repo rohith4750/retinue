@@ -785,7 +785,9 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
                   <option value="SINGLE">Single</option>
                   <option value="DOUBLE">Double</option>
                   <option value="DELUXE">Deluxe</option>
+                  <option value="STANDARD">Standard</option>
                   <option value="SUITE">Suite</option>
+                  <option value="SUITE_PLUS">Suite+</option>
                 </select>
               </div>
               <div>

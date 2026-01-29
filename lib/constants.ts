@@ -29,8 +29,10 @@ export const ROOM_STATUSES = {
 export const ROOM_TYPES = {
   SINGLE: 'SINGLE',
   DOUBLE: 'DOUBLE',
-  SUITE: 'SUITE',
   DELUXE: 'DELUXE',
+  STANDARD: 'STANDARD',
+  SUITE: 'SUITE',
+  SUITE_PLUS: 'SUITE_PLUS',
 } as const
 
 // User Roles

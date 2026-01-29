@@ -1,6 +1,7 @@
 'use client'
 
-import { FaHotel, FaPhone, FaEnvelope, FaHeart } from 'react-icons/fa'
+import { FaHotel, FaEnvelope, FaHeart } from 'react-icons/fa'
+import { HOTEL_INFO } from '@/lib/hotel-info'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -18,13 +19,9 @@ export function Footer() {
 
         {/* Center: Quick contact - hidden on mobile */}
         <div className="hidden md:flex items-center space-x-4 text-xs text-slate-500">
-          <a href="tel:+911234567890" className="flex items-center space-x-1 hover:text-slate-300 transition-colors">
-            <FaPhone className="w-3 h-3" />
-            <span>+91 123 456 7890</span>
-          </a>
-          <a href="mailto:support@theretinue.com" className="flex items-center space-x-1 hover:text-slate-300 transition-colors">
+          <a href={`mailto:${HOTEL_INFO.email}`} className="flex items-center space-x-1 hover:text-slate-300 transition-colors">
             <FaEnvelope className="w-3 h-3" />
-            <span>support@theretinue.com</span>
+            <span>{HOTEL_INFO.email}</span>
           </a>
         </div>
 
