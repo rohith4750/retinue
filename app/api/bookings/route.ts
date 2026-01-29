@@ -240,13 +240,17 @@ export async function POST(request: NextRequest) {
           discountPerRoom
         )
 
+        const applyGst = data.applyGst !== false
+        const effectiveTax = applyGst ? priceCalculation.tax : 0
+        const effectiveTotal = applyGst ? priceCalculation.totalAmount : priceCalculation.subtotal
+
         // Generate custom booking ID
         const bookingId = await generateBookingId(tx)
 
         // Calculate advance and balance for this booking
         const advancePerRoom = (parseFloat(String(data.advanceAmount)) || 0) / roomIds.length
         const gstPerRoom = (parseFloat(String(data.gstAmount)) || 0) / roomIds.length
-        const balanceForRoom = priceCalculation.totalAmount - advancePerRoom
+        const balanceForRoom = effectiveTotal - advancePerRoom
 
         // Generate bill number
         const billNumber = `BILL-${Date.now()}-${roomId.slice(-4)}`
@@ -262,19 +266,19 @@ export async function POST(request: NextRequest) {
             checkOut: checkOutDate,
             flexibleCheckout: data.flexibleCheckout || false,
             numberOfGuests: parseInt(String(data.numberOfGuests)) || 1,
-            totalAmount: priceCalculation.totalAmount,
+            totalAmount: effectiveTotal,
             advanceAmount: advancePerRoom,
             balanceAmount: Math.max(0, balanceForRoom),
             gstAmount: gstPerRoom,
-            applyGst: data.applyGst !== false, // Default true
+            applyGst,
             status: 'CONFIRMED',
             // Billing fields (merged from Bill)
             billNumber,
             subtotal: priceCalculation.subtotal,
-            tax: data.applyGst !== false ? priceCalculation.tax : 0,
+            tax: effectiveTax,
             discount: priceCalculation.discountAmount,
             paidAmount: advancePerRoom,
-            paymentStatus: advancePerRoom >= priceCalculation.totalAmount ? 'PAID' : (advancePerRoom > 0 ? 'PARTIAL' : 'PENDING'),
+            paymentStatus: advancePerRoom >= effectiveTotal ? 'PAID' : (advancePerRoom > 0 ? 'PARTIAL' : 'PENDING'),
           },
           include: {
             room: true,

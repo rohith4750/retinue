@@ -408,34 +408,43 @@ export default function BillPage() {
             </div>
           </div>
 
-          <table className="w-full mb-6">
-            <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left py-2 text-slate-400 font-medium">Description</th>
-                <th className="text-right py-2 text-slate-400 font-medium">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-white/5">
-                <td className="py-3 text-slate-300">Room charges</td>
-                <td className="py-3 text-right text-slate-100">₹{(bill.subtotal ?? 0).toLocaleString()}</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="py-3 text-slate-300">GST (18%)</td>
-                <td className="py-3 text-right text-slate-100">₹{(bill.tax ?? 0).toLocaleString()}</td>
-              </tr>
-              {(bill.discount ?? 0) > 0 && (
-                <tr className="border-b border-white/5">
-                  <td className="py-3 text-slate-300">Discount</td>
-                  <td className="py-3 text-right text-emerald-400">-₹{(bill.discount ?? 0).toLocaleString()}</td>
-                </tr>
-              )}
-              <tr className="bg-slate-800/40">
-                <td className="py-3 font-semibold text-slate-100">Total</td>
-                <td className="py-3 text-right font-semibold text-slate-100">₹{(bill.totalAmount ?? 0).toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
+          {(() => {
+            const subtotal = bill.subtotal ?? 0
+            const discount = bill.discount ?? 0
+            const totalAmount = bill.totalAmount ?? 0
+            const storedTax = bill.tax ?? 0
+            const displayTax = storedTax > 0 ? storedTax : Math.max(0, totalAmount - subtotal)
+            return (
+              <table className="w-full mb-6">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left py-2 text-slate-400 font-medium">Description</th>
+                    <th className="text-right py-2 text-slate-400 font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-white/5">
+                    <td className="py-3 text-slate-300">Room charges</td>
+                    <td className="py-3 text-right text-slate-100">₹{subtotal.toLocaleString()}</td>
+                  </tr>
+                  <tr className="border-b border-white/5">
+                    <td className="py-3 text-slate-300">GST (18%)</td>
+                    <td className="py-3 text-right text-slate-100">₹{displayTax.toLocaleString()}</td>
+                  </tr>
+                  {discount > 0 && (
+                    <tr className="border-b border-white/5">
+                      <td className="py-3 text-slate-300">Discount</td>
+                      <td className="py-3 text-right text-emerald-400">-₹{discount.toLocaleString()}</td>
+                    </tr>
+                  )}
+                  <tr className="bg-slate-800/40">
+                    <td className="py-3 font-semibold text-slate-100">Total</td>
+                    <td className="py-3 text-right font-semibold text-slate-100">₹{totalAmount.toLocaleString()}</td>
+                  </tr>
+                </tbody>
+              </table>
+            )
+          })()}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div>
