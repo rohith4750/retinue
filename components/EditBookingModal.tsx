@@ -56,7 +56,7 @@ const initialFormData = {
   paymentMode: 'CASH',
   advanceAmount: '0',
   discount: '0',
-  applyGst: true,
+  applyGst: false,
   extraBed: false,
   extraBedCount: '1',
   extraBedPrice: '500',
@@ -114,7 +114,7 @@ export function EditBookingModal({
       checkOut: toDatetimeLocal(booking.checkOut),
       flexibleCheckout: !!booking.flexibleCheckout,
       discount: String(booking.discount ?? 0),
-      applyGst: booking.applyGst !== false,
+      applyGst: !!booking.applyGst,
     })
   }, [booking, setFormData])
 

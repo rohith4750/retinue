@@ -34,7 +34,7 @@ function NewBookingContent() {
     paymentMode: 'CASH',
     advanceAmount: '0',
     discount: '0',
-    applyGst: true,
+    applyGst: false,
     extraBed: false,
     extraBedCount: '1',
     extraBedPrice: '500', // Default price, user can change

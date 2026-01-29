@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
           discountPerRoom
         )
 
-        const applyGst = data.applyGst !== false
+        const applyGst = data.applyGst === true
         const effectiveTax = applyGst ? priceCalculation.tax : 0
         const effectiveTotal = applyGst ? priceCalculation.totalAmount : priceCalculation.subtotal
 
