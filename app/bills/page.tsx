@@ -3,146 +3,260 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import Link from 'next/link'
-import { FaReceipt, FaArrowLeft, FaRupeeSign } from 'react-icons/fa'
+import { useState } from 'react'
+import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { SearchInput } from '@/components/SearchInput'
+
+type PaymentFilter = 'all' | 'PENDING' | 'PARTIAL' | 'PAID'
 
 export default function BillsPage() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all')
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
+
   const { data: bookingsResponse, isLoading } = useQuery({
     queryKey: ['bookings', 'bills-list'],
-    queryFn: () => api.get('/bookings?limit=50'),
+    queryFn: () => api.get('/bookings?limit=200'),
     staleTime: 0,
   })
 
-  const bookings = Array.isArray(bookingsResponse)
+  const rawBookings = Array.isArray(bookingsResponse)
     ? bookingsResponse
     : (bookingsResponse?.data || [])
+  const bills = (Array.isArray(rawBookings) ? rawBookings : []).filter((b: any) => b.billNumber)
+
+  const filteredBills = bills.filter((b: any) => {
+    const status = (b.paymentStatus || 'PENDING') as string
+    if (paymentFilter !== 'all' && status !== paymentFilter) return false
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      (b.billNumber && b.billNumber.toLowerCase().includes(q)) ||
+      (b.guest?.name && b.guest.name.toLowerCase().includes(q)) ||
+      (b.guest?.phone && b.guest.phone.includes(q)) ||
+      (b.room?.roomNumber && b.room.roomNumber.toLowerCase().includes(q))
+    )
+  })
+
+  const totalPending = filteredBills.reduce((sum: number, b: any) => {
+    const rem = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
+    return sum + rem
+  }, 0)
+  const paidCount = filteredBills.filter((b: any) => (b.paymentStatus || '') === 'PAID').length
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center min-h-[320px]">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <>
-      <div className="glow-sky top-20 right-20" />
-      <div className="glow-emerald bottom-20 left-20" />
-      <div className="w-full max-w-6xl mx-auto px-4 lg:px-6 py-6 relative z-10">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6"
-        >
-          <FaArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </Link>
-
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+    <div className="w-full max-w-6xl mx-auto px-4 lg:px-6 py-6 relative z-10">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
             <FaReceipt className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Bills</h1>
-            <p className="text-sm text-slate-400">View and manage bills. Open a bill to record payment or print.</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Bills</h1>
+            <p className="text-sm text-slate-400">View bills, payment status and collect payments.</p>
           </div>
         </div>
+      </div>
 
+      {/* Toolbar: search + status filter + view toggle */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="flex-1 min-w-0">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by bill #, guest, room..."
+            className="bg-slate-800/80 border-slate-600 text-white placeholder-slate-500"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-slate-500 mr-1">Status:</span>
+          {(['all', 'PENDING', 'PARTIAL', 'PAID'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setPaymentFilter(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                paymentFilter === f
+                  ? f === 'all'
+                    ? 'bg-slate-600 text-white'
+                    : f === 'PAID'
+                      ? 'bg-emerald-500/30 text-emerald-300'
+                      : f === 'PARTIAL'
+                        ? 'bg-amber-500/30 text-amber-300'
+                        : 'bg-red-500/30 text-red-300'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
+            </button>
+          ))}
+          <span className="w-px h-5 bg-slate-600 mx-1" />
+          <div className="flex rounded-lg overflow-hidden border border-slate-600">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 ${viewMode === 'table' ? 'bg-sky-600 text-white' : 'bg-slate-800/80 text-slate-400 hover:text-white'}`}
+              title="Table view"
+            >
+              <FaList className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-2 ${viewMode === 'cards' ? 'bg-sky-600 text-white' : 'bg-slate-800/80 text-slate-400 hover:text-white'}`}
+              title="Cards view"
+            >
+              <FaThLarge className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary strip */}
+      {filteredBills.length > 0 && (
+        <div className="flex flex-wrap items-center gap-4 mb-4 py-3 px-4 rounded-xl bg-slate-800/50 border border-white/5">
+          <span className="text-sm text-slate-400">
+            <span className="font-semibold text-white">{filteredBills.length}</span> bill{filteredBills.length !== 1 ? 's' : ''}
+          </span>
+          <span className="text-sm text-amber-400">
+            <FaRupeeSign className="inline w-3 h-3 mr-0.5" />
+            <span className="font-semibold">{totalPending.toLocaleString()}</span> total pending
+          </span>
+          <span className="text-sm text-emerald-400">
+            <span className="font-semibold">{paidCount}</span> paid
+          </span>
+        </div>
+      )}
+
+      {/* Content */}
+      {bills.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col items-center justify-center py-16 px-4">
+          <FaFileInvoiceDollar className="w-14 h-14 text-slate-600 mb-4" />
+          <h2 className="text-lg font-semibold text-slate-300 mb-2">No bills yet</h2>
+          <p className="text-sm text-slate-500 text-center max-w-sm">
+            Bills are created when you make a booking. Create a booking to generate bills and collect payments.
+          </p>
+          <Link
+            href="/bookings/new"
+            className="mt-4 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"
+          >
+            New Booking
+          </Link>
+        </div>
+      ) : filteredBills.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col items-center justify-center py-12 px-4">
+          <FaSearch className="w-10 h-10 text-slate-600 mb-3" />
+          <p className="text-slate-400 text-sm">No bills match your search or filter.</p>
+          <button
+            onClick={() => { setSearchQuery(''); setPaymentFilter('all') }}
+            className="mt-3 text-sm text-sky-400 hover:text-sky-300"
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredBills.map((b: any) => {
+            const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
+            const status = b.paymentStatus || 'PENDING'
+            return (
+              <Link
+                key={b.id}
+                href={`/bills/${b.id}`}
+                className="block rounded-xl border border-white/10 bg-slate-800/80 hover:bg-slate-800 hover:border-emerald-500/30 transition-all p-4"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <span className="text-xs font-mono text-slate-400 truncate" title={b.billNumber}>{b.billNumber}</span>
+                  <span
+                    className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
+                      status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                      status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                    }`}
+                  >
+                    {status}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-white truncate">{b.guest?.name}</p>
+                <p className="text-xs text-slate-400 mb-3">{b.room?.roomNumber} • {b.room?.roomType}</p>
+                <div className="flex items-center justify-between text-xs border-t border-white/5 pt-3">
+                  <span className="text-slate-500">Total</span>
+                  <span className="font-semibold text-white">₹{(b.totalAmount ?? 0).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs mt-1">
+                  <span className="text-slate-500">Paid</span>
+                  <span className="text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</span>
+                </div>
+                {remaining > 0 && (
+                  <div className="flex items-center justify-between text-xs mt-1">
+                    <span className="text-slate-500">Due</span>
+                    <span className="font-medium text-amber-400">₹{remaining.toLocaleString()}</span>
+                  </div>
+                )}
+                <p className="mt-3 text-center text-xs text-emerald-400 font-medium">View Bill →</p>
+              </Link>
+            )
+          })}
+        </div>
+      ) : (
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
-          <div className="overflow-x-auto overflow-y-hidden -mx-px" style={{ maxWidth: '100%' }}>
-            <table className="w-full min-w-[900px]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px]">
               <thead>
                 <tr className="border-b border-white/10 bg-slate-800/60">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Bill #</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Guest</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Room</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Total</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Advance</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Paid</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Remaining</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Status</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap shrink-0">Action</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Bill #</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Guest</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Room</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Total</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Paid</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Due</th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Status</th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase w-24">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {bookings.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-500">
-                      No bookings with bills yet.
-                    </td>
-                  </tr>
-                ) : (
-                  bookings
-                    .filter((b: any) => b.billNumber)
-                    .map((b: any) => {
-                      const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
-                      return (
-                        <tr
-                          key={b.id}
-                          className="border-b border-white/5 hover:bg-slate-800/40 transition-colors"
+                {filteredBills.map((b: any) => {
+                  const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
+                  const status = b.paymentStatus || 'PENDING'
+                  return (
+                    <tr key={b.id} className="border-b border-white/5 hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-4 text-sm font-mono text-slate-300 truncate max-w-[140px]" title={b.billNumber}>{b.billNumber}</td>
+                      <td className="py-3 px-4 text-sm text-slate-200">{b.guest?.name}</td>
+                      <td className="py-3 px-4 text-sm text-slate-400">{b.room?.roomNumber} ({b.room?.roomType})</td>
+                      <td className="py-3 px-4 text-sm text-right text-slate-200">₹{(b.totalAmount ?? 0).toLocaleString()}</td>
+                      <td className="py-3 px-4 text-sm text-right text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</td>
+                      <td className="py-3 px-4 text-sm text-right font-medium text-amber-400">₹{remaining.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                          status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                          status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <Link
+                          href={`/bills/${b.id}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30"
                         >
-                          <td className="py-3 px-4 text-sm font-medium text-slate-200 min-w-[140px] truncate" title={b.billNumber}>
-                            {b.billNumber}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-slate-300 whitespace-nowrap">{b.guest?.name}</td>
-                          <td className="py-3 px-4 text-sm text-slate-300 whitespace-nowrap">
-                            {b.room?.roomNumber} ({b.room?.roomType})
-                          </td>
-                          <td className="py-3 px-4 text-sm text-right text-slate-200 whitespace-nowrap">
-                            <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
-                            {(b.totalAmount ?? 0).toLocaleString()}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-right text-sky-400 whitespace-nowrap">
-                            <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
-                            {(b.advanceAmount ?? 0).toLocaleString()}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-right text-emerald-400 whitespace-nowrap">
-                            <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
-                            {(b.paidAmount ?? 0).toLocaleString()}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-right font-medium whitespace-nowrap">
-                            <span className={remaining > 0 ? 'text-amber-400' : 'text-slate-400'}>
-                              <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
-                              {remaining.toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span
-                              className={`inline-flex px-2 py-1 rounded-lg text-xs font-bold ${
-                                b.paymentStatus === 'PAID'
-                                  ? 'bg-emerald-500/20 text-emerald-400'
-                                  : b.paymentStatus === 'PARTIAL'
-                                    ? 'bg-amber-500/20 text-amber-400'
-                                    : 'bg-red-500/20 text-red-400'
-                              }`}
-                            >
-                              {b.paymentStatus || 'PENDING'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <Link
-                              href={`/bills/${b.id}`}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm font-medium hover:bg-emerald-500/30 transition-colors"
-                            >
-                              <FaReceipt className="w-3.5 h-3.5" />
-                              View Bill
-                            </Link>
-                          </td>
-                        </tr>
-                      )
-                    })
-                )}
+                          <FaReceipt className="w-3 h-3" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         </div>
-
-        {bookings.length > 0 && !bookings.some((b: any) => b.billNumber) && (
-          <p className="mt-4 text-sm text-slate-500 text-center">
-            No bookings have a bill number yet. Bills are created when you make a booking.
-          </p>
-        )}
-      </div>
-    </>
+      )}
+    </div>
   )
 }

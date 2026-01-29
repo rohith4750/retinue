@@ -53,7 +53,7 @@ export function Sidebar() {
 
   // Operations menu items
   const operationsMenuItems = [
-    { href: '/inventory', icon: FaBox, label: 'Inventory', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/inventory', icon: FaBox, label: 'Stock & Assets', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/staff', icon: FaUsers, label: 'Staff', roles: ['SUPER_ADMIN', 'ADMIN'] },
     { href: '/assets', icon: FaMapMarkerAlt, label: 'Asset Locator', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
   ]

@@ -53,17 +53,21 @@ export async function PUT(
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()
-    const { roomNumber, roomType, floor, basePrice, capacity, status } = data
+    const { roomNumber, roomType, floor, basePrice, capacity, status, maintenanceReason } = data
 
     const room = await prisma.room.update({
       where: { id: params.id },
       data: {
-        ...(roomNumber && { roomNumber }),
-        ...(roomType && { roomType }),
-        ...(floor && { floor: parseInt(floor) }),
-        ...(basePrice && { basePrice: parseFloat(basePrice) }),
-        ...(capacity && { capacity: parseInt(capacity) }),
-        ...(status && { status }),
+        ...(roomNumber !== undefined && { roomNumber }),
+        ...(roomType !== undefined && { roomType }),
+        ...(floor !== undefined && { floor: parseInt(floor) }),
+        ...(basePrice !== undefined && { basePrice: parseFloat(basePrice) }),
+        ...(capacity !== undefined && { capacity: parseInt(capacity) }),
+        ...(status !== undefined && { status }),
+        // When status is MAINTENANCE, store reason; otherwise clear it
+        ...(status !== undefined && {
+          maintenanceReason: status === 'MAINTENANCE' ? (maintenanceReason ?? null) : null,
+        }),
       },
     })
 

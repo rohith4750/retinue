@@ -65,10 +65,10 @@ export default function AssignAssetPage() {
     }
   }, [existingAsset])
 
-  // Fetch ALL rooms for asset locator (no status filter – need every room to tag assets)
+  // Fetch ALL rooms for asset locator – no status filter so every room (AVAILABLE, BOOKED, MAINTENANCE) appears for tagging
   const { data: roomsData } = useQuery({
-    queryKey: ['rooms', 'asset-locator'],
-    queryFn: () => api.get('/rooms'),
+    queryKey: ['rooms', 'asset-locator-all'],
+    queryFn: () => api.get('/rooms'), // GET /rooms returns all rooms with effective status; no ?status= filter
     enabled: mounted && !!canAccess,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -166,7 +166,7 @@ export default function AssignAssetPage() {
             <FaMapMarkerAlt className="text-sky-400" />
             {editId ? 'Edit Asset Location' : 'Assign Asset to Location'}
           </h1>
-          <p className="text-sm text-slate-400">Track where your inventory items are located</p>
+          <p className="text-sm text-slate-400">Assign stock & assets to rooms or halls</p>
         </div>
       </div>
 
@@ -177,7 +177,7 @@ export default function AssignAssetPage() {
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
               <FaBox className="inline mr-2 text-sky-400" />
-              Select Inventory Item *
+              Select Item *
             </label>
             <select
               value={formData.inventoryId}
@@ -195,7 +195,7 @@ export default function AssignAssetPage() {
             </select>
             {inventoryItems.length === 0 && (
               <p className="text-xs text-amber-400 mt-1">
-                No inventory items found. Please add items in Inventory first.
+                No items found. Add items in Stock & Assets first.
               </p>
             )}
           </div>
@@ -237,7 +237,7 @@ export default function AssignAssetPage() {
             </div>
           </div>
 
-          {/* Select Room */}
+          {/* Select Room – all rooms shown with status (AVAILABLE, BOOKED, MAINTENANCE) for tagging */}
           {locationType === 'room' && (
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -251,12 +251,18 @@ export default function AssignAssetPage() {
                 className="form-input"
               >
                 <option value="">-- Select a room --</option>
-                {rooms.map((room: any) => (
-                  <option key={room.id} value={room.id}>
-                    {room.roomNumber} - {room.roomType} (Floor {room.floor})
-                  </option>
-                ))}
+                {rooms.map((room: any) => {
+                  const status = room.status || 'AVAILABLE'
+                  return (
+                    <option key={room.id} value={room.id}>
+                      {room.roomNumber} - {room.roomType} (Floor {room.floor}) • {status.replace('_', ' ')}
+                    </option>
+                  )
+                })}
               </select>
+              <p className="text-xs text-slate-500 mt-1">
+                All rooms are listed (any status) so you can tag assets to any location.
+              </p>
             </div>
           )}
 

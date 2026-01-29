@@ -42,7 +42,7 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
     if (pathname?.startsWith('/bookings/history')) return { title: 'Booking History', icon: FaHistory }
     if (pathname?.startsWith('/bookings')) return { title: 'Bookings', icon: FaCalendarAlt }
     if (pathname?.startsWith('/staff')) return { title: 'Staff Management', icon: FaUsers }
-    if (pathname?.startsWith('/inventory')) return { title: 'Inventory', icon: FaBox }
+    if (pathname?.startsWith('/inventory')) return { title: 'Stock & Assets', icon: FaBox }
     if (pathname?.startsWith('/auth/users')) return { title: 'User Management', icon: FaUserShield }
     if (pathname?.startsWith('/expenses')) return { title: 'Revenue & Expenses', icon: FaMoneyBillWave }
     if (pathname?.startsWith('/workforce')) return { title: 'Workforce & Salary', icon: FaUsers }

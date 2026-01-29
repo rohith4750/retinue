@@ -45,10 +45,10 @@ export default function InventoryPage() {
     endpoint: '/inventory',
     onSuccess: () => {
       setDeleteModal({ show: false, itemId: null })
-      toast.success('Inventory item deleted successfully')
+      toast.success('Item deleted successfully')
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Failed to delete inventory item')
+      toast.error(error?.message || 'Failed to delete item')
     }
   })
 
@@ -76,8 +76,8 @@ export default function InventoryPage() {
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100 mb-1">Inventory Management</h1>
-            <p className="text-sm text-slate-400">Track and manage inventory items</p>
+            <h1 className="text-2xl font-bold text-slate-100 mb-1">Stock & Assets</h1>
+            <p className="text-sm text-slate-400">Track stock levels and assign assets to rooms or halls</p>
           </div>
           <button
             onClick={() => {
@@ -175,8 +175,8 @@ export default function InventoryPage() {
                   <td colSpan={isSuperAdmin ? 7 : 6} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center">
                       <FaBox className="text-4xl mb-2 text-slate-500" />
-                      <p className="text-lg font-medium text-slate-300">No inventory items found</p>
-                      <p className="text-sm text-slate-500">Click &quot;Add Item&quot; to add your first inventory item</p>
+                      <p className="text-lg font-medium text-slate-300">No items found</p>
+                      <p className="text-sm text-slate-500">Click &quot;Add Item&quot; to add your first stock or asset</p>
                     </div>
                   </td>
                 </tr>
@@ -199,8 +199,8 @@ export default function InventoryPage() {
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         show={deleteModal.show}
-        title="Delete Inventory Item"
-        message="Are you sure you want to delete this inventory item? This action cannot be undone."
+        title="Delete Item"
+        message="Are you sure you want to delete this item? This action cannot be undone."
         action="Delete"
         type="delete"
         onConfirm={() => {
@@ -238,10 +238,10 @@ function InventoryModal({ onClose, editingItem }: { onClose: () => void; editing
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] })
       onClose()
-      toast.success(editingItem ? 'Inventory item updated successfully' : 'Inventory item created successfully')
+      toast.success(editingItem ? 'Item updated successfully' : 'Item created successfully')
     },
     onError: () => {
-      toast.error(editingItem ? 'Failed to update inventory item' : 'Failed to create inventory item')
+      toast.error(editingItem ? 'Failed to update item' : 'Failed to create item')
     },
   })
 
@@ -257,7 +257,7 @@ function InventoryModal({ onClose, editingItem }: { onClose: () => void; editing
           <div className="card-header">
             <h2 className="text-lg font-bold text-slate-100 flex items-center">
               <FaBox className="mr-2 w-4 h-4" />
-              {editingItem ? 'Edit Inventory Item' : 'Add Inventory Item'}
+              {editingItem ? 'Edit Item' : 'Add Item'}
             </h2>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">

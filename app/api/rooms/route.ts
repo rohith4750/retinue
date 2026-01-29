@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     if (authResult instanceof Response) return authResult
 
     const data = await request.json()
-    const { roomNumber, roomType, floor, basePrice, capacity, status } = data
+    const { roomNumber, roomType, floor, basePrice, capacity, status, maintenanceReason } = data
 
     if (!roomNumber || !roomType || !floor || !basePrice || !capacity) {
       return Response.json(
@@ -91,15 +91,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const createData: Record<string, unknown> = {
+      roomNumber,
+      roomType,
+      floor: parseInt(floor),
+      basePrice: parseFloat(basePrice),
+      capacity: parseInt(capacity),
+      status: status || 'AVAILABLE',
+    }
+    if (status === 'MAINTENANCE') {
+      createData.maintenanceReason = maintenanceReason || null
+    }
     const room = await prisma.room.create({
-      data: {
-        roomNumber,
-        roomType,
-        floor: parseInt(floor),
-        basePrice: parseFloat(basePrice),
-        capacity: parseInt(capacity),
-        status: status || 'AVAILABLE',
-      },
+      data: createData as Parameters<typeof prisma.room.create>[0]['data'],
     })
 
     return Response.json(successResponse(room, 'Room created successfully'))

@@ -483,6 +483,9 @@ export default function RoomsPage() {
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-white">{room.roomNumber}</p>
                             <p className="text-[10px] text-slate-400">{room.roomType} • F{room.floor} • ₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
+                            {room.status === 'MAINTENANCE' && room.maintenanceReason && (
+                              <p className="text-[9px] text-amber-300/90 mt-0.5 truncate" title={room.maintenanceReason}>{room.maintenanceReason}</p>
+                            )}
                             {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
                               <div className="text-[9px] text-red-300/90 mt-0.5 space-y-0.5">
                                 {room.checkInAt && (
@@ -618,6 +621,14 @@ export default function RoomsPage() {
                         room.status === 'BOOKED' ? 'text-red-400' :
                         'text-yellow-400'
                       }`}>{room.status}</span>
+                      {room.status === 'MAINTENANCE' && room.maintenanceReason && (
+                        <>
+                          <span className="w-px h-5 mx-3 bg-yellow-400" />
+                          <span className="text-[10px] text-amber-200/90 max-w-[120px] truncate" title={room.maintenanceReason}>
+                            {room.maintenanceReason}
+                          </span>
+                        </>
+                      )}
                       {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
                         <>
                           {room.checkInAt && (
@@ -714,6 +725,8 @@ export default function RoomsPage() {
   )
 }
 
+const MAINTENANCE_PRESETS = ['Electronics', 'AC', 'Fans', 'Carpenter', 'Plumbing', 'Painting', 'Other']
+
 function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
   const [formData, setFormData] = useState({
     roomNumber: room?.roomNumber || '',
@@ -722,6 +735,7 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
     basePrice: room?.basePrice || '',
     capacity: room?.capacity || '',
     status: room?.status || 'AVAILABLE',
+    maintenanceReason: room?.maintenanceReason || '',
   })
 
   const queryClient = useQueryClient()
@@ -752,11 +766,23 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const payload = { ...formData }
+    if (formData.status !== 'MAINTENANCE') payload.maintenanceReason = ''
     if (room) {
-      updateMutation.mutate(formData)
+      updateMutation.mutate(payload)
     } else {
-      createMutation.mutate(formData)
+      createMutation.mutate(payload)
     }
+  }
+
+  const addMaintenancePreset = (preset: string) => {
+    const current = (formData.maintenanceReason || '').trim()
+    const parts = current ? current.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+    if (parts.includes(preset)) return
+    setFormData((prev) => ({
+      ...prev,
+      maintenanceReason: [...parts, preset].join(', '),
+    }))
   }
 
   return (
@@ -853,7 +879,7 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
                 <select
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
+                    setFormData({ ...formData, status: e.target.value, ...(e.target.value !== 'MAINTENANCE' ? { maintenanceReason: '' } : {}) })
                   }
                   className="form-select"
                 >
@@ -863,6 +889,32 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
                 </select>
               </div>
             </div>
+
+            {formData.status === 'MAINTENANCE' && (
+              <div>
+                <label className="form-label">Repair / work type (optional)</label>
+                <p className="text-xs text-slate-500 mb-2">What is under repair? e.g. Electronics, AC, Fans, Carpenter</p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {MAINTENANCE_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => addMaintenancePreset(preset)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-colors"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={formData.maintenanceReason}
+                  onChange={(e) => setFormData({ ...formData, maintenanceReason: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. AC, Fans, Carpenter, Electronics"
+                />
+              </div>
+            )}
             
             <div className="flex justify-end space-x-2 pt-3 border-t border-white/5">
               <button

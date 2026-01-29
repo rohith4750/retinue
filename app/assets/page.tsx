@@ -456,7 +456,7 @@ export default function AssetsPage() {
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-12 border border-white/5 text-center mt-6">
             <FaBox className="text-4xl text-slate-500 mx-auto mb-3" />
             <p className="text-base font-semibold text-slate-300 mb-1.5">No assets assigned yet</p>
-            <p className="text-xs text-slate-500 mb-4">Click &quot;Assign Asset&quot; to track where your inventory items are located</p>
+            <p className="text-xs text-slate-500 mb-4">Click &quot;Assign Asset&quot; to assign items from Stock & Assets to rooms or halls</p>
             <Link
               href="/assets/assign"
               className="inline-block px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"

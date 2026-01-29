@@ -84,15 +84,16 @@ enum AttendanceStatus {
 
 // Room Master
 model Room {
-  id          String      @id @default(cuid())
-  roomNumber  String      @unique
-  roomType    RoomType
-  floor       Int
-  basePrice   Float
-  capacity    Int // Total capacity (adults + children)
-  status      RoomStatus  @default(AVAILABLE)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                String      @id @default(cuid())
+  roomNumber        String      @unique
+  roomType          RoomType
+  floor             Int
+  basePrice         Float
+  capacity          Int // Total capacity (adults + children)
+  status            RoomStatus  @default(AVAILABLE)
+  maintenanceReason String?     // When status=MAINTENANCE: e.g. "AC, Fans, Carpenter", "Electronics", "Plumbing"
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   slots       RoomSlot[]
   bookings    Booking[]
