@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { setAuth, clearAuth } from '@/lib/auth-storage'
 import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaStar, FaBuilding, FaHotel, FaEye, FaEyeSlash } from 'react-icons/fa'
@@ -174,56 +175,26 @@ function LoginContent() {
       <div className="w-full flex items-center justify-center p-4 sm:p-8 relative z-10">
         <div className="max-w-5xl w-full flex flex-col lg:flex-row items-center lg:items-stretch gap-8 lg:gap-0">
           
-          {/* Left Side - Branding (Hidden on mobile, shown on lg) */}
-          <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-12 relative">
-            {/* Logo Stack */}
-            <div className="flex flex-col items-center space-y-6">
-              {/* Combined Logo */}
-              <div className="relative">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-amber-500/40 transform -rotate-6">
-                    <FaHotel className="text-2xl text-white" />
-                  </div>
-                  <div className="w-16 h-16 bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-sky-500/40 transform rotate-6">
-                    <FaBuilding className="text-2xl text-white" />
-                  </div>
-                </div>
-                {/* Connecting Element */}
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-700 shadow-lg">
-                  <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-sky-400">&</span>
-                </div>
-              </div>
-
-              {/* Brand Names */}
-              <div className="text-center mt-4">
-                <h1 className="text-3xl font-bold text-white mb-1">
-                  The Retinue
-                </h1>
-                <div className="flex items-center justify-center gap-2 text-slate-400 text-sm mb-4">
-                  <div className="h-px w-8 bg-gradient-to-r from-transparent to-slate-600"></div>
-                  <span>and</span>
-                  <div className="h-px w-8 bg-gradient-to-l from-transparent to-slate-600"></div>
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">
-                  Buchirajuu
-                </h1>
-                <p className="text-slate-500 text-sm tracking-wider uppercase">
-                  Hotel & Convention Center
-                </p>
-              </div>
-
-              {/* Star Rating */}
-              <div className="flex items-center gap-1 mt-2">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} className="w-4 h-4 text-amber-400" />
-                ))}
-              </div>
-
-              {/* Tagline */}
-              <p className="text-slate-500 text-center text-sm max-w-xs mt-4 leading-relaxed">
-                Where luxury meets celebration. Your destination for unforgettable stays and extraordinary events.
-              </p>
+          {/* Left Side - Logo (Hidden on mobile, shown on lg) */}
+          <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-8 lg:p-12 relative -mt-16 lg:-mt-20">
+            <div className="w-full max-w-md flex justify-center items-center">
+              <Image
+                src="/logo-retinue.png"
+                alt="Hotel The Retinue & Buchiraju Convention"
+                width={420}
+                height={280}
+                className="object-contain w-full h-auto drop-shadow-2xl"
+                priority
+              />
             </div>
+            <p className="text-center text-sm max-w-sm mt-3 leading-relaxed space-y-1">
+              <span className="block font-medium text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500">
+                Where luxury meets celebration.
+              </span>
+              <span className="block text-slate-400">
+                Your destination for unforgettable stays and extraordinary events.
+              </span>
+            </p>
           </div>
 
           {/* Divider */}
@@ -255,7 +226,7 @@ function LoginContent() {
           <div className="bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5)]">
             <div className="text-center mb-8">
               <h2 className="text-xl font-bold text-white mb-1">
-                The Hotel Retinue <span className="text-amber-400">&</span> Buchirajuu
+                 Hotel The Retinue <span className="text-amber-400">&</span> Buchirajuu
               </h2>
               <p className="text-slate-500 text-xs uppercase tracking-wider">
                 Hotel & Convention Management
