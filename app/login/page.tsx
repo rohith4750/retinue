@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { setAuth, clearAuth } from '@/lib/auth-storage'
 import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaStar, FaBuilding, FaHotel, FaEye, FaEyeSlash } from 'react-icons/fa'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -579,5 +579,19 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-950">
+          <FaSpinner className="w-10 h-10 animate-spin text-amber-500" />
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   )
 }
