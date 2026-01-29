@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory, FaDownload, FaPlus, FaTimes, FaPrint, FaCalendarPlus } from 'react-icons/fa'
+import { FaCalendarAlt, FaCheckCircle, FaDoorOpen, FaMoneyBillWave, FaHome, FaClock, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaHistory, FaDownload, FaPlus, FaTimes, FaPrint, FaCalendarPlus, FaList, FaThLarge, FaColumns, FaCalendarWeek } from 'react-icons/fa'
 import { useMutation } from '@tanstack/react-query'
 import { createPortal } from 'react-dom'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
@@ -53,6 +53,13 @@ export default function BookingsPage() {
   // Extend Stay Modal State
   const [extendModal, setExtendModal] = useState<{ show: boolean; booking: any | null }>({ show: false, booking: null })
   const [newCheckoutDate, setNewCheckoutDate] = useState('')
+
+  // View mode: list | cards | board | timeline
+  const [viewMode, setViewMode] = useState<'list' | 'cards' | 'board' | 'timeline'>('list')
+
+  // Quick filter: client-side focus (All | Check-in today | Check-out today | In-house)
+  type QuickFilter = 'all' | 'checkin_today' | 'checkout_today' | 'in_house'
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all')
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -120,6 +127,27 @@ export default function BookingsPage() {
     total: Array.isArray(bookingsResponse) ? bookingsResponse.length : (bookingsResponse?.data?.length || 0), 
     totalPages: 1 
   }
+
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date()
+  todayEnd.setHours(23, 59, 59, 999)
+  const isCheckInToday = (b: any) => {
+    const d = new Date(b.checkIn)
+    return d >= todayStart && d <= todayEnd
+  }
+  const isCheckOutToday = (b: any) => {
+    const d = new Date(b.checkOut)
+    return d >= todayStart && d <= todayEnd
+  }
+  const filteredBookings = (() => {
+    if (!bookings?.length) return []
+    if (quickFilter === 'all') return bookings
+    if (quickFilter === 'checkin_today') return bookings.filter(isCheckInToday)
+    if (quickFilter === 'checkout_today') return bookings.filter(isCheckOutToday)
+    if (quickFilter === 'in_house') return bookings.filter((b: any) => b.status === 'CHECKED_IN')
+    return bookings
+  })()
 
   const updateStatusMutation = useMutationWithInvalidation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -255,14 +283,56 @@ export default function BookingsPage() {
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
         {/* Header: Search/Export on left, History/New Booking on right */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          {/* Left: Search and Export */}
-          <div className="flex items-center gap-3">
+          {/* Left: Search, View Toggle, Export */}
+          <div className="flex items-center gap-3 flex-wrap">
             <SearchInput
               placeholder="Search bookings..."
               value={searchQuery}
               onChange={setSearchQuery}
               className="w-48"
             />
+            <div className="flex items-center bg-slate-800/60 rounded-lg border border-white/5 p-0.5">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+                title="List view"
+              >
+                <FaList className="w-3 h-3" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'cards' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Cards view"
+              >
+                <FaThLarge className="w-3 h-3" />
+                Cards
+              </button>
+              <button
+                onClick={() => setViewMode('board')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'board' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Board view by status"
+              >
+                <FaColumns className="w-3 h-3" />
+                Board
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'timeline' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Timeline – rooms × days"
+              >
+                <FaCalendarWeek className="w-3 h-3" />
+                Timeline
+              </button>
+            </div>
             <button
               onClick={handleExportCSV}
               className="flex items-center space-x-2 px-3 py-2 bg-slate-800/60 text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors border border-white/5"
@@ -310,6 +380,32 @@ export default function BookingsPage() {
 
         {bookings && bookings.length > 0 ? (
           <>
+            {/* Quick filter chips – focus on what matters */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="text-xs text-slate-500 mr-1">Show:</span>
+              {(['all', 'checkin_today', 'checkout_today', 'in_house'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setQuickFilter(filter)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    quickFilter === filter
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700/60 border border-white/5'
+                  }`}
+                >
+                  {filter === 'all' && 'All'}
+                  {filter === 'checkin_today' && `Check-in today (${bookings.filter(isCheckInToday).length})`}
+                  {filter === 'checkout_today' && `Check-out today (${bookings.filter(isCheckOutToday).length})`}
+                  {filter === 'in_house' && `In-house (${bookings.filter((b: any) => b.status === 'CHECKED_IN').length})`}
+                </button>
+              ))}
+              {quickFilter !== 'all' && (
+                <span className="text-xs text-slate-500 ml-2">
+                  Showing {filteredBookings.length} of {bookings.length}
+                </span>
+              )}
+            </div>
+
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-xl p-4">
@@ -342,9 +438,280 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* Bookings Grid - Compact Cards: click card to open full booking data */}
+            {/* Empty state when quick filter has no matches */}
+            {filteredBookings.length === 0 && bookings.length > 0 && (
+              <div className="rounded-xl border border-white/5 bg-slate-900/40 p-8 text-center">
+                <p className="text-slate-300 font-medium">No bookings match this filter</p>
+                <p className="text-sm text-slate-500 mt-1">Try &quot;All&quot; or another filter</p>
+                <button
+                  onClick={() => setQuickFilter('all')}
+                  className="mt-4 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+                >
+                  Show all
+                </button>
+              </div>
+            )}
+
+            {/* List View – compact rows */}
+            {viewMode === 'list' && filteredBookings.length > 0 && (
+              <div className="rounded-xl border border-white/5 bg-slate-900/40 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px]">
+                    <thead>
+                      <tr className="bg-slate-800/80 border-b border-white/5">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Guest</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Room</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-in</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-out</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredBookings.map((booking: any) => {
+                        const checkInToday = isCheckInToday(booking)
+                        const checkOutToday = isCheckOutToday(booking)
+                        const needsAction = (booking.status === 'CONFIRMED' && checkInToday) || (booking.status === 'CHECKED_IN' && checkOutToday)
+                        return (
+                        <tr
+                          key={booking.id}
+                          onClick={() => router.push(`/bookings/${booking.id}`)}
+                          className={`border-b border-white/5 hover:bg-slate-700/20 cursor-pointer transition-colors ${needsAction ? 'bg-sky-500/5 border-l-2 border-l-sky-500' : ''}`}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {checkInToday && booking.status === 'CONFIRMED' && (
+                                <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-emerald-500/25 text-emerald-400" title="Check-in today">In</span>
+                              )}
+                              {checkOutToday && booking.status === 'CHECKED_IN' && (
+                                <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-500/25 text-amber-400" title="Check-out today">Out</span>
+                              )}
+                              <div>
+                            <p className="font-medium text-white">{booking.guest?.name}</p>
+                            <p className="text-xs text-slate-500">{booking.guest?.phone}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">
+                            {booking.room?.roomNumber} • {booking.room?.roomType}
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">
+                            {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">
+                            {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-emerald-400">
+                            ₹{booking.totalAmount?.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg ${
+                              booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
+                              booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
+                              booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
+                              booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                              'bg-amber-500/20 text-amber-400'
+                            }`}>
+                              {booking.status.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-wrap gap-1.5 justify-end">
+                              <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
+                              {booking.status === 'CONFIRMED' && (
+                                <>
+                                  <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')} className="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 rounded text-white">Check In</button>
+                                  <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
+                                </>
+                              )}
+                              {booking.status === 'CHECKED_IN' && (
+                                <>
+                                  <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="px-2 py-1 text-xs bg-sky-600 hover:bg-sky-500 rounded text-white">Check Out</button>
+                                  <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
+                                </>
+                              )}
+                              {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                                <button onClick={() => setCancelModal({ show: true, bookingId: booking.id })} className="px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 rounded" title="Cancel">Cancel</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )})}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Timeline View – rooms × next 7 days (occupancy at a glance) */}
+            {viewMode === 'timeline' && filteredBookings.length > 0 && (() => {
+              const timelineDays = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date()
+                d.setDate(d.getDate() + i)
+                d.setHours(0, 0, 0, 0)
+                return d
+              })
+              const roomIds = Array.from(new Set(filteredBookings.map((b: any) => b.room?.id).filter(Boolean))) as string[]
+              const roomMap = Object.fromEntries(
+                filteredBookings.map((b: any) => [b.room?.id, b.room]).filter(([id]: [string, any]) => id)
+              ) as Record<string, { roomNumber: string; roomType?: string }>
+              const roomsSorted = roomIds
+                .map((id) => ({ id, room: roomMap[id] }))
+                .filter((r) => r.room)
+                .sort((a, b) => (a.room?.roomNumber || '').localeCompare(b.room?.roomNumber || ''))
+              const dayStart = (d: Date) => {
+                const x = new Date(d)
+                x.setHours(0, 0, 0, 0)
+                return x.getTime()
+              }
+              const getBookingForCell = (roomId: string, day: Date) => {
+                const dayTs = dayStart(day)
+                return filteredBookings.find((b: any) => {
+                  if (b.room?.id !== roomId) return false
+                  if (b.status === 'CANCELLED' || b.status === 'CHECKED_OUT') return false
+                  const inTs = dayStart(new Date(b.checkIn))
+                  const outTs = dayStart(new Date(b.checkOut))
+                  return dayTs >= inTs && dayTs < outTs
+                })
+              }
+              return (
+                <div className="rounded-xl border border-white/5 bg-slate-900/40 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[700px]">
+                      <thead>
+                        <tr className="bg-slate-800/80 border-b border-white/5">
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-28 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">
+                            Room
+                          </th>
+                          {timelineDays.map((day, i) => {
+                            const isToday = day.toDateString() === new Date().toDateString()
+                            return (
+                              <th
+                                key={i}
+                                className={`px-2 py-3 text-center min-w-[100px] border-r border-white/5 last:border-r-0 ${
+                                  isToday ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''
+                                }`}
+                              >
+                                <div className={`text-[10px] uppercase font-medium ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
+                                  {day.toLocaleDateString('en-IN', { weekday: 'short' })}
+                                </div>
+                                <div className={`text-sm font-bold mt-0.5 ${isToday ? 'text-sky-300' : 'text-slate-300'}`}>
+                                  {day.getDate()}
+                                </div>
+                                <div className="text-[10px] text-slate-500">{day.toLocaleDateString('en-IN', { month: 'short' })}</div>
+                              </th>
+                            )
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {roomsSorted.map(({ id: roomId, room }) => (
+                          <tr key={roomId} className="border-t border-white/5 hover:bg-slate-700/10">
+                            <td className="px-3 py-2 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">
+                              <div className="font-semibold text-white">Room {room?.roomNumber}</div>
+                              <div className="text-[10px] text-slate-500">{room?.roomType}</div>
+                            </td>
+                            {timelineDays.map((day, i) => {
+                              const booking = getBookingForCell(roomId, day)
+                              const isToday = day.toDateString() === new Date().toDateString()
+                              return (
+                                <td
+                                  key={i}
+                                  className={`px-1.5 py-1.5 align-top border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/8' : ''}`}
+                                >
+                                  {booking ? (
+                                    <div
+                                      onClick={() => router.push(`/bookings/${booking.id}`)}
+                                      className={`px-2 py-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] ${
+                                        booking.status === 'CHECKED_IN'
+                                          ? 'bg-sky-500/25 border border-sky-500/50'
+                                          : booking.status === 'CONFIRMED'
+                                            ? 'bg-emerald-500/25 border border-emerald-500/50'
+                                            : 'bg-slate-600/40 border border-slate-500/50'
+                                      }`}
+                                    >
+                                      <p className="text-[11px] font-semibold text-white truncate" title={booking.guest?.name}>
+                                        {booking.guest?.name?.split(' ')[0] || 'Guest'}
+                                      </p>
+                                      <p className="text-[9px] font-medium mt-0.5 text-slate-300">
+                                        {booking.status === 'CHECKED_IN' ? 'In' : booking.status === 'CONFIRMED' ? 'Confirmed' : booking.status}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="px-2 py-2 rounded-lg bg-slate-700/20 border border-slate-600/30 text-center">
+                                      <span className="text-[10px] text-slate-500">Free</span>
+                                    </div>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-4 py-2 bg-slate-800/60 border-t border-white/5 flex flex-wrap gap-4 text-xs text-slate-400">
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500/50" /> Confirmed</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-500/30 border border-sky-500/50" /> Checked In</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-600/40 border border-slate-500/50" /> Free</span>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Board View – columns by status */}
+            {viewMode === 'board' && filteredBookings.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT'].map((status) => {
+                  const columnBookings = filteredBookings.filter((b: any) => b.status === status)
+                  const statusLabel = status.replace('_', ' ')
+                  const borderColor = status === 'CONFIRMED' ? 'border-emerald-500/30' : status === 'CHECKED_IN' ? 'border-sky-500/30' : 'border-slate-500/30'
+                  const headerBg = status === 'CONFIRMED' ? 'bg-emerald-500/10' : status === 'CHECKED_IN' ? 'bg-sky-500/10' : 'bg-slate-500/10'
+                  return (
+                    <div key={status} className={`rounded-xl border-2 ${borderColor} bg-slate-900/40 overflow-hidden flex flex-col min-h-[200px]`}>
+                      <div className={`px-4 py-3 ${headerBg} border-b border-white/5 flex items-center justify-between`}>
+                        <span className="text-sm font-bold text-slate-200 uppercase tracking-wider">{statusLabel}</span>
+                        <span className="text-xs bg-white/10 text-slate-300 px-2 py-0.5 rounded-full">{columnBookings.length}</span>
+                      </div>
+                      <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-[60vh]">
+                        {columnBookings.length === 0 ? (
+                          <p className="text-xs text-slate-500 text-center py-6">No bookings</p>
+                        ) : (
+                          columnBookings.map((booking: any) => (
+                            <div
+                              key={booking.id}
+                              onClick={() => router.push(`/bookings/${booking.id}`)}
+                              className="p-3 rounded-lg bg-slate-800/80 border border-white/5 hover:border-sky-500/40 cursor-pointer transition-colors"
+                            >
+                              <p className="font-semibold text-white truncate">{booking.guest?.name}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">Room {booking.room?.roomNumber} • ₹{booking.totalAmount?.toLocaleString()}</p>
+                              <p className="text-[10px] text-slate-500 mt-1">
+                                Out: {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                              </p>
+                              <div className="flex flex-wrap gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
+                                {booking.status === 'CONFIRMED' && (
+                                  <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')} className="px-2 py-1 text-[10px] bg-emerald-600 hover:bg-emerald-500 rounded text-white">Check In</button>
+                                )}
+                                {booking.status === 'CHECKED_IN' && (
+                                  <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="px-2 py-1 text-[10px] bg-sky-600 hover:bg-sky-500 rounded text-white">Check Out</button>
+                                )}
+                                <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-[10px] bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Cards View – grid of compact cards */}
+            {viewMode === 'cards' && filteredBookings.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-              {bookings.map((booking: any) => (
+              {filteredBookings.map((booking: any) => (
                 <div
                   key={booking.id}
                   role="button"
@@ -359,34 +726,34 @@ export default function BookingsPage() {
                     'border-amber-500/40 hover:border-amber-500/60'
                   }`}
                 >
-                  {/* Status Badge */}
-                  <div className={`absolute top-2.5 right-2.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${
-                    booking.status === 'CONFIRMED' ? 'bg-emerald-500/25 text-emerald-300' :
-                    booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
-                    booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
-                    booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
-                    'bg-amber-500/25 text-amber-300'
-                  }`}>
-                    {booking.status.replace('_', ' ')}
-                  </div>
-
                   <div className="p-4 pt-3">
-                    {/* Guest & Room */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 ${
-                        booking.status === 'CONFIRMED' ? 'bg-emerald-500' :
-                        booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
-                        booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
-                        'bg-amber-500'
+                    {/* Status on its own line, then name/room below */}
+                    <div className="mb-3">
+                      <div className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${
+                        booking.status === 'CONFIRMED' ? 'bg-emerald-500/25 text-emerald-300' :
+                        booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
+                        booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
+                        booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
+                        'bg-amber-500/25 text-amber-300'
                       }`}>
-                        {booking.guest.name.charAt(0).toUpperCase()}
+                        {booking.status.replace('_', ' ')}
                       </div>
-                      <div className="flex-1 min-w-0 pr-8">
-                        <h3 className="text-sm font-semibold text-white truncate">{booking.guest.name}</h3>
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                          <FaHome className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{booking.room.roomNumber} • {booking.room.roomType}</span>
-                        </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 ${
+                          booking.status === 'CONFIRMED' ? 'bg-emerald-500' :
+                          booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
+                          booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
+                          'bg-amber-500'
+                        }`}>
+                          {booking.guest.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-white truncate">{booking.guest.name}</h3>
+                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                            <FaHome className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{booking.room.roomNumber} • {booking.room.roomType}</span>
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -502,6 +869,7 @@ export default function BookingsPage() {
                 </div>
               ))}
             </div>
+            )}
 
             {/* Phase 2: Pagination Controls */}
             {pagination.totalPages > 1 && (
