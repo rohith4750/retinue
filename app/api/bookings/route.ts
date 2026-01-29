@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // Log booking creation (use tx so history is in same transaction and sees the new booking)
+        // Log booking creation with payment details (use tx so history is in same transaction)
         await logBookingChange(
           booking.id,
           'CREATED',
@@ -308,8 +308,16 @@ export async function POST(request: NextRequest) {
             { field: 'roomId', oldValue: null, newValue: roomId },
             { field: 'checkIn', oldValue: null, newValue: checkInDate },
             { field: 'checkOut', oldValue: null, newValue: checkOutDate },
+            { field: 'totalAmount', oldValue: null, newValue: effectiveTotal },
+            { field: 'subtotal', oldValue: null, newValue: priceCalculation.subtotal },
+            { field: 'tax', oldValue: null, newValue: effectiveTax },
+            { field: 'discount', oldValue: null, newValue: priceCalculation.discountAmount },
+            { field: 'advanceAmount', oldValue: null, newValue: advancePerRoom },
+            { field: 'paidAmount', oldValue: null, newValue: advancePerRoom },
+            { field: 'paymentStatus', oldValue: null, newValue: advancePerRoom >= effectiveTotal ? 'PAID' : (advancePerRoom > 0 ? 'PARTIAL' : 'PENDING') },
+            { field: 'billNumber', oldValue: null, newValue: billNumber },
           ],
-          `Booking created for Room ${room.roomNumber}`,
+          `Booking created for Room ${room.roomNumber}. Total ₹${effectiveTotal.toLocaleString()}, advance ₹${advancePerRoom.toLocaleString()} (${advancePerRoom >= effectiveTotal ? 'PAID' : advancePerRoom > 0 ? 'PARTIAL' : 'PENDING'}).`,
           tx
         )
 
