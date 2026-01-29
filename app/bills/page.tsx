@@ -29,7 +29,7 @@ export default function BillsPage() {
     <>
       <div className="glow-sky top-20 right-20" />
       <div className="glow-emerald bottom-20 left-20" />
-      <div className="w-full max-w-4xl mx-auto px-4 lg:px-6 py-6 relative z-10">
+      <div className="w-full max-w-6xl mx-auto px-4 lg:px-6 py-6 relative z-10">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6"
@@ -49,19 +49,19 @@ export default function BillsPage() {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto overflow-y-hidden -mx-px" style={{ maxWidth: '100%' }}>
+            <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-white/10 bg-slate-800/60">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Bill #</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Guest</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Room</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Total</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Advance</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Paid</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Remaining</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Status</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Action</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Bill #</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Guest</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Room</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Total</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Advance</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Paid</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Remaining</th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap">Status</th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase whitespace-nowrap shrink-0">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -81,26 +81,26 @@ export default function BillsPage() {
                           key={b.id}
                           className="border-b border-white/5 hover:bg-slate-800/40 transition-colors"
                         >
-                          <td className="py-3 px-4 text-sm font-medium text-slate-200">
+                          <td className="py-3 px-4 text-sm font-medium text-slate-200 min-w-[140px] truncate" title={b.billNumber}>
                             {b.billNumber}
                           </td>
-                          <td className="py-3 px-4 text-sm text-slate-300">{b.guest?.name}</td>
-                          <td className="py-3 px-4 text-sm text-slate-300">
+                          <td className="py-3 px-4 text-sm text-slate-300 whitespace-nowrap">{b.guest?.name}</td>
+                          <td className="py-3 px-4 text-sm text-slate-300 whitespace-nowrap">
                             {b.room?.roomNumber} ({b.room?.roomType})
                           </td>
-                          <td className="py-3 px-4 text-sm text-right text-slate-200">
+                          <td className="py-3 px-4 text-sm text-right text-slate-200 whitespace-nowrap">
                             <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
                             {(b.totalAmount ?? 0).toLocaleString()}
                           </td>
-                          <td className="py-3 px-4 text-sm text-right text-sky-400">
+                          <td className="py-3 px-4 text-sm text-right text-sky-400 whitespace-nowrap">
                             <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
                             {(b.advanceAmount ?? 0).toLocaleString()}
                           </td>
-                          <td className="py-3 px-4 text-sm text-right text-emerald-400">
+                          <td className="py-3 px-4 text-sm text-right text-emerald-400 whitespace-nowrap">
                             <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
                             {(b.paidAmount ?? 0).toLocaleString()}
                           </td>
-                          <td className="py-3 px-4 text-sm text-right font-medium">
+                          <td className="py-3 px-4 text-sm text-right font-medium whitespace-nowrap">
                             <span className={remaining > 0 ? 'text-amber-400' : 'text-slate-400'}>
                               <FaRupeeSign className="inline w-3 h-3 mr-0.5 text-slate-500" />
                               {remaining.toLocaleString()}

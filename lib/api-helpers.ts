@@ -31,8 +31,10 @@ export function errorResponse(error: string, message?: string, code?: string): A
   }
 }
 
-// JWT-based session management
-export async function getSessionUser(request: NextRequest): Promise<{ id: string; role: UserRole; username: string } | null> {
+// JWT-based session management (userId is alias for id, used as changedBy in audit)
+export type SessionUser = { id: string; userId: string; role: UserRole; username: string }
+
+export async function getSessionUser(request: NextRequest): Promise<SessionUser | null> {
   const authHeader = request.headers.get('authorization')
   const token = extractTokenFromHeader(authHeader)
   
