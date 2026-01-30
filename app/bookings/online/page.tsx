@@ -145,8 +145,8 @@ export default function OnlineBookingsPage() {
           <SearchInput
             placeholder="Search by reference, guest, phone, room..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
+            onChange={(value) => {
+              setSearchQuery(value)
               setPage(1)
             }}
           />
@@ -376,6 +376,7 @@ export default function OnlineBookingsPage() {
           show={confirmModal.show}
           title={`${confirmModal.action || 'Confirm'}?`}
           message={`Are you sure you want to ${(confirmModal.action || '').toLowerCase()} this booking?`}
+          action={confirmModal.action || 'Confirm'}
           onConfirm={confirmStatusUpdate}
           onCancel={() => setConfirmModal({ show: false, bookingId: null, status: null, action: null })}
         />
@@ -383,6 +384,7 @@ export default function OnlineBookingsPage() {
           show={cancelModal.show}
           title="Cancel booking?"
           message="This will cancel the booking. This action cannot be undone."
+          action="Cancel"
           onConfirm={confirmCancel}
           onCancel={() => setCancelModal({ show: false, bookingId: null })}
         />
