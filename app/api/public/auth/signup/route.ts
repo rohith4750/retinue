@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         },
         'Sign up successful'
       ),
-      201
+      { status: 201 }
     )
   } catch (err) {
     console.error('Signup error:', err)
