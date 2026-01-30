@@ -225,10 +225,9 @@ function LoginContent() {
           {/* Login Card */}
           <div className="bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5)]">
             <div className="text-center mb-8">
-              <h2 className="text-xl font-bold text-white mb-1">
-                 Hotel The Retinue <span className="text-amber-400">&</span> Butchiraju Conventions
-              </h2>
-              <p className="text-slate-500 text-xs uppercase tracking-wider">
+              <p className="text-sky-400 text-sm font-medium tracking-wide mb-0.5">Butchiraju Conventions</p>
+              <h2 className="text-xl font-bold text-white mb-1">Hotel The Retinue</h2>
+              <p className="text-slate-500 text-xs uppercase tracking-wider mt-1">
                 Hotel & Convention Management
               </p>
             </div>
