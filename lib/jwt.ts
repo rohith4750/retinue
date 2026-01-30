@@ -153,3 +153,38 @@ export function verifySignupToken(token: string): SignupTokenPayload | null {
     return null
   }
 }
+
+// --- Customer session token (for "my bookings" on public site; issued after signup or verify-otp for existing customer) ---
+export interface CustomerTokenPayload {
+  customerId: string
+  phone: string
+  purpose: 'CUSTOMER_SESSION'
+}
+
+const CUSTOMER_TOKEN_EXPIRY = process.env.CUSTOMER_TOKEN_EXPIRY || '7d'
+
+export function generateCustomerToken(payload: { customerId: string; phone: string }): string {
+  if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
+    throw new Error('JWT_SECRET is required for customer token')
+  }
+  return jwt.sign(
+    { ...payload, purpose: 'CUSTOMER_SESSION' } as object,
+    JWT_SECRET,
+    {
+      expiresIn: CUSTOMER_TOKEN_EXPIRY,
+      issuer: 'hotel-public-customer',
+    } as SignOptions
+  )
+}
+
+export function verifyCustomerToken(token: string): CustomerTokenPayload | null {
+  if (!JWT_SECRET) return null
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as CustomerTokenPayload
+    if (decoded.purpose !== 'CUSTOMER_SESSION') return null
+    if (!decoded.customerId || !decoded.phone) return null
+    return decoded
+  } catch {
+    return null
+  }
+}

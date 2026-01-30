@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
-import { generateSignupToken } from '@/lib/jwt'
+import { generateSignupToken, generateCustomerToken } from '@/lib/jwt'
 
 function normalizePhone(phone: string): string {
   return (phone || '').replace(/\D/g, '')
@@ -68,10 +68,17 @@ export async function POST(request: NextRequest) {
       })
 
       const signupToken = generateSignupToken({ email: rawEmail })
+      const existingCustomer = await (prisma as any).customer.findFirst({
+        where: { email: { equals: rawEmail, mode: 'insensitive' } },
+      })
+      const customerToken = existingCustomer
+        ? generateCustomerToken({ customerId: existingCustomer.id, phone: existingCustomer.phone })
+        : undefined
 
       return Response.json(
         successResponse({
           signupToken,
+          ...(customerToken && { customerToken }),
           email: rawEmail,
           expiresIn: 600,
         }),
@@ -117,10 +124,17 @@ export async function POST(request: NextRequest) {
     })
 
     const signupToken = generateSignupToken({ phone })
+    const existingCustomer = await (prisma as any).customer.findUnique({
+      where: { phone },
+    })
+    const customerToken = existingCustomer
+      ? generateCustomerToken({ customerId: existingCustomer.id, phone: existingCustomer.phone })
+      : undefined
 
     return Response.json(
       successResponse({
         signupToken,
+        ...(customerToken && { customerToken }),
         phone,
         expiresIn: 600,
       }),

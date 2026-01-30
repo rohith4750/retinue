@@ -14,10 +14,10 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'The Retinue - Hotel Management',
-  description: 'The Retinue - Luxury Hotel & Hospitality Management System',
-  applicationName: 'The Retinue',
-  authors: [{ name: 'The Retinue' }],
+  title: 'Hotel The Retinue & Butchiraju Conventions - Management',
+  description: 'Hotel The Retinue & Butchiraju Conventions - Hotel & Convention Management System',
+  applicationName: 'Hotel The Retinue & Butchiraju Conventions',
+  authors: [{ name: 'Hotel The Retinue & Butchiraju Conventions' }],
   keywords: ['hotel', 'management', 'booking', 'hospitality', 'rooms'],
   themeColor: '#0284c7',
   manifest: '/manifest.json',

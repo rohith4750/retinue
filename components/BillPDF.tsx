@@ -314,7 +314,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             <View style={styles.logoArea}>
               <Text style={styles.logoText}>THE RETINUE</Text>
             </View>
-            <Text style={styles.hotelNameHeader}>{HOTEL_INFO.name}</Text>
+            <Text style={styles.hotelNameHeader}>{HOTEL_INFO.brandName}</Text>
             <Text style={styles.stateText}>State: {HOTEL_INFO.stateCode}</Text>
           </View>
           <View style={styles.headerRight}>
@@ -403,7 +403,7 @@ export function BillPDF({ bill }: BillPDFProps) {
 
         {/* Authorized signatory */}
         <View style={styles.signatorySection}>
-          <Text style={styles.signatoryFor}>For {HOTEL_INFO.name}</Text>
+          <Text style={styles.signatoryFor}>For {HOTEL_INFO.brandName}</Text>
           <View style={{ height: 28, borderBottomWidth: 1, borderBottomColor: '#9ca3af', width: 140 }} />
           <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
         </View>

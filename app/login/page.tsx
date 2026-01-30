@@ -180,7 +180,7 @@ function LoginContent() {
             <div className="w-full max-w-md flex justify-center items-center min-h-0 shrink-0">
               <Image
                 src="/logo-retinue.png"
-                alt="Hotel The Retinue & Buchiraju Convention"
+                alt="Hotel The Retinue & Butchiraju Conventions"
                 width={420}
                 height={280}
                 className="object-contain w-full h-auto drop-shadow-2xl"
@@ -218,7 +218,7 @@ function LoginContent() {
                     <FaBuilding className="text-lg text-white" />
                   </div>
                 </div>
-                <h1 className="text-xl font-bold text-white">The Retinue & Buchirajuu</h1>
+                <h1 className="text-xl font-bold text-white">Hotel The Retinue & Butchiraju Conventions</h1>
                 <p className="text-slate-500 text-xs">Hotel & Convention Center</p>
               </div>
 
@@ -226,7 +226,7 @@ function LoginContent() {
           <div className="bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5)]">
             <div className="text-center mb-8">
               <h2 className="text-xl font-bold text-white mb-1">
-                 Hotel The Retinue <span className="text-amber-400">&</span> Buchirajuu
+                 Hotel The Retinue <span className="text-amber-400">&</span> Butchiraju Conventions
               </h2>
               <p className="text-slate-500 text-xs uppercase tracking-wider">
                 Hotel & Convention Management

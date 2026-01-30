@@ -47,7 +47,7 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
     if (pathname?.startsWith('/assets')) return { title: 'Asset Locator', icon: FaBox }
     if (pathname?.startsWith('/profile')) return { title: 'My Profile', icon: FaUser }
     if (pathname?.startsWith('/bills')) return { title: 'Bill Details', icon: FaCalendarAlt }
-    return { title: 'The Retinue', icon: FaChartLine }
+    return { title: 'Hotel The Retinue & Butchiraju Conventions', icon: FaChartLine }
   }
 
   const pageInfo = getPageInfo()

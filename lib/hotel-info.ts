@@ -1,8 +1,11 @@
 /**
- * Hotel The Retinue – contact and address (hotel & conventions).
+ * Hotel The Retinue & Butchiraju Conventions – contact and address.
  * Use this for invoices, footer, and any display of hotel details.
  */
 export const HOTEL_INFO = {
+  /** Full brand name (hotel + conventions) */
+  brandName: 'Hotel The Retinue & Butchiraju Conventions',
+  /** Short name for invoices/header */
   name: 'Hotel The Retinue',
   email: 'hoteltheretinue@gmail.com',
   phone: '7675800901',

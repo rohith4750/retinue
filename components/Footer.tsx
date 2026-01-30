@@ -11,8 +11,8 @@ export function Footer() {
       <div className="flex items-center justify-between px-4 py-2">
         {/* Left: Brand */}
         <div className="flex items-center space-x-2 text-slate-400 text-xs">
-          <FaHotel className="w-3 h-3 text-sky-400" />
-          <span>The Retinue</span>
+          <FaHotel className="w-3 h-3 text-sky-400 shrink-0" />
+          <span className="truncate max-w-[200px] sm:max-w-none">{HOTEL_INFO.brandName}</span>
           <span className="text-slate-600">|</span>
           <span>&copy; {currentYear}</span>
         </div>

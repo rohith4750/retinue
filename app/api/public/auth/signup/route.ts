@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
-import { verifySignupToken, extractTokenFromHeader } from '@/lib/jwt'
+import { verifySignupToken, extractTokenFromHeader, generateCustomerToken } from '@/lib/jwt'
 
 function normalizePhone(phone: string): string {
   return (phone || '').replace(/\D/g, '')
@@ -81,6 +81,11 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    const customerToken = generateCustomerToken({
+      customerId: customer.id,
+      phone: customer.phone,
+    })
+
     return Response.json(
       successResponse(
         {
@@ -92,6 +97,7 @@ export async function POST(request: NextRequest) {
             address: customer.address,
             createdAt: customer.createdAt,
           },
+          customerToken,
         },
         'Sign up successful'
       ),

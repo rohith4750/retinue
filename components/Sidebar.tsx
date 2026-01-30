@@ -82,9 +82,9 @@ export function Sidebar() {
     if (href === '/bookings/online') {
       return pathname === '/bookings/online'
     }
-    // Bookings (staff): active when /bookings but not /bookings/online
+    // Bookings (staff): active only for exact /bookings (not /bookings/online)
     if (href === '/bookings') {
-      return pathname === '/bookings' && pathname !== '/bookings/online'
+      return pathname === '/bookings'
     }
     return pathname?.startsWith(href.split('?')[0])
   }
@@ -117,7 +117,7 @@ export function Sidebar() {
                   <FaHotel className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <span className="text-sm font-bold text-white">The Retinue</span>
+                  <span className="text-sm font-bold text-white">Hotel The Retinue & Butchiraju Conventions</span>
                   <p className="text-[9px] text-slate-400">& Buchirajuu Convention</p>
                 </div>
               </div>
@@ -131,7 +131,7 @@ export function Sidebar() {
               <div>
                 <div className="flex items-center gap-2 px-2 mb-2">
                   <FaHotel className="w-3 h-3 text-amber-400" />
-                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">The Retinue</span>
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Hotel & Conventions</span>
                 </div>
                 <div className="space-y-1">
                   {filteredHotelItems.map((item) => {

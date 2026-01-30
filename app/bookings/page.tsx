@@ -733,29 +733,29 @@ export default function BookingsPage() {
                     {/* Status on its own line, then name/room below */}
                     <div className="mb-3">
                       <div className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${
-                        booking.status === 'CONFIRMED' ? 'bg-emerald-500/25 text-emerald-300' :
-                        booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
-                        booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
-                        booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
-                        'bg-amber-500/25 text-amber-300'
-                      }`}>
-                        {booking.status.replace('_', ' ')}
-                      </div>
+                    booking.status === 'CONFIRMED' ? 'bg-emerald-500/25 text-emerald-300' :
+                    booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
+                    booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
+                    booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
+                    'bg-amber-500/25 text-amber-300'
+                  }`}>
+                    {booking.status.replace('_', ' ')}
+                  </div>
                       <div className="flex items-center gap-3 mt-2">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 ${
-                          booking.status === 'CONFIRMED' ? 'bg-emerald-500' :
-                          booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
-                          booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
-                          'bg-amber-500'
-                        }`}>
-                          {booking.guest.name.charAt(0).toUpperCase()}
-                        </div>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 ${
+                        booking.status === 'CONFIRMED' ? 'bg-emerald-500' :
+                        booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
+                        booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
+                        'bg-amber-500'
+                      }`}>
+                        {booking.guest.name.charAt(0).toUpperCase()}
+                      </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-white truncate">{booking.guest.name}</h3>
-                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                            <FaHome className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{booking.room.roomNumber} • {booking.room.roomType}</span>
-                          </p>
+                        <h3 className="text-sm font-semibold text-white truncate">{booking.guest.name}</h3>
+                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                          <FaHome className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{booking.room.roomNumber} • {booking.room.roomType}</span>
+                        </p>
                         </div>
                       </div>
                     </div>

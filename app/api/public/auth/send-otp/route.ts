@@ -39,11 +39,22 @@ export async function POST(request: NextRequest) {
     const useEmail = !!rawEmail
 
     if (useEmail) {
-      // --- Email OTP (use until DLT approved) ---
+      // --- Email OTP: only send to registered (signed-up) emails ---
       if (!isValidEmail(rawEmail)) {
         return Response.json(
           errorResponse('VALIDATION_ERROR', 'Valid email is required'),
           { status: 400 }
+        )
+      }
+
+      const customer = await (prisma as any).customer.findFirst({
+        where: { email: { equals: rawEmail, mode: 'insensitive' } },
+        select: { id: true },
+      })
+      if (!customer) {
+        return Response.json(
+          errorResponse('EMAIL_NOT_REGISTERED', 'This email is not registered. Please sign up first (e.g. with phone) or use a registered email.'),
+          { status: 403 }
         )
       }
 

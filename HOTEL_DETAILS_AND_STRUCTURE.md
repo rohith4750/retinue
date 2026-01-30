@@ -1,4 +1,4 @@
-# Hotel The Retinue – Details, Rooms & Structure
+# Hotel The Retinue & Butchiraju Conventions – Details, Rooms & Structure
 
 Use this for website content, marketing, or the online booking portal.
 
@@ -8,6 +8,7 @@ Use this for website content, marketing, or the online booking portal.
 
 | Field | Value |
 |-------|--------|
+| **Brand** | Hotel The Retinue & Butchiraju Conventions |
 | **Name** | Hotel The Retinue |
 | **Email** | hoteltheretinue@gmail.com |
 | **Phone** | 7675800901 |
