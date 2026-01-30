@@ -147,7 +147,8 @@ model Booking {
   gstAmount       Float         @default(0)
   applyGst        Boolean       @default(true)
   status          BookingStatus @default(PENDING)
-  
+  source          String?       @default("STAFF") // STAFF = management site (hoteltheretinue.in), ONLINE = public site (hoteltheretinueonline.in)
+  bookingReference String?      @unique // Short code for "view my booking" (e.g. ABC12XY); used by public site
   // Billing fields (merged from Bill table)
   billNumber      String?       @unique
   subtotal        Float?
@@ -171,6 +172,7 @@ model Booking {
   @@index([status, checkIn])
   @@index([status])
   @@index([paymentStatus])
+  @@index([source])
 }
 
 // Inventory
@@ -294,6 +296,32 @@ model User {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   passwordResets PasswordReset[]
+}
+
+// OTP verification (sign up / login via Fast2SMS)
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String   // 10-digit Indian mobile
+  code      String   // 6-digit OTP
+  purpose   String   @default("SIGNUP") // SIGNUP, LOGIN, etc.
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose])
+  @@index([expiresAt])
+}
+
+// Customer (public-site sign-up: OTP-verified, no password)
+model Customer {
+  id        String   @id @default(cuid())
+  phone     String   @unique // 10 digits, verified via OTP
+  name      String
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
 }
 
 // Booking History / Audit Trail (Phase 3)

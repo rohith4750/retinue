@@ -11,8 +11,39 @@ const publicRoutes = [
   '/api/health',
 ]
 
+// CORS: allowed origins for public API (hoteltheretinueonline.in calling hoteltheretinue.in)
+// Set ALLOWED_ORIGINS=https://hoteltheretinueonline.in,https://www.hoteltheretinueonline.in (comma-separated)
+const getAllowedOrigins = (): string[] => {
+  const env = process.env.ALLOWED_ORIGINS || ''
+  if (!env.trim()) return []
+  return env.split(',').map((o) => o.trim()).filter(Boolean)
+}
+
+function getCorsHeaders(request: NextRequest): Record<string, string> {
+  const origin = request.headers.get('origin') || ''
+  const allowed = getAllowedOrigins()
+  const allowOrigin = allowed.includes(origin) ? origin : (allowed[0] || '*')
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // CORS for public API (online site integration)
+  if (pathname.startsWith('/api/public')) {
+    const cors = getCorsHeaders(request)
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 204, headers: cors })
+    }
+    const res = NextResponse.next()
+    Object.entries(cors).forEach(([k, v]) => res.headers.set(k, v))
+    return res
+  }
 
   // Allow public routes
   if (publicRoutes.some((route) => pathname.startsWith(route))) {

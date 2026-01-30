@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getStoredUser, clearAuth } from '@/lib/auth-storage'
 import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutAlt, FaHistory, FaUserShield, FaBars, FaTimes, FaBuilding, FaMoneyBillWave, FaMapMarkerAlt, FaFileExcel, FaBrain, FaCog, FaWallet, FaClipboardList, FaUniversity, FaDatabase, FaReceipt } from 'react-icons/fa'
@@ -9,6 +9,7 @@ import { FaHotel, FaChartLine, FaHome, FaCalendarAlt, FaBox, FaUsers, FaSignOutA
 export function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [user, setUser] = useState<any>(null)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
@@ -28,6 +29,7 @@ export function Sidebar() {
     { href: '/dashboard', icon: FaChartLine, label: 'Dashboard', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/rooms', icon: FaHome, label: 'Rooms', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bookings', icon: FaCalendarAlt, label: 'Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/bookings?source=online', icon: FaCalendarAlt, label: 'Online Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bills', icon: FaReceipt, label: 'Bills', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bookings/history', icon: FaHistory, label: 'History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
   ]
@@ -76,7 +78,15 @@ export function Sidebar() {
     if (href === '/dashboard') {
       return pathname === '/dashboard'
     }
-    return pathname?.startsWith(href)
+    // Online Bookings: active only when /bookings and ?source=online
+    if (href === '/bookings?source=online') {
+      return pathname === '/bookings' && searchParams?.get('source') === 'online'
+    }
+    // Bookings (staff): active when /bookings without source=online
+    if (href === '/bookings') {
+      return pathname === '/bookings' && searchParams?.get('source') !== 'online'
+    }
+    return pathname?.startsWith(href.split('?')[0])
   }
 
   return (

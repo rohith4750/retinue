@@ -115,3 +115,36 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
   if (!authHeader.startsWith('Bearer ')) return null
   return authHeader.replace('Bearer ', '')
 }
+
+// --- Signup token (OTP-verified phone, short-lived, for completing customer signup) ---
+export interface SignupTokenPayload {
+  phone: string
+  purpose: 'SIGNUP'
+}
+
+const SIGNUP_TOKEN_EXPIRY = '10m'
+
+export function generateSignupToken(phone: string): string {
+  if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
+    throw new Error('JWT_SECRET is required for signup token')
+  }
+  return jwt.sign(
+    { phone, purpose: 'SIGNUP' } as object,
+    JWT_SECRET,
+    {
+      expiresIn: SIGNUP_TOKEN_EXPIRY,
+      issuer: 'hotel-public-signup',
+    } as SignOptions
+  )
+}
+
+export function verifySignupToken(token: string): SignupTokenPayload | null {
+  if (!JWT_SECRET) return null
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as SignupTokenPayload
+    if (decoded.purpose !== 'SIGNUP' || !decoded.phone) return null
+    return decoded
+  } catch {
+    return null
+  }
+}

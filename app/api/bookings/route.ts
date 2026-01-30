@@ -7,7 +7,7 @@ type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 import { createBookingSchema, validateBookingDates, checkDateConflicts, isRoomAvailable, calculateBookingPrice } from '@/lib/booking-validators'
 import { BookingError, RoomUnavailableError, DateConflictError, InvalidDateError, ValidationError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
-import { generateBookingId } from '@/lib/booking-id-generator'
+import { generateBookingId, generateBookingReference } from '@/lib/booking-id-generator'
 
 // GET /api/bookings - List all bookings with pagination (Phase 2)
 export async function GET(request: NextRequest) {
@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const date = searchParams.get('date')
     const search = searchParams.get('search')
+    const source = searchParams.get('source') // 'online' = from public site (hoteltheretinueonline.in)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
       status: { notIn: ['CANCELLED', 'CHECKED_OUT'] }
     }
     if (status) where.status = status  // Override if specific status requested (e.g. ?status=CHECKED_OUT for History view)
+    if (source === 'online') where.source = 'ONLINE'  // Online Bookings menu: only bookings from public website
     if (date) {
       const startOfDay = new Date(date)
       startOfDay.setHours(0, 0, 0, 0)
@@ -227,8 +229,11 @@ export async function POST(request: NextRequest) {
         const effectiveTax = applyGst ? priceCalculation.tax : 0
         const effectiveTotal = applyGst ? priceCalculation.totalAmount : priceCalculation.subtotal
 
-        // Generate custom booking ID
-        const bookingId = await generateBookingId(tx)
+        // Generate custom booking ID and short reference for "view my booking"
+        const [bookingId, bookingReference] = await Promise.all([
+          generateBookingId(tx),
+          generateBookingReference(tx),
+        ])
 
         // Calculate advance and balance for this booking
         const advancePerRoom = (parseFloat(String(data.advanceAmount)) || 0) / roomIds.length
@@ -255,6 +260,8 @@ export async function POST(request: NextRequest) {
             gstAmount: gstPerRoom,
             applyGst,
             status: 'CONFIRMED',
+            source: 'STAFF', // Management site (hoteltheretinue.in)
+            bookingReference,
             // Billing fields (merged from Bill)
             billNumber,
             subtotal: priceCalculation.subtotal,

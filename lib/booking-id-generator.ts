@@ -76,3 +76,32 @@ export function isValidBookingId(id: string): boolean {
   const numberPart = id.replace(BOOKING_ID_PREFIX, '')
   return /^\d+$/.test(numberPart) && numberPart.length <= ID_LENGTH
 }
+
+/** Alphanumeric chars for short reference (exclude 0/O, 1/I/L for readability) */
+const REF_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+const REF_LENGTH = 8
+
+/**
+ * Generate a short, unique booking reference for "view my booking" (e.g. ABC12XY7).
+ * @param tx - Optional transaction client (for use inside transactions)
+ */
+export async function generateBookingReference(tx?: any): Promise<string> {
+  const client = tx || prisma
+  let attempts = 0
+  const maxAttempts = 10
+  while (attempts < maxAttempts) {
+    let ref = ''
+    for (let i = 0; i < REF_LENGTH; i++) {
+      ref += REF_CHARS.charAt(Math.floor(Math.random() * REF_CHARS.length))
+    }
+    const existing = await client.booking.findUnique({
+      where: { bookingReference: ref },
+      select: { id: true },
+    })
+    if (!existing) return ref
+    attempts++
+  }
+  // Fallback: timestamp-based to avoid infinite loop
+  return REF_CHARS.charAt(Math.floor(Math.random() * REF_CHARS.length)) +
+    Date.now().toString(36).toUpperCase().slice(-7)
+}
