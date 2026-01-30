@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit: do not send again within RATE_LIMIT_SECONDS
-    const recent = await prisma.otpVerification.findFirst({
+    const recent = await (prisma as any).otpVerification.findFirst({
       where: { phone, purpose: 'SIGNUP' },
       orderBy: { createdAt: 'desc' },
     })
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const code = generateOtp()
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000)
 
-    await prisma.otpVerification.create({
+    await (prisma as any).otpVerification.create({
       data: {
         phone,
         code,
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         { expiresIn: OTP_EXPIRY_MINUTES * 60 },
         'OTP sent to your mobile number'
       ),
-      200
+      { status: 200 }
     )
   } catch (err: any) {
     if (err.message?.includes('FAST2SMS')) {

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const customer = await prisma.customer.upsert({
+    const customer = await (prisma as any).customer.upsert({
       where: { phone },
       create: {
         phone,

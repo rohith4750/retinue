@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const record = await prisma.otpVerification.findFirst({
+    const record = await (prisma as any).otpVerification.findFirst({
       where: { phone, purpose: 'SIGNUP' },
       orderBy: { createdAt: 'desc' },
     })
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Invalidate this OTP (delete so it can't be reused)
-    await prisma.otpVerification.deleteMany({
+    await (prisma as any).otpVerification.deleteMany({
       where: { id: record.id },
     })
 
