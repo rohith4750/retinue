@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         phone,
         expiresIn: 600,
       }),
-      200
+      { status: 200 }
     )
   } catch (err) {
     console.error('Verify OTP error:', err)
