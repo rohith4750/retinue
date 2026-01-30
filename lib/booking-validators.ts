@@ -31,38 +31,33 @@ export const createBookingSchema = z.object({
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>
 
-/** Hotel policy: minimum 12 hours, maximum 24 hours stay */
+/** Hotel policy: minimum 12 hours stay; multi-day bookings allowed */
 const MIN_STAY_HOURS = 12
-const MAX_STAY_HOURS = 24
 
 /**
- * Validate booking dates (24-hour hotel: 12h min, 24h max stay)
+ * Validate booking dates (multi-day allowed; minimum 12 hours)
  */
 export function validateBookingDates(checkIn: Date, checkOut: Date): { valid: boolean; error?: string } {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
-  
+
   // Check-in must be today or in future
   if (checkIn < now) {
     return { valid: false, error: 'Check-in date cannot be in the past' }
   }
-  
+
   // Check-out must be after check-in
   if (checkOut <= checkIn) {
     return { valid: false, error: 'Check-out date must be after check-in date' }
   }
-  
+
   const stayMs = checkOut.getTime() - checkIn.getTime()
   const stayHours = stayMs / (1000 * 60 * 60)
-  
+
   if (stayHours < MIN_STAY_HOURS) {
     return { valid: false, error: `Minimum stay is ${MIN_STAY_HOURS} hours` }
   }
-  
-  if (stayHours > MAX_STAY_HOURS) {
-    return { valid: false, error: `Maximum stay is ${MAX_STAY_HOURS} hours (24-hour policy)` }
-  }
-  
+
   return { valid: true }
 }
 
@@ -153,7 +148,7 @@ export async function isRoomAvailable(
 }
 
 /**
- * Calculate booking price (24-hour hotel: one 24hr slot = 1 day rate)
+ * Calculate booking price (multi-day: charge per full 24h day)
  */
 export function calculateBookingPrice(
   basePrice: number,
@@ -161,8 +156,9 @@ export function calculateBookingPrice(
   checkOut: Date,
   discount: number = 0
 ) {
-  // Max stay is 24h, so always 1 day charge per booking
-  const days = 1
+  const stayMs = checkOut.getTime() - checkIn.getTime()
+  const stayHours = stayMs / (1000 * 60 * 60)
+  const days = Math.max(1, Math.ceil(stayHours / 24))
   const baseAmount = basePrice * days
   const discountAmount = Math.min(discount, baseAmount * 0.5) // Max 50% discount
   const subtotal = baseAmount - discountAmount

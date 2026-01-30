@@ -361,7 +361,7 @@ export default function RoomsPage() {
                   }}
                   className="w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">* Availability window: 24 hours</p>
+                <p className="text-[10px] text-slate-500 mt-1">* Availability by check-in / check-out dates</p>
               </div>
             </div>
 

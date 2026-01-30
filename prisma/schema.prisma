@@ -298,16 +298,18 @@ model User {
   passwordResets PasswordReset[]
 }
 
-// OTP verification (sign up / login via Fast2SMS)
+// OTP verification (sign up / login: SMS via Fast2SMS or email until DLT approved)
 model OtpVerification {
   id        String   @id @default(cuid())
-  phone     String   // 10-digit Indian mobile
+  phone     String?  // 10-digit Indian mobile (when sending via SMS)
+  email     String?  // when sending OTP via email (until Fast2SMS DLT approved)
   code      String   // 6-digit OTP
   purpose   String   @default("SIGNUP") // SIGNUP, LOGIN, etc.
   expiresAt DateTime
   createdAt DateTime @default(now())
 
   @@index([phone, purpose])
+  @@index([email, purpose])
   @@index([expiresAt])
 }
 

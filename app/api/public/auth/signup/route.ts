@@ -10,7 +10,7 @@ function normalizePhone(phone: string): string {
 /**
  * POST /api/public/auth/signup
  * Complete sign-up with customer details (requires Bearer signupToken from verify-otp).
- * Body: { name, email?, address? }
+ * Body: { name, phone?, email?, address? } — phone required if token has email; email optional if token has phone.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -24,22 +24,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const phone = normalizePhone(payload.phone)
-    if (phone.length !== 10) {
-      return Response.json(
-        errorResponse('VALIDATION_ERROR', 'Invalid phone in token'),
-        { status: 400 }
-      )
-    }
-
     const body = await request.json().catch(() => ({}))
     const name = String(body.name || '').trim()
-    const email = body.email != null ? String(body.email).trim() : ''
+    const emailBody = body.email != null ? String(body.email).trim() : ''
     const address = body.address != null ? String(body.address).trim() : ''
+    const phoneBody = body.phone != null ? normalizePhone(String(body.phone)) : ''
 
     if (!name || name.length < 2) {
       return Response.json(
         errorResponse('VALIDATION_ERROR', 'Name must be at least 2 characters'),
+        { status: 400 }
+      )
+    }
+
+    let phone: string
+    let email: string | null
+
+    if (payload.phone) {
+      phone = normalizePhone(payload.phone)
+      if (phone.length !== 10) {
+        return Response.json(
+          errorResponse('VALIDATION_ERROR', 'Invalid phone in token'),
+          { status: 400 }
+        )
+      }
+      email = emailBody || null
+    } else if (payload.email) {
+      // OTP was sent to email; phone is required in body to create Customer
+      if (phoneBody.length !== 10) {
+        return Response.json(
+          errorResponse('VALIDATION_ERROR', 'Phone (10 digits) is required to complete sign-up'),
+          { status: 400 }
+        )
+      }
+      phone = phoneBody
+      email = payload.email || emailBody || null
+    } else {
+      return Response.json(
+        errorResponse('VALIDATION_ERROR', 'Invalid signup token'),
         { status: 400 }
       )
     }

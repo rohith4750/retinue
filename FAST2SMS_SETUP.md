@@ -1,51 +1,66 @@
-# Fast2SMS OTP setup
+# OTP sign-up: Email (now) and SMS (after DLT)
 
-OTP-based sign-up uses **Fast2SMS** to send OTP to Indian mobile numbers.
+Until **Fast2SMS DLT** is approved, use **email** for OTP. After DLT approval, you can use **SMS** (phone).
 
-## 1. Get API key
+---
+
+## Use email OTP now (no DLT needed)
+
+**Send OTP:** `POST /api/public/auth/send-otp`  
+**Body:** `{ "email": "user@example.com" }`  
+**Response:** OTP is sent to that email (via SMTP). `data.channel` = `"email"`.
+
+**Verify OTP:** `POST /api/public/auth/verify-otp`  
+**Body:** `{ "email": "user@example.com", "otp": "123456" }`  
+**Response:** `signupToken`, `email` (no phone).
+
+**Sign up:** `POST /api/public/auth/signup`  
+**Header:** `Authorization: Bearer <signupToken>`  
+**Body:** `{ "name": "John", "phone": "9876543210", "address": "..." }` — **phone is required** when token was from email OTP.  
+Creates/updates Customer (phone, name, email from token, address).
+
+**Email config:** Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` (and optionally `SMTP_FROM`) so OTP emails can be sent.
+
+---
+
+## Use SMS OTP after DLT is approved
+
+**Send OTP:** `POST /api/public/auth/send-otp`  
+**Body:** `{ "phone": "9876543210" }`  
+Sends 6-digit OTP via **Fast2SMS**. Rate limit: 1 per phone per 60 seconds.
+
+**Verify OTP:** `POST /api/public/auth/verify-otp`  
+**Body:** `{ "phone": "9876543210", "otp": "123456" }`  
+Returns `signupToken`, `phone`.
+
+**Sign up:** `POST /api/public/auth/signup`  
+**Body:** `{ "name": "John", "email": "j@example.com", "address": "..." }` — phone comes from token.
+
+---
+
+## Fast2SMS (for when you switch to SMS)
 
 1. Sign up at [Fast2SMS](https://www.fast2sms.com/).
-2. Go to **Dev API** → get your **API Key**.
-3. For OTP, use route `otp`; the API sends "Your OTP: {code}".
+2. Dev API → get **API Key**.
+3. For DLT-compliant SMS in India: register **Sender ID** and **OTP template** in the DLT section and get them approved.
+4. Set env: `FAST2SMS_API_KEY=your_key`.
 
-## 2. Environment variable
+---
 
-Set one of:
+## Migration for email OTP
 
-- `FAST2SMS_API_KEY` – production
-- `FAST2SMS_API_KEY_DEV` – development (same key is fine)
+If `OtpVerification` already exists, run:
 
-Example (`.env` or Vercel):
-
-```env
-FAST2SMS_API_KEY=your_fast2sms_api_key_here
+```bash
+psql $DATABASE_URL -f prisma/add-otp-email.sql
 ```
 
-## 3. Public sign-up flow (APIs)
+Or run the SQL in your DB client:
 
-| Step | Endpoint | Description |
-|------|----------|-------------|
-| 1 | `POST /api/public/auth/send-otp` | Body: `{ "phone": "9876543210" }`. Sends 6-digit OTP via Fast2SMS. Rate limit: 1 per phone per 60 seconds. |
-| 2 | `POST /api/public/auth/verify-otp` | Body: `{ "phone": "9876543210", "otp": "123456" }`. Returns `signupToken` (JWT, 10 min). |
-| 3 | `POST /api/public/auth/signup` | Header: `Authorization: Bearer <signupToken>`. Body: `{ "name": "John", "email": "j@example.com", "address": "..." }`. Creates/updates Customer. |
-
-All endpoints are under `/api/public` (no staff auth). CORS is applied for allowed origins.
-
-## 4. Response shapes
-
-**Send OTP – success (200):**
-```json
-{ "success": true, "data": { "expiresIn": 600 }, "message": "OTP sent to your mobile number" }
+```sql
+ALTER TABLE "OtpVerification" ADD COLUMN IF NOT EXISTS "email" TEXT;
+ALTER TABLE "OtpVerification" ALTER COLUMN "phone" DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS "OtpVerification_email_purpose_idx" ON "OtpVerification"("email", "purpose") WHERE "email" IS NOT NULL;
 ```
 
-**Verify OTP – success (200):**
-```json
-{ "success": true, "data": { "signupToken": "eyJ...", "phone": "9876543210", "expiresIn": 600 } }
-```
-
-**Signup – success (201):**
-```json
-{ "success": true, "data": { "customer": { "id": "...", "phone": "9876543210", "name": "John", "email": "j@example.com", "address": "...", "createdAt": "..." } }, "message": "Sign up successful" }
-```
-
-Errors use `{ "success": false, "error": "CODE", "message": "..." }` with appropriate status (400, 401, 429, 502, 503).
+Then run `npx prisma generate`.

@@ -45,7 +45,7 @@ function NewBookingContent() {
     [roomIdParam, slotIdParam]
   )
 
-  // 24-hour hotel: default checkout = check-in + 24 hours
+  // Default checkout = check-in + 24 hours (1 day)
   const setDefaultCheckout = (checkInValue: string) => {
     if (!checkInValue) return ''
     const checkInDate = new Date(checkInValue)
@@ -287,8 +287,10 @@ function NewBookingContent() {
   const calculateOverview = () => {
     if (selectedRooms.length === 0) return null
 
-    // 24-hour hotel: one 24hr slot = 1 day rate
-    const days = 1
+    // Multi-day: charge per full 24h day
+    const days = formData.checkIn && formData.checkOut
+      ? Math.max(1, Math.ceil((new Date(formData.checkOut).getTime() - new Date(formData.checkIn).getTime()) / (24 * 60 * 60 * 1000)))
+      : 1
 
     // Calculate total base amount for all selected rooms
     const baseAmount = selectedRooms.reduce((total, room) => {
@@ -512,7 +514,7 @@ function NewBookingContent() {
                       updateField('checkOut', newCheckOut)
                       updateField('flexibleCheckout', false) // Disable flexible if manually changed
                       
-                      // 24-hour hotel: min 12h, max 24h stay
+                      // Min 12h stay; multi-day allowed
                       if (formData.checkIn && newCheckOut) {
                         const checkInTime = new Date(formData.checkIn).getTime()
                         const checkOutTime = new Date(newCheckOut).getTime()
@@ -520,10 +522,6 @@ function NewBookingContent() {
                         if (hoursDiff < 12) {
                           toast.error('Minimum stay is 12 hours.')
                           const corrected = new Date(checkInTime + 12 * 60 * 60 * 1000)
-                          updateField('checkOut', corrected.toISOString().slice(0, 16))
-                        } else if (hoursDiff > 24) {
-                          toast.error('Maximum stay is 24 hours.')
-                          const corrected = new Date(checkInTime + 24 * 60 * 60 * 1000)
                           updateField('checkOut', corrected.toISOString().slice(0, 16))
                         }
                       }
@@ -541,10 +539,9 @@ function NewBookingContent() {
                     onBlur={() => handleBlur('checkOut')}
                     error={getError('checkOut')}
                   />
-                  {/* 24-hour hotel: 12h min, 24h max */}
                   {formData.checkIn && (
                     <p className="text-[10px] text-slate-500">
-                      Stay: 12 hours min, 24 hours max. Checkout by {new Date(new Date(formData.checkIn).getTime() + 24*60*60*1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}.
+                      Minimum stay 12 hours. Multi-day bookings allowed.
                     </p>
                   )}
                   
@@ -573,7 +570,7 @@ function NewBookingContent() {
                   </label>
                   {formData.flexibleCheckout && (
                     <p className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
-                      Default: 24 hours from check-in. Can be updated when guest confirms.
+                      Default: 1 day from check-in. Can be updated when guest confirms.
                     </p>
                   )}
                 </div>

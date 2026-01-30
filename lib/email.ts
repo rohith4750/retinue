@@ -142,6 +142,43 @@ export async function sendPasswordResetCode(
   }
 }
 
+/**
+ * Send OTP email for sign-up (use until Fast2SMS DLT is approved; then switch to SMS).
+ */
+export async function sendOtpEmail(to: string, code: string): Promise<boolean> {
+  if (!SMTP_USER || !SMTP_PASS) {
+    console.error('Email not configured. Cannot send OTP.')
+    return false
+  }
+
+  const fromEmail = SMTP_FROM || SMTP_USER
+  if (!fromEmail) {
+    console.error('No sender email configured.')
+    return false
+  }
+
+  const mailOptions = {
+    from: `"Hotel The Retinue" <${fromEmail}>`,
+    to,
+    subject: 'Your sign-up OTP - Hotel The Retinue',
+    html: `
+      <p>Your one-time code for sign-up is:</p>
+      <p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p>
+      <p style="color:#666;font-size:14px;">This code expires in 10 minutes. If you didn't request this, please ignore this email.</p>
+      <p>— Hotel The Retinue</p>
+    `,
+    text: `Your sign-up OTP is: ${code}. Expires in 10 minutes. — Hotel The Retinue`,
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    return true
+  } catch (error) {
+    console.error('Error sending OTP email:', error)
+    return false
+  }
+}
+
 // Test email configuration (for development)
 export async function sendTestEmail(to: string): Promise<boolean> {
   if (!SMTP_USER || !SMTP_PASS) {
