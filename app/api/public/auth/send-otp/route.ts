@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
 
     const result = await sendOtpSms(phone, code)
     if (!result.ok) {
+      console.error('[send-otp] Fast2SMS failed:', result.message)
       return Response.json(
         errorResponse('SMS_FAILED', result.message || 'Failed to send OTP'),
         { status: 502 }

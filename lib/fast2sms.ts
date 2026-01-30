@@ -42,15 +42,31 @@ export async function sendOtpSms(phone: string, code: string): Promise<{ ok: boo
       body: body.toString(),
     })
 
-    const data = await res.json().catch(() => ({}))
+    const data = await res.json().catch(() => ({})) as Record<string, unknown>
     // Fast2SMS returns { return: true, request_id: "..." } on success
     const ok = res.ok && (data.return === true || data.return === 'true')
+    const errorMsg =
+      (data.message as string) ||
+      (data.msg as string) ||
+      (data.reason as string) ||
+      (data.error as string) ||
+      (Array.isArray(data.message) ? (data.message as string[]).join(', ') : null) ||
+      `HTTP ${res.status}`
+
+    if (!ok) {
+      console.error('[Fast2SMS] Send failed:', {
+        status: res.status,
+        phone: normalizedPhone.slice(0, 3) + '****' + normalizedPhone.slice(-2),
+        response: data,
+      })
+    }
+
     return {
       ok,
-      message: ok ? undefined : (data.message || data.msg || `HTTP ${res.status}`),
+      message: ok ? undefined : (errorMsg || 'Failed to send SMS'),
     }
   } catch (err: any) {
-    console.error('Fast2SMS error:', err)
+    console.error('[Fast2SMS] Request error:', err?.message || err)
     return { ok: false, message: err.message || 'Failed to send SMS' }
   }
 }

@@ -11,8 +11,9 @@ const publicRoutes = [
   '/api/health',
 ]
 
-// CORS: allowed origins for public API (hoteltheretinueonline.in calling hoteltheretinue.in)
-// Set ALLOWED_ORIGINS=https://hoteltheretinueonline.in,https://www.hoteltheretinueonline.in (comma-separated)
+// CORS: allowed origins for public API (online site calling hoteltheretinue.in)
+// Set ALLOWED_ORIGINS with the exact origin(s), e.g.:
+// https://hoteltheretinueonline.co.in,https://www.hoteltheretinueonline.co.in (comma-separated)
 const getAllowedOrigins = (): string[] => {
   const env = process.env.ALLOWED_ORIGINS || ''
   if (!env.trim()) return []
