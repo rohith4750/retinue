@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
         status: result.booking.status,
         message: 'Booking created. Save your booking reference to view your booking.',
       }),
-      201
+      { status: 201 }
     )
   } catch (error: any) {
     if (error instanceof BookingError) {
