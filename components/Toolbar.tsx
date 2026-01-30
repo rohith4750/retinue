@@ -1,10 +1,9 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { FaBell, FaSearch, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield, FaBuilding, FaUser, FaMoneyBillWave, FaMoon, FaSun } from 'react-icons/fa'
+import { FaBell, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield, FaBuilding, FaUser, FaMoneyBillWave } from 'react-icons/fa'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useTheme } from './ThemeProvider'
 
 interface ToolbarProps {
   title?: string
@@ -15,7 +14,6 @@ interface ToolbarProps {
 export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
   const pathname = usePathname()
   const [currentTime, setCurrentTime] = useState<string>('')
-  const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
     const updateTime = () => {
@@ -105,16 +103,6 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
 
           {/* Quick actions */}
           {actions || getQuickActions()}
-
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg border app-chip hover:opacity-90 transition-colors"
-            title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? <FaSun className="w-4 h-4 text-amber-400" /> : <FaMoon className="w-4 h-4 text-sky-500" />}
-          </button>
 
           {/* Notifications - placeholder */}
           <button className="relative p-2 app-fg-muted hover:app-fg rounded-lg app-chip hover:opacity-90 transition-colors">

@@ -17,18 +17,6 @@
     --font-geist-mono: 'JetBrains Mono', 'Fira Code', monospace;
   }
 
-  html[data-theme='light'] {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --surface: rgba(255, 255, 255, 0.85);
-    --surface-2: rgba(241, 245, 249, 0.9);
-    --border: rgba(15, 23, 42, 0.10);
-    --muted: rgba(15, 23, 42, 0.70);
-    --muted-2: rgba(15, 23, 42, 0.55);
-    --shadow: rgba(2, 6, 23, 0.12);
-    --bg-gradient: radial-gradient(ellipse at top, #f1f5f9 0%, #f8fafc 55%, #e2e8f0 100%);
-  }
-
   body {
     @apply font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -67,12 +55,6 @@
   .form-input[type="datetime-local"],
   .form-input[type="time"] {
     color-scheme: dark;
-  }
-
-  html[data-theme='light'] .form-input[type="date"],
-  html[data-theme='light'] .form-input[type="datetime-local"],
-  html[data-theme='light'] .form-input[type="time"] {
-    color-scheme: light;
   }
 
   /* App layout surfaces */
@@ -144,21 +126,6 @@
            focus:outline-none focus:ring-2 focus:ring-slate-500/50 focus:ring-offset-2 focus:ring-offset-slate-950;
   }
 
-  /* Light-theme overrides for shared components */
-  html[data-theme='light'] .btn-primary {
-    @apply focus:ring-sky-500/40;
-  }
-
-  html[data-theme='light'] .btn-secondary {
-    background: rgba(255, 255, 255, 0.9);
-    color: rgba(15, 23, 42, 0.9);
-    border-color: var(--border);
-  }
-
-  html[data-theme='light'] .btn-secondary:hover {
-    background: rgba(241, 245, 249, 0.95);
-  }
-
   .btn-danger {
     @apply px-4 py-2 text-sm bg-red-600 text-white font-semibold rounded-lg
            focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-slate-950;
@@ -173,12 +140,6 @@
   .card {
     @apply bg-slate-900/60 backdrop-blur-xl rounded-2xl shadow-[0_18px_60px_rgba(15,23,42,0.9)] 
            p-4 border border-white/5 relative overflow-hidden;
-  }
-
-  html[data-theme='light'] .card {
-    background: var(--surface);
-    border-color: var(--border);
-    box-shadow: 0 18px 60px var(--shadow);
   }
 
   .card::before {
@@ -205,16 +166,6 @@
     @apply bg-slate-900/80 backdrop-blur-xl rounded-2xl shadow-[0_25px_80px_rgba(0,0,0,0.9)] 
            max-w-xl w-full max-h-[90vh] 
            overflow-y-auto border border-white/5 relative;
-  }
-
-  html[data-theme='light'] .modal-overlay {
-    background: rgba(15, 23, 42, 0.35);
-  }
-
-  html[data-theme='light'] .modal-content {
-    background: var(--surface);
-    border-color: var(--border);
-    box-shadow: 0 25px 80px var(--shadow);
   }
 
   .modal-content::before {
@@ -258,10 +209,6 @@
            ring-2 ring-offset-2 ring-offset-slate-900;
   }
 
-  html[data-theme='light'] .badge {
-    --tw-ring-offset-color: rgba(248, 250, 252, 1);
-  }
-
   .badge-success {
     @apply bg-emerald-500/20 text-emerald-400 ring-emerald-500/30;
   }
@@ -295,73 +242,12 @@
     @apply absolute w-96 h-96 bg-fuchsia-600/20 rounded-full blur-3xl -z-10;
   }
 
-  html[data-theme='light'] .glow-sky {
-    background: rgba(56, 189, 248, 0.18);
-  }
-  html[data-theme='light'] .glow-emerald {
-    background: rgba(16, 185, 129, 0.12);
-  }
-  html[data-theme='light'] .glow-fuchsia {
-    background: rgba(217, 70, 239, 0.10);
-  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-}
-
-/* ------------------------------------------------------------
-   Light theme compatibility for existing Tailwind-dark classes
-   (avoids rewriting every page immediately)
------------------------------------------------------------- */
-html[data-theme='light'] .text-white { color: var(--foreground) !important; }
-html[data-theme='light'] .text-slate-100 { color: rgba(15, 23, 42, 0.92) !important; }
-html[data-theme='light'] .text-slate-200 { color: rgba(15, 23, 42, 0.86) !important; }
-html[data-theme='light'] .text-slate-300 { color: rgba(15, 23, 42, 0.78) !important; }
-html[data-theme='light'] .text-slate-400 { color: rgba(15, 23, 42, 0.68) !important; }
-html[data-theme='light'] .text-slate-500 { color: rgba(15, 23, 42, 0.56) !important; }
-html[data-theme='light'] .text-slate-600 { color: rgba(15, 23, 42, 0.52) !important; }
-
-/* Borders frequently used in the app */
-html[data-theme='light'] .border-white\/5 { border-color: var(--border) !important; }
-html[data-theme='light'] .border-white\/10 { border-color: rgba(15, 23, 42, 0.12) !important; }
-
-/* Common dark surfaces -> light surfaces */
-html[data-theme='light'] .bg-slate-950 { background-color: rgba(248, 250, 252, 1) !important; }
-html[data-theme='light'] .bg-slate-900 { background-color: rgba(255, 255, 255, 0.9) !important; }
-html[data-theme='light'] .bg-slate-800 { background-color: rgba(241, 245, 249, 0.95) !important; }
-
-html[data-theme='light'] .bg-slate-900\/95 { background-color: rgba(255, 255, 255, 0.92) !important; }
-html[data-theme='light'] .bg-slate-900\/90 { background-color: rgba(255, 255, 255, 0.90) !important; }
-html[data-theme='light'] .bg-slate-900\/80 { background-color: rgba(255, 255, 255, 0.86) !important; }
-html[data-theme='light'] .bg-slate-900\/60 { background-color: rgba(255, 255, 255, 0.82) !important; }
-html[data-theme='light'] .bg-slate-900\/50 { background-color: rgba(255, 255, 255, 0.78) !important; }
-html[data-theme='light'] .bg-slate-900\/40 { background-color: rgba(255, 255, 255, 0.74) !important; }
-
-html[data-theme='light'] .bg-slate-800\/60 { background-color: rgba(241, 245, 249, 0.92) !important; }
-html[data-theme='light'] .bg-slate-800\/50 { background-color: rgba(241, 245, 249, 0.88) !important; }
-html[data-theme='light'] .bg-slate-800\/40 { background-color: rgba(241, 245, 249, 0.84) !important; }
-html[data-theme='light'] .bg-slate-800\/30 { background-color: rgba(241, 245, 249, 0.78) !important; }
-html[data-theme='light'] .bg-slate-800\/20 { background-color: rgba(241, 245, 249, 0.70) !important; }
-
-/* Table header backgrounds */
-html[data-theme='light'] .table thead { background-color: rgba(241, 245, 249, 0.92) !important; }
-
-/* Inputs: improve contrast in light */
-html[data-theme='light'] .form-label { color: rgba(15, 23, 42, 0.70) !important; }
-html[data-theme='light'] .form-input,
-html[data-theme='light'] .form-select,
-html[data-theme='light'] .form-textarea {
-  background: rgba(255, 255, 255, 0.9) !important;
-  color: rgba(15, 23, 42, 0.92) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-}
-
-html[data-theme='light'] .form-input::placeholder,
-html[data-theme='light'] .form-textarea::placeholder {
-  color: rgba(15, 23, 42, 0.45) !important;
 }
 
 /* Custom Scrollbar Styles */
