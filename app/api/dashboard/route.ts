@@ -161,15 +161,46 @@ export async function GET(request: NextRequest) {
       const type = b.guest?.guestType || 'WALK_IN'
       if (!guestTypeAllTime[type]) guestTypeAllTime[type] = { count: 0, revenue: 0 }
       guestTypeAllTime[type].count += 1
-      guestTypeAllTime[type].revenue += b.paidAmount || 0
+      guestTypeAllTime[type].revenue += b.totalAmount || 0
       if (b.createdAt >= startOfMonth) {
         if (!guestTypeThisMonth[type]) guestTypeThisMonth[type] = { count: 0, revenue: 0 }
         guestTypeThisMonth[type].count += 1
-        guestTypeThisMonth[type].revenue += b.paidAmount || 0
+        guestTypeThisMonth[type].revenue += b.totalAmount || 0
       }
     }
 
-    // Room type distribution
+    // Bookings by room type (all time + this month)
+    const bookingsWithRoom = await prisma.booking.findMany({
+      where: { status: { not: 'CANCELLED' } },
+      select: {
+        totalAmount: true,
+        createdAt: true,
+        room: { select: { roomType: true } },
+      },
+    })
+    const roomTypeAllTime: Record<string, { count: number; revenue: number }> = {}
+    const roomTypeThisMonth: Record<string, { count: number; revenue: number }> = {}
+    const roomTypeLabels: Record<string, string> = {
+      SINGLE: 'Single',
+      DOUBLE: 'Double',
+      DELUXE: 'Deluxe',
+      STANDARD: 'Standard',
+      SUITE: 'Suite',
+      SUITE_PLUS: 'Suite+',
+    }
+    for (const b of bookingsWithRoom) {
+      const type = b.room?.roomType || 'STANDARD'
+      if (!roomTypeAllTime[type]) roomTypeAllTime[type] = { count: 0, revenue: 0 }
+      roomTypeAllTime[type].count += 1
+      roomTypeAllTime[type].revenue += b.totalAmount || 0
+      if (b.createdAt >= startOfMonth) {
+        if (!roomTypeThisMonth[type]) roomTypeThisMonth[type] = { count: 0, revenue: 0 }
+        roomTypeThisMonth[type].count += 1
+        roomTypeThisMonth[type].revenue += b.totalAmount || 0
+      }
+    }
+
+    // Room type distribution (room count)
     const roomsByType = await prisma.room.groupBy({
       by: ['roomType'],
       _count: true,
@@ -551,6 +582,9 @@ export async function GET(request: NextRequest) {
       bookingsByGuestType: guestTypeAllTime,
       bookingsByGuestTypeThisMonth: guestTypeThisMonth,
       guestTypeLabels,
+      bookingsByRoomType: roomTypeAllTime,
+      bookingsByRoomTypeThisMonth: roomTypeThisMonth,
+      roomTypeLabels,
       
       // Trends
       weeklyRevenue,

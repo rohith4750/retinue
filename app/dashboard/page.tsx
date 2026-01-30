@@ -22,6 +22,14 @@ const GUEST_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string 
   AGENT: { bar: 'bg-teal-500', bg: 'bg-teal-500/20', text: 'text-teal-400' },
 }
 
+const ROOM_TYPE_ORDER = ['STANDARD', 'SUITE', 'SUITE_PLUS']
+const ROOM_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
+  STANDARD: { bar: 'bg-sky-500', bg: 'bg-sky-500/20', text: 'text-sky-400' },
+  DELUXE: { bar: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-400' },
+  SUITE: { bar: 'bg-emerald-500', bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
+  SUITE_PLUS: { bar: 'bg-fuchsia-500', bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-400' },
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   
@@ -344,73 +352,130 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Customer Type Analytics */}
+        {/* Booking Analytics: Customer type + Room type */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 overflow-hidden">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <FaUserTag className="text-violet-400" />
-                Customer Type Analytics
+                <FaChartLine className="text-violet-400" />
+                Booking Analytics
               </h3>
-              <p className="text-xs text-slate-400 mt-1">Bookings & revenue by guest type</p>
+              <p className="text-xs text-slate-400 mt-1">By guest type and by room type (booked value)</p>
             </div>
           </div>
-          <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
-            {/* Bookings by customer type (all time) */}
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-4">Bookings by type (all time)</p>
-              <div className="space-y-4">
-                {GUEST_TYPE_ORDER.map((type) => {
-                  const data = stats?.bookingsByGuestType?.[type] || { count: 0, revenue: 0 }
-                  const label = stats?.guestTypeLabels?.[type] || type.replace(/_/g, ' ')
-                  const totalBookings = Object.values(stats?.bookingsByGuestType || {}).reduce((s: number, v: any) => s + (v?.count || 0), 0)
-                  const pct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 100) : 0
-                  const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
-                  return (
-                    <div key={type}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
-                        <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
-                      </div>
-                      <div className="h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
-                          style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-            {/* Revenue by customer type this month (admin only) */}
-            {canViewFinance && (
+
+          {/* Row 1: Guest type */}
+          <div className="mb-6">
+            <p className="text-xs text-violet-400 uppercase tracking-wider font-semibold mb-3">By guest type</p>
+            <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
               <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-4">Revenue this month by type</p>
-                <div className="space-y-4">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Bookings (all time)</p>
+                <div className="space-y-3">
                   {GUEST_TYPE_ORDER.map((type) => {
-                    const data = stats?.bookingsByGuestTypeThisMonth?.[type] || { count: 0, revenue: 0 }
+                    const data = stats?.bookingsByGuestType?.[type] || { count: 0, revenue: 0 }
                     const label = stats?.guestTypeLabels?.[type] || type.replace(/_/g, ' ')
-                    const totalRev = Object.values(stats?.bookingsByGuestTypeThisMonth || {}).reduce((s: number, v: any) => s + (v?.revenue || 0), 0)
-                    const pct = totalRev > 0 ? Math.round((data.revenue / totalRev) * 100) : 0
+                    const totalBookings = Object.values(stats?.bookingsByGuestType || {}).reduce((s: number, v: any) => s + (v?.count || 0), 0)
+                    const pct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 100) : 0
                     const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
                     return (
-                      <div key={type} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-slate-800/40">
-                        <div className={`w-2 h-8 rounded-full ${colors.bar}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium ${colors.text}`}>{label}</p>
-                          <p className="text-xs text-slate-500">{data.count} booking(s)</p>
+                      <div key={type}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
+                          <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-white">₹{(data.revenue || 0).toLocaleString()}</p>
-                          <p className="text-xs text-slate-500">{pct}% of month</p>
+                        <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
                         </div>
                       </div>
                     )
                   })}
                 </div>
               </div>
-            )}
+              {canViewFinance && (
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Revenue this month</p>
+                  <div className="space-y-3">
+                    {GUEST_TYPE_ORDER.map((type) => {
+                      const data = stats?.bookingsByGuestTypeThisMonth?.[type] || { count: 0, revenue: 0 }
+                      const label = stats?.guestTypeLabels?.[type] || type.replace(/_/g, ' ')
+                      const totalRev = Object.values(stats?.bookingsByGuestTypeThisMonth || {}).reduce((s: number, v: any) => s + (v?.revenue || 0), 0)
+                      const pct = totalRev > 0 ? Math.round((data.revenue / totalRev) * 100) : 0
+                      const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
+                      return (
+                        <div key={type} className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-slate-800/40">
+                          <div className={`w-2 h-7 rounded-full ${colors.bar}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${colors.text}`}>{label}</p>
+                            <p className="text-[10px] text-slate-500">{data.count} booking(s)</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-white">₹{(data.revenue || 0).toLocaleString()}</p>
+                            <p className="text-[10px] text-slate-500">{pct}%</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Room type */}
+          <div>
+            <p className="text-xs text-emerald-400 uppercase tracking-wider font-semibold mb-3">By room type</p>
+            <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Bookings (all time)</p>
+                <div className="space-y-3">
+                  {ROOM_TYPE_ORDER.map((type) => {
+                    const data = stats?.bookingsByRoomType?.[type] || { count: 0, revenue: 0 }
+                    const label = stats?.roomTypeLabels?.[type] || type.replace(/_/g, ' ')
+                    const totalBookings = Object.values(stats?.bookingsByRoomType || {}).reduce((s: number, v: any) => s + (v?.count || 0), 0)
+                    const pct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 100) : 0
+                    const colors = ROOM_TYPE_COLORS[type] || ROOM_TYPE_COLORS.STANDARD
+                    return (
+                      <div key={type}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
+                          <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
+                        </div>
+                        <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              {canViewFinance && (
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Revenue this month</p>
+                  <div className="space-y-3">
+                    {ROOM_TYPE_ORDER.map((type) => {
+                      const data = stats?.bookingsByRoomTypeThisMonth?.[type] || { count: 0, revenue: 0 }
+                      const label = stats?.roomTypeLabels?.[type] || type.replace(/_/g, ' ')
+                      const totalRev = Object.values(stats?.bookingsByRoomTypeThisMonth || {}).reduce((s: number, v: any) => s + (v?.revenue || 0), 0)
+                      const pct = totalRev > 0 ? Math.round((data.revenue / totalRev) * 100) : 0
+                      const colors = ROOM_TYPE_COLORS[type] || ROOM_TYPE_COLORS.STANDARD
+                      return (
+                        <div key={type} className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-slate-800/40">
+                          <div className={`w-2 h-7 rounded-full ${colors.bar}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${colors.text}`}>{label}</p>
+                            <p className="text-[10px] text-slate-500">{data.count} booking(s)</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-white">₹{(data.revenue || 0).toLocaleString()}</p>
+                            <p className="text-[10px] text-slate-500">{pct}%</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
