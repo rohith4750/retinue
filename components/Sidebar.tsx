@@ -29,7 +29,7 @@ export function Sidebar() {
     { href: '/dashboard', icon: FaChartLine, label: 'Dashboard', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/rooms', icon: FaHome, label: 'Rooms', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bookings', icon: FaCalendarAlt, label: 'Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
-    { href: '/bookings?source=online', icon: FaCalendarAlt, label: 'Online Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/bookings/online', icon: FaCalendarAlt, label: 'Online Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bills', icon: FaReceipt, label: 'Bills', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bookings/history', icon: FaHistory, label: 'History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
   ]
@@ -78,13 +78,13 @@ export function Sidebar() {
     if (href === '/dashboard') {
       return pathname === '/dashboard'
     }
-    // Online Bookings: active only when /bookings and ?source=online
-    if (href === '/bookings?source=online') {
-      return pathname === '/bookings' && searchParams?.get('source') === 'online'
+    // Online Bookings: dedicated route
+    if (href === '/bookings/online') {
+      return pathname === '/bookings/online'
     }
-    // Bookings (staff): active when /bookings without source=online
+    // Bookings (staff): active when /bookings but not /bookings/online
     if (href === '/bookings') {
-      return pathname === '/bookings' && searchParams?.get('source') !== 'online'
+      return pathname === '/bookings' && pathname !== '/bookings/online'
     }
     return pathname?.startsWith(href.split('?')[0])
   }

@@ -26,11 +26,14 @@ export async function GET(request: NextRequest) {
 
     const where: any = {
       // By default, show only active bookings (exclude CANCELLED and CHECKED_OUT)
-      // Checked-out bookings disappear from main list; use History or ?status=CHECKED_OUT to see them
-      status: { notIn: ['CANCELLED', 'CHECKED_OUT'] }
+      status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+      // Staff bookings page: exclude online (online has dedicated GET /api/bookings/online)
+      source: { not: 'ONLINE' },
     }
-    if (status) where.status = status  // Override if specific status requested (e.g. ?status=CHECKED_OUT for History view)
-    if (source === 'online') where.source = 'ONLINE'  // Online Bookings menu: only bookings from public website
+    if (status) where.status = status
+    if (source === 'online') {
+      where.source = 'ONLINE'
+    }
     if (date) {
       const startOfDay = new Date(date)
       startOfDay.setHours(0, 0, 0, 0)

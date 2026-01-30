@@ -19,7 +19,6 @@ export default function BookingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const dateFilter = searchParams.get('date') || '' // e.g. YYYY-MM-DD from dashboard "Today's Bookings"
-  const sourceFilter = searchParams.get('source') || '' // 'online' = from public site (hoteltheretinueonline.in)
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
@@ -98,9 +97,9 @@ export default function BookingsPage() {
     callback: () => router.push('/bookings/new'),
   })
 
-  // Phase 2: Pagination support with search, date filter, and source (online = from public website)
+  // Staff bookings only (online bookings are on /bookings/online)
   const { data: bookingsResponse, isLoading } = useQuery({
-    queryKey: ['bookings', page, debouncedSearch, dateFilter, sourceFilter],
+    queryKey: ['bookings', page, debouncedSearch, dateFilter],
     queryFn: () => {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -111,9 +110,6 @@ export default function BookingsPage() {
       }
       if (dateFilter) {
         params.append('date', dateFilter)
-      }
-      if (sourceFilter === 'online') {
-        params.append('source', 'online')
       }
       return api.get(`/bookings?${params.toString()}`)
     },
@@ -372,22 +368,6 @@ export default function BookingsPage() {
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30">
               <FaCalendarAlt className="w-3.5 h-3.5" />
               Today&apos;s check-ins — click a card to Check Out
-            </span>
-            <Link
-              href="/bookings"
-              className="text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              Show all bookings
-            </Link>
-          </div>
-        )}
-
-        {/* Online Bookings: from public site (hoteltheretinueonline.in) */}
-        {sourceFilter === 'online' && (
-          <div className="mb-4 flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-sm border border-emerald-500/30">
-              <FaCalendarAlt className="w-3.5 h-3.5" />
-              Online Bookings — from hoteltheretinueonline.in
             </span>
             <Link
               href="/bookings"
