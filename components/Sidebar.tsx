@@ -110,16 +110,16 @@ export function Sidebar() {
           <div className="p-4 border-b border-white/5">
             <Link
               href="/dashboard"
-              className="flex flex-col space-y-1"
+              className="flex items-start gap-3 no-underline group"
             >
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
-                  <FaHotel className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <span className="text-sm font-bold text-white">Hotel The Retinue & Butchiraju Conventions</span>
-                  <p className="text-[9px] text-slate-400">& Buchirajuu Convention</p>
-                </div>
+              <div className="w-9 h-9 shrink-0 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md group-hover:shadow-amber-500/20 transition-shadow">
+                <FaHotel className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-white leading-tight">Hotel The Retinue</p>
+                <p className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                  <span className="text-amber-400/90">&</span> Butchiraju Conventions
+                </p>
               </div>
             </Link>
           </div>

@@ -27,8 +27,9 @@ function isValidEmail(email: string): boolean {
 /**
  * POST /api/public/auth/send-otp
  * Send OTP via email or SMS (no auth).
- * Body: { phone } OR { email }
- * Use email until Fast2SMS DLT is approved; then use phone for SMS.
+ * Body: { phone } OR { email }, optional intent: 'login' | 'signup' (default: 'signup').
+ * - signup: send OTP to anyone (new users can verify and complete signup).
+ * - login: send OTP only to registered emails/phones; "not registered" only for login.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -36,10 +37,10 @@ export async function POST(request: NextRequest) {
     const rawPhone = body.phone
     const rawEmail = (body.email || '').trim().toLowerCase()
     const phone = rawPhone ? normalizePhone(rawPhone) : ''
+    const intent = body.intent === 'login' ? 'login' : 'signup'
     const useEmail = !!rawEmail
 
     if (useEmail) {
-      // --- Email OTP: only send to registered (signed-up) emails ---
       if (!isValidEmail(rawEmail)) {
         return Response.json(
           errorResponse('VALIDATION_ERROR', 'Valid email is required'),
@@ -47,15 +48,18 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const customer = await (prisma as any).customer.findFirst({
-        where: { email: { equals: rawEmail, mode: 'insensitive' } },
-        select: { id: true },
-      })
-      if (!customer) {
-        return Response.json(
-          errorResponse('EMAIL_NOT_REGISTERED', 'This email is not registered. Please sign up first (e.g. with phone) or use a registered email.'),
-          { status: 403 }
-        )
+      // Login only: send OTP only to registered emails; "not registered" message only here
+      if (intent === 'login') {
+        const customer = await (prisma as any).customer.findFirst({
+          where: { email: { equals: rawEmail, mode: 'insensitive' } },
+          select: { id: true },
+        })
+        if (!customer) {
+          return Response.json(
+            errorResponse('EMAIL_NOT_REGISTERED', 'This email is not registered. Please sign up first.'),
+            { status: 403 }
+          )
+        }
       }
 
       const recent = await (prisma as any).otpVerification.findFirst({
@@ -107,6 +111,20 @@ export async function POST(request: NextRequest) {
         errorResponse('VALIDATION_ERROR', 'Phone (10 digits) or email is required'),
         { status: 400 }
       )
+    }
+
+    // Login only: send OTP only to registered phones; "not registered" message only here
+    if (intent === 'login') {
+      const customer = await (prisma as any).customer.findUnique({
+        where: { phone },
+        select: { id: true },
+      })
+      if (!customer) {
+        return Response.json(
+          errorResponse('PHONE_NOT_REGISTERED', 'This phone number is not registered. Please sign up first.'),
+          { status: 403 }
+        )
+      }
     }
 
     const recent = await (prisma as any).otpVerification.findFirst({
