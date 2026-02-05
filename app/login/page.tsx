@@ -2,10 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { setAuth, clearAuth } from '@/lib/auth-storage'
-import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaStar, FaBuilding, FaHotel, FaEye, FaEyeSlash } from 'react-icons/fa'
+import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaStar, FaBuilding, FaHotel, FaEye, FaEyeSlash, FaPhone, FaMapMarkerAlt, FaConciergeBell, FaSmile, FaGlassCheers } from 'react-icons/fa'
+import { HOTEL_INFO } from '@/lib/hotel-info'
 
 function LoginContent() {
   const router = useRouter()
@@ -175,26 +175,109 @@ function LoginContent() {
       <div className="flex-1 w-full min-h-0 flex items-center justify-center p-4 sm:p-6 relative z-10 overflow-hidden">
         <div className="max-w-5xl w-full max-h-full flex flex-col lg:flex-row items-center lg:items-stretch gap-6 lg:gap-0 min-h-0 overflow-hidden">
           
-          {/* Left Side - Logo (Hidden on mobile, shown on lg) */}
-          <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-6 lg:p-8 relative -mt-16 lg:-mt-20 min-h-0 overflow-hidden">
-            <div className="w-full max-w-md flex justify-center items-center min-h-0 shrink-0">
-              <Image
-                src="/logo-retinue.png"
-                alt="Hotel The Retinue & Butchiraju Conventions"
-                width={420}
-                height={280}
-                className="object-contain w-full h-auto drop-shadow-2xl"
-                priority
-              />
+          {/* Left Side - Brand & info (hidden on mobile, scrollable on lg) */}
+          <div className="hidden lg:flex lg:flex-1 flex-col min-h-0 overflow-y-auto p-6 lg:p-8">
+            <div className="max-w-md w-full space-y-6">
+              {/* Header / Branding */}
+              <div className="text-center">
+                <p className="text-xs font-semibold text-amber-400/90 uppercase tracking-widest mb-1">Hotel</p>
+                <h1 className="text-2xl lg:text-3xl font-serif font-bold text-white tracking-tight">The Retinue</h1>
+                <p className="text-slate-400 mt-1 text-sm">
+                  <span className="text-amber-400/90 font-medium">&</span> Butchiraju Conventions
+                </p>
+                <p className="text-slate-400 text-sm mt-3 max-w-xs mx-auto">
+                  Comfortable stays & elegant celebrations in Ramachandrapuram
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-3 text-amber-400/60">
+                  <span className="w-8 border-t border-dashed border-current opacity-60" />
+                  <FaStar className="w-3 h-3" />
+                  <span className="w-8 border-t border-dashed border-current opacity-60" />
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
+                  <FaConciergeBell className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-white">35+</p>
+                  <p className="text-xs font-semibold text-amber-400/90">Premium Hospitality</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Years of trusted service</p>
+                </div>
+                <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
+                  <FaSmile className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-white">10K+</p>
+                  <p className="text-xs font-semibold text-amber-400/90">Happy Guests</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Families • Travelers • Events</p>
+                </div>
+                <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
+                  <FaGlassCheers className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-white">500+</p>
+                  <p className="text-xs font-semibold text-amber-400/90">Events Hosted</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Weddings • Conferences</p>
+                </div>
+              </div>
+
+              {/* Our Offerings */}
+              <div>
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <span className="w-6 border-t border-dashed border-slate-600" />
+                  <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">Our Offerings</span>
+                  <span className="w-6 border-t border-dashed border-slate-600" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3">
+                    <p className="text-xs font-semibold text-amber-400 mb-2">Hotel The Retinue</p>
+                    <ul className="text-[11px] text-slate-400 space-y-1">
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> Standard Rooms</li>
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> Suites & Suite+</li>
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> 12–24 Hour Stay</li>
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> Transparent Pricing</li>
+                    </ul>
+                  </div>
+                  <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3">
+                    <p className="text-xs font-semibold text-amber-400 mb-2">Butchiraju Conventions</p>
+                    <ul className="text-[11px] text-slate-400 space-y-1">
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> Wedding Functions</li>
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> Birthday & Anniversary</li>
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> Corporate Meetings</li>
+                      <li className="flex items-center gap-1.5"><span className="text-amber-400/80">•</span> Religious & Private Events</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Convention Hall Features */}
+              <div>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="w-6 border-t border-dashed border-slate-600" />
+                  <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">Convention Hall</span>
+                  <span className="w-6 border-t border-dashed border-slate-600" />
+                </div>
+                <ul className="text-[11px] text-slate-400 space-y-1 text-center">
+                  <li>Fully Air-Conditioned • Stage & Projector</li>
+                  <li>Managed by hotel • Flexible Seating</li>
+                </ul>
+              </div>
+
+              {/* Contact & Location */}
+              <div>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="w-6 border-t border-dashed border-slate-600" />
+                  <span className="text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">Contact & Location</span>
+                  <span className="w-6 border-t border-dashed border-slate-600" />
+                </div>
+                <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3 space-y-2 text-[11px] text-slate-400">
+                  <p className="flex items-center gap-2"><FaPhone className="w-3.5 h-3.5 text-amber-400/80 shrink-0" /> {HOTEL_INFO.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3')}</p>
+                  <p className="flex items-center gap-2"><FaEnvelope className="w-3.5 h-3.5 text-amber-400/80 shrink-0" /> {HOTEL_INFO.email}</p>
+                  <p className="flex items-center gap-2"><FaMapMarkerAlt className="w-3.5 h-3.5 text-amber-400/80 shrink-0" /> {HOTEL_INFO.shortAddress} – 533255</p>
+                </div>
+              </div>
+
+              {/* Footer tagline */}
+              <p className="text-center text-xs italic text-amber-400/80">
+                Stay with comfort, celebrate with elegance.
+              </p>
             </div>
-            <p className="text-center text-sm max-w-sm mt-3 leading-relaxed space-y-1">
-              <span className="block font-medium text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500">
-                Where luxury meets celebration.
-              </span>
-              <span className="block text-slate-400">
-                Your destination for unforgettable stays and extraordinary events.
-              </span>
-            </p>
           </div>
 
           {/* Divider */}

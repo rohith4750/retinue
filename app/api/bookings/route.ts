@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date')
     const search = searchParams.get('search')
     const source = searchParams.get('source') // 'online' = from public site (hoteltheretinueonline.in)
+    const forCalendar = searchParams.get('forCalendar') === '1' || searchParams.get('includeOnline') === '1' // rooms calendar: include all sources
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
@@ -27,11 +28,11 @@ export async function GET(request: NextRequest) {
     const where: any = {
       // By default, show only active bookings (exclude CANCELLED and CHECKED_OUT)
       status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
-      // Staff bookings page: exclude online (online has dedicated GET /api/bookings/online)
-      source: { not: 'ONLINE' },
+      // Staff bookings page: exclude online (online has dedicated GET /api/bookings/online). For calendar view, include all.
+      ...(forCalendar ? {} : { source: { not: 'ONLINE' } }),
     }
     if (status) where.status = status
-    if (source === 'online') {
+    if (source === 'online' && !forCalendar) {
       where.source = 'ONLINE'
     }
     if (date) {

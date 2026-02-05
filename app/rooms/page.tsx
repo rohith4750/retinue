@@ -82,10 +82,10 @@ export default function RoomsPage() {
     }
   }, [])
 
-  // Fetch bookings for calendar view – refetch on focus so calendar updates after checkout elsewhere
+  // Fetch bookings for calendar view (include ONLINE so grid shows correct Free/Booked for all sources)
   const { data: bookingsResponse } = useQuery({
     queryKey: ['bookings-calendar', calendarStartDate.toISOString()],
-    queryFn: () => api.get('/bookings?limit=500'),
+    queryFn: () => api.get('/bookings?limit=500&forCalendar=1'),
     staleTime: 0,
   })
   // Handle both { data: [...], pagination } and direct array from API
