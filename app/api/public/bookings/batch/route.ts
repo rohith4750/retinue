@@ -9,7 +9,7 @@ import {
 import { DateConflictError, RoomUnavailableError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
 import { generateBookingId, generateBookingReference } from '@/lib/booking-id-generator'
-
+import { notifyInternalRoomBooked } from '@/lib/booking-alerts'
 import { createBookingSchema } from '@/lib/booking-validators'
 
 /**
@@ -222,6 +222,20 @@ export async function POST(request: NextRequest) {
       },
       { maxWait: 15000, timeout: 45000 }
     )
+
+    await notifyInternalRoomBooked({
+      guestName: result.guestName,
+      guestPhone: result.guestPhone,
+      roomNumber: result.rooms[0]?.roomNumber ?? '',
+      roomType: result.rooms[0]?.roomType,
+      checkIn: result.checkIn,
+      checkOut: result.checkOut,
+      bookingReference: result.bookingReference,
+      totalAmount: result.totalAmount,
+      source: 'ONLINE',
+      isBatch: true,
+      rooms: result.rooms,
+    })
 
     return Response.json(
       successResponse({

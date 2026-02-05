@@ -15,6 +15,7 @@ import {
 } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
 import { generateBookingId, generateBookingReference } from '@/lib/booking-id-generator'
+import { notifyInternalRoomBooked } from '@/lib/booking-alerts'
 
 /**
  * POST /api/public/bookings
@@ -208,6 +209,18 @@ export async function POST(request: NextRequest) {
     }, {
       maxWait: 10000,
       timeout: 30000,
+    })
+
+    await notifyInternalRoomBooked({
+      guestName: result.guestName,
+      guestPhone: result.guestPhone,
+      roomNumber: result.booking.room.roomNumber,
+      roomType: result.booking.room.roomType,
+      checkIn: result.booking.checkIn,
+      checkOut: result.booking.checkOut,
+      bookingReference: result.bookingReference,
+      totalAmount: result.booking.totalAmount,
+      source: 'ONLINE',
     })
 
     return Response.json(

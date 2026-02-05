@@ -8,6 +8,8 @@ import { createBookingSchema, validateBookingDates, checkDateConflicts, isRoomAv
 import { BookingError, RoomUnavailableError, DateConflictError, InvalidDateError, ValidationError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
 import { generateBookingId, generateBookingReference } from '@/lib/booking-id-generator'
+import { notifyInternalRoomBooked } from '@/lib/booking-alerts'
+import type { RoomBookedSourceRole } from '@/lib/email'
 
 // GET /api/bookings - List all bookings with pagination (Phase 2)
 export async function GET(request: NextRequest) {
@@ -322,6 +324,22 @@ export async function POST(request: NextRequest) {
     }, {
       maxWait: 10000, // Max time to wait for transaction to start
       timeout: 30000, // Max time for transaction to complete (30s for slow Neon connections)
+    })
+
+    const first = result.bookings[0]
+    await notifyInternalRoomBooked({
+      guestName: result.guest.name,
+      guestPhone: result.guest.phone,
+      roomNumber: first.room.roomNumber,
+      roomType: first.room.roomType,
+      checkIn: first.checkIn,
+      checkOut: first.checkOut,
+      bookingReference: first.bookingReference ?? first.id,
+      totalAmount: result.bookings.reduce((s: number, b: any) => s + b.totalAmount, 0),
+      source: 'STAFF',
+      createdByRole: (authResult as { role: RoomBookedSourceRole }).role,
+      isBatch: result.bookings.length > 1,
+      rooms: result.bookings.length > 1 ? result.bookings.map((b: any) => ({ roomNumber: b.room.roomNumber, roomType: b.room.roomType })) : undefined,
     })
 
     // Return response based on number of rooms

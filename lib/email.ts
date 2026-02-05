@@ -364,3 +364,122 @@ ${attachments.length} CSV backup file(s) attached.
     return false
   }
 }
+
+/** Role for display when source is STAFF (not "Staff" generic label) */
+export type RoomBookedSourceRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
+
+/** Room booked alert payload for internal staff */
+export type RoomBookedAlertDetails = {
+  guestName: string
+  guestPhone: string
+  roomNumber: string
+  roomType?: string
+  checkIn: Date
+  checkOut: Date
+  bookingReference: string
+  totalAmount?: number
+  source: 'ONLINE' | 'STAFF'
+  /** When source is STAFF, show this role instead of "Staff" (e.g. Receptionist, Admin) */
+  createdByRole?: RoomBookedSourceRole
+  isBatch?: boolean
+  rooms?: Array<{ roomNumber: string; roomType: string }>
+}
+
+function formatSourceLabel(source: 'ONLINE' | 'STAFF', role?: RoomBookedSourceRole): string {
+  if (source === 'ONLINE') return 'Customer (Online)'
+  if (role) {
+    const labels: Record<RoomBookedSourceRole, string> = {
+      SUPER_ADMIN: 'Super Admin',
+      ADMIN: 'Admin',
+      RECEPTIONIST: 'Receptionist',
+      STAFF: 'Staff',
+    }
+    return labels[role] ?? role
+  }
+  return 'Staff'
+}
+
+/**
+ * Send "Customer room booked" alert to internal staff emails.
+ * Used when a room is booked (especially from public/customer side).
+ */
+export async function sendRoomBookedAlert(
+  toEmails: string[],
+  details: RoomBookedAlertDetails
+): Promise<boolean> {
+  if (!SMTP_USER || !SMTP_PASS || toEmails.length === 0) {
+    if (toEmails.length === 0) console.warn('No recipient emails for room booked alert.')
+    return false
+  }
+
+  const fromEmail = SMTP_FROM || SMTP_USER
+  if (!fromEmail) return false
+
+  const checkInStr = new Date(details.checkIn).toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+  const checkOutStr = new Date(details.checkOut).toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+  const sourceLabel = formatSourceLabel(details.source, details.createdByRole)
+  const title = details.isBatch
+    ? `Customer booked ${details.rooms?.length ?? 0} room(s)`
+    : 'Customer room booked'
+
+  const roomsList =
+    details.isBatch && details.rooms?.length
+      ? details.rooms.map((r) => `${r.roomNumber} (${r.roomType})`).join(', ')
+      : `${details.roomNumber}${details.roomType ? ` (${details.roomType})` : ''}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><meta charset="utf-8"></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; font-size: 1.25rem;">${title}</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Hotel The Retinue & Butchiraju Conventions</p>
+        </div>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <p style="margin: 0 0 12px 0;"><strong>Guest:</strong> ${details.guestName}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Phone:</strong> ${details.guestPhone}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Room(s):</strong> ${roomsList}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Check-in:</strong> ${checkInStr}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Check-out:</strong> ${checkOutStr}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Booking reference:</strong> ${details.bookingReference}</p>
+          ${details.totalAmount != null ? `<p style="margin: 0 0 12px 0;"><strong>Total amount:</strong> ₹${Number(details.totalAmount).toLocaleString('en-IN')}</p>` : ''}
+          <p style="margin: 0;"><strong>Source:</strong> ${sourceLabel}</p>
+        </div>
+        <p style="margin-top: 16px; font-size: 12px; color: #64748b;">This is an automated alert from the hotel management system.</p>
+      </body>
+    </html>
+  `
+
+  const text = [
+    title,
+    `Guest: ${details.guestName}`,
+    `Phone: ${details.guestPhone}`,
+    `Room(s): ${roomsList}`,
+    `Check-in: ${checkInStr}`,
+    `Check-out: ${checkOutStr}`,
+    `Booking reference: ${details.bookingReference}`,
+    details.totalAmount != null ? `Total amount: ₹${Number(details.totalAmount).toLocaleString('en-IN')}` : '',
+    `Source: ${sourceLabel}`,
+  ].filter(Boolean).join('\n')
+
+  try {
+    await transporter.sendMail({
+      from: `"Hotel The Retinue" <${fromEmail}>`,
+      to: toEmails.join(', '),
+      subject: `[Alert] ${title} – ${details.bookingReference}`,
+      text,
+      html,
+    })
+    return true
+  } catch (error) {
+    console.error('Error sending room booked alert:', error)
+    return false
+  }
+}
