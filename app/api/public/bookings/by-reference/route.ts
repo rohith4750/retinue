@@ -21,58 +21,85 @@ function phoneMatches(guestPhone: string, providedPhone: string): boolean {
 /**
  * GET /api/public/bookings/by-reference
  * View booking by reference + phone (no auth). Query: bookingReference, phone.
+ * For batch (multi-room) bookings, returns all rooms under the same group reference.
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const bookingReference = searchParams.get('bookingReference')?.trim().toUpperCase()
+    const ref = searchParams.get('bookingReference')?.trim().toUpperCase()
     const phone = searchParams.get('phone')?.trim()
 
-    if (!bookingReference || !phone) {
+    if (!ref || !phone) {
       return Response.json(
         errorResponse('VALIDATION_ERROR', 'bookingReference and phone are required'),
         { status: 400 }
       )
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { bookingReference },
-      include: {
-        room: true,
-        guest: true,
+    // Find by primary reference or group reference (batch bookings)
+    const first = await (prisma as any).booking.findFirst({
+      where: {
+        OR: [
+          { bookingReference: ref },
+          { groupBookingReference: ref },
+        ],
       },
+      include: { room: true, guest: true },
     })
 
-    if (!booking) {
+    if (!first) {
       return Response.json(
         errorResponse('NOT_FOUND', 'Booking not found'),
         { status: 404 }
       )
     }
 
-    if (!phoneMatches(booking.guest.phone, phone)) {
+    if (!phoneMatches(first.guest.phone, phone)) {
       return Response.json(
         errorResponse('UNAUTHORIZED', 'Phone does not match this booking'),
         { status: 403 }
       )
     }
 
+    const groupRef = first.groupBookingReference || first.bookingReference
+
+    const allInGroup = await (prisma as any).booking.findMany({
+      where: {
+        OR: [
+          { bookingReference: groupRef },
+          { groupBookingReference: groupRef },
+        ],
+      },
+      include: { room: true, guest: true },
+      orderBy: { room: { roomNumber: 'asc' } },
+    })
+
+    const totalAmount = allInGroup.reduce((sum: number, b: any) => sum + b.totalAmount, 0)
+    const paidAmount = allInGroup.reduce((sum: number, b: any) => sum + b.paidAmount, 0)
+    const balanceAmount = allInGroup.reduce((sum: number, b: any) => sum + (b.balanceAmount ?? 0), 0)
+
     return Response.json(
       successResponse({
-        bookingId: booking.id,
-        bookingReference: booking.bookingReference,
-        checkIn: booking.checkIn,
-        checkOut: booking.checkOut,
-        status: booking.status,
-        paymentStatus: booking.paymentStatus,
-        totalAmount: booking.totalAmount,
-        paidAmount: booking.paidAmount,
-        balanceAmount: booking.balanceAmount,
-        guestName: booking.guest.name,
-        guestPhone: booking.guest.phone,
-        roomNumber: booking.room.roomNumber,
-        roomType: booking.room.roomType,
-        numberOfGuests: booking.numberOfGuests,
+        bookingReference: groupRef,
+        bookingId: first.id,
+        checkIn: first.checkIn,
+        checkOut: first.checkOut,
+        status: first.status,
+        paymentStatus: first.paymentStatus,
+        totalAmount,
+        paidAmount,
+        balanceAmount: balanceAmount > 0 ? balanceAmount : undefined,
+        guestName: first.guest.name,
+        guestPhone: first.guest.phone,
+        numberOfGuests: first.numberOfGuests,
+        isBatch: allInGroup.length > 1,
+        rooms: allInGroup.map((b: any) => ({
+          bookingId: b.id,
+          roomNumber: b.room.roomNumber,
+          roomType: b.room.roomType,
+          totalAmount: b.totalAmount,
+          status: b.status,
+        })),
       })
     )
   } catch (error) {

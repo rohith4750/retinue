@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 import { verifySignupToken, extractTokenFromHeader, generateCustomerToken } from '@/lib/jwt'
+import { hashPassword } from '@/lib/auth'
 
 function normalizePhone(phone: string): string {
   return (phone || '').replace(/\D/g, '')
@@ -10,7 +11,8 @@ function normalizePhone(phone: string): string {
 /**
  * POST /api/public/auth/signup
  * Complete sign-up with customer details (requires Bearer signupToken from verify-otp).
- * Body: { name, phone?, email?, address? } — phone required if token has email; email optional if token has phone.
+ * Body: { name, phone?, email?, address?, password? } — phone required if token has email.
+ * If password is provided, it is hashed (bcrypt) and stored for password login.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -26,9 +28,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}))
     const name = String(body.name || '').trim()
-    const emailBody = body.email != null ? String(body.email).trim() : ''
+    const emailBody = body.email != null ? String(body.email).trim().toLowerCase() : ''
     const address = body.address != null ? String(body.address).trim() : ''
     const phoneBody = body.phone != null ? normalizePhone(String(body.phone)) : ''
+    const rawPassword = body.password != null ? String(body.password) : ''
+    if (rawPassword.length > 0 && rawPassword.length < 6) {
+      return Response.json(
+        errorResponse('VALIDATION_ERROR', 'Password must be at least 6 characters'),
+        { status: 400 }
+      )
+    }
+    const passwordHash = rawPassword.length >= 6
+      ? await hashPassword(rawPassword)
+      : null
 
     if (!name || name.length < 2) {
       return Response.json(
@@ -73,11 +85,13 @@ export async function POST(request: NextRequest) {
         name,
         email: email || null,
         address: address || null,
+        passwordHash: passwordHash ?? undefined,
       },
       update: {
         name,
         email: email || null,
         address: address || null,
+        ...(passwordHash != null && { passwordHash }),
       },
     })
 

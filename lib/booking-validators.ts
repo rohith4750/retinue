@@ -69,9 +69,11 @@ export async function checkDateConflicts(
   roomId: string,
   checkIn: Date,
   checkOut: Date,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  tx?: any
 ): Promise<{ hasConflict: boolean; conflictingBooking?: any }> {
-  const overlapping = await prisma.booking.findMany({
+  const client = tx || prisma
+  const overlapping = await client.booking.findMany({
     where: {
       roomId,
       id: excludeBookingId ? { not: excludeBookingId } : undefined,
@@ -89,7 +91,7 @@ export async function checkDateConflicts(
 
   const checkInStart = new Date(checkIn)
   checkInStart.setHours(0, 0, 0, 0)
-  const conflictingBooking = overlapping.find((b) => {
+  const conflictingBooking = overlapping.find((b: { checkOut: Date }) => {
     const checkoutDayStart = new Date(b.checkOut)
     checkoutDayStart.setHours(0, 0, 0, 0)
     return checkoutDayStart > checkInStart

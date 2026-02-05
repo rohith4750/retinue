@@ -149,6 +149,7 @@ model Booking {
   status          BookingStatus @default(PENDING)
   source          String?       @default("STAFF") // STAFF = management site (hoteltheretinue.in), ONLINE = public site (hoteltheretinueonline.in)
   bookingReference String?      @unique // Short code for "view my booking" (e.g. ABC12XY); used by public site
+  groupBookingReference String? // Same ref shared by batch (multi-room); lookup returns all in group
   // Billing fields (merged from Bill table)
   billNumber      String?       @unique
   subtotal        Float?
@@ -173,6 +174,7 @@ model Booking {
   @@index([status])
   @@index([paymentStatus])
   @@index([source])
+  @@index([groupBookingReference])
 }
 
 // Inventory
@@ -315,15 +317,17 @@ model OtpVerification {
 
 // Customer (public-site sign-up: OTP-verified, no password)
 model Customer {
-  id        String   @id @default(cuid())
-  phone     String   @unique // 10 digits, verified via OTP
-  name      String
-  email     String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  phone        String   @unique // 10 digits, verified via OTP
+  name         String
+  email        String?
+  address      String?
+  passwordHash String?  // bcrypt hash; NULL for OTP-only users
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([phone])
+  @@index([email])
 }
 
 // Booking History / Audit Trail (Phase 3)
