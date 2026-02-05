@@ -327,6 +327,7 @@ export async function POST(request: NextRequest) {
     })
 
     const first = result.bookings[0]
+    const authUser = authResult as { username?: string; role: RoomBookedSourceRole }
     await notifyInternalRoomBooked({
       guestName: result.guest.name,
       guestPhone: result.guest.phone,
@@ -337,7 +338,8 @@ export async function POST(request: NextRequest) {
       bookingReference: first.bookingReference ?? first.id,
       totalAmount: result.bookings.reduce((s: number, b: any) => s + b.totalAmount, 0),
       source: 'STAFF',
-      createdByRole: (authResult as { role: RoomBookedSourceRole }).role,
+      createdByUsername: authUser.username,
+      createdByRole: authUser.role,
       isBatch: result.bookings.length > 1,
       rooms: result.bookings.length > 1 ? result.bookings.map((b: any) => ({ roomNumber: b.room.roomNumber, roomType: b.room.roomType })) : undefined,
     })

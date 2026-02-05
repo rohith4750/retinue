@@ -9,6 +9,8 @@ import { validateStatusTransition } from '@/lib/booking-state-machine'
 import { BookingError, InvalidStatusTransitionError } from '@/lib/booking-errors'
 import { logBookingChange } from '@/lib/booking-audit'
 import { calculateEarlyCheckoutAmount } from '@/lib/booking-validators'
+import { notifyInternalBookingStep } from '@/lib/booking-alerts'
+import type { BookingStep } from '@/lib/email'
 
 // GET /api/bookings/[id] - Get single booking with history (Phase 3)
 export async function GET(
@@ -397,13 +399,37 @@ export async function PUT(
         )
       }
 
-      return updatedBooking
+      return { updatedBooking, status, changes }
     }, {
       maxWait: 10000, // Max time to wait for transaction to start
       timeout: 30000, // Max time for transaction to complete (30s for slow Neon connections)
     })
 
-    return Response.json(successResponse(result, 'Booking updated successfully'))
+    const updatedBooking = (result as { updatedBooking: any; status?: string; changes: any[] }).updatedBooking
+    const statusChanged = (result as { status?: string }).status
+    const changes = (result as { changes: any[] }).changes ?? []
+    const authUser = authResult as { username?: string }
+
+    if (changes.length > 0) {
+      const step: BookingStep =
+        statusChanged && ['CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'CONFIRMED', 'PENDING'].includes(statusChanged)
+          ? (statusChanged as BookingStep)
+          : 'UPDATED'
+      await notifyInternalBookingStep({
+        step,
+        bookingReference: updatedBooking.bookingReference ?? updatedBooking.id,
+        guestName: updatedBooking.guest?.name ?? '',
+        guestPhone: updatedBooking.guest?.phone ?? '',
+        roomNumber: updatedBooking.room?.roomNumber ?? '',
+        roomType: updatedBooking.room?.roomType,
+        checkIn: updatedBooking.checkIn,
+        checkOut: updatedBooking.checkOut,
+        totalAmount: updatedBooking.totalAmount,
+        performedByUsername: authUser?.username,
+      })
+    }
+
+    return Response.json(successResponse(updatedBooking, 'Booking updated successfully'))
   } catch (error: any) {
     // Phase 2: Comprehensive error handling
     if (error instanceof BookingError) {
@@ -550,6 +576,20 @@ export async function DELETE(
     }, {
       maxWait: 10000,
       timeout: 30000,
+    })
+
+    const authUser = authResult as { username?: string }
+    await notifyInternalBookingStep({
+      step: 'CANCELLED',
+      bookingReference: result.bookingReference ?? result.id,
+      guestName: result.guest?.name ?? '',
+      guestPhone: result.guest?.phone ?? '',
+      roomNumber: result.room?.roomNumber ?? '',
+      roomType: result.room?.roomType,
+      checkIn: result.checkIn,
+      checkOut: result.checkOut,
+      totalAmount: result.totalAmount,
+      performedByUsername: authUser?.username,
     })
 
     return Response.json(successResponse(result, 'Booking cancelled successfully'))

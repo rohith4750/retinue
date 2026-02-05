@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { sendRoomBookedAlert, type RoomBookedAlertDetails } from '@/lib/email'
+import { sendRoomBookedAlert, sendBookingStepAlert, type RoomBookedAlertDetails, type BookingStepAlertDetails } from '@/lib/email'
 
 const BOOKING_ALERT_EMAILS_ENV = 'BOOKING_ALERT_EMAILS'
 
@@ -36,5 +36,19 @@ export async function notifyInternalRoomBooked(details: RoomBookedAlertDetails):
     await sendRoomBookedAlert(toEmails, details)
   } catch (err) {
     console.error('Failed to send room booked alert to internal users:', err)
+  }
+}
+
+/**
+ * Notify all internal users of a booking step (checked in, checked out, cancelled, updated).
+ * Call this after any status change or update.
+ */
+export async function notifyInternalBookingStep(details: BookingStepAlertDetails): Promise<void> {
+  try {
+    const toEmails = await getInternalAlertEmails()
+    if (toEmails.length === 0) return
+    await sendBookingStepAlert(toEmails, details)
+  } catch (err) {
+    console.error('Failed to send booking step alert to internal users:', err)
   }
 }

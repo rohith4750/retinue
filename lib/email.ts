@@ -379,14 +379,21 @@ export type RoomBookedAlertDetails = {
   bookingReference: string
   totalAmount?: number
   source: 'ONLINE' | 'STAFF'
-  /** When source is STAFF, show this role instead of "Staff" (e.g. Receptionist, Admin) */
+  /** When source is STAFF, show this username as source (e.g. who created the booking) */
+  createdByUsername?: string
+  /** When source is STAFF and no username, fallback to role label */
   createdByRole?: RoomBookedSourceRole
   isBatch?: boolean
   rooms?: Array<{ roomNumber: string; roomType: string }>
 }
 
-function formatSourceLabel(source: 'ONLINE' | 'STAFF', role?: RoomBookedSourceRole): string {
+function formatSourceLabel(
+  source: 'ONLINE' | 'STAFF',
+  username?: string,
+  role?: RoomBookedSourceRole
+): string {
   if (source === 'ONLINE') return 'Customer (Online)'
+  if (username && username.trim()) return username.trim()
   if (role) {
     const labels: Record<RoomBookedSourceRole, string> = {
       SUPER_ADMIN: 'Super Admin',
@@ -423,7 +430,7 @@ export async function sendRoomBookedAlert(
     dateStyle: 'medium',
     timeStyle: 'short',
   })
-  const sourceLabel = formatSourceLabel(details.source, details.createdByRole)
+  const sourceLabel = formatSourceLabel(details.source, details.createdByUsername, details.createdByRole)
   const title = details.isBatch
     ? `Customer booked ${details.rooms?.length ?? 0} room(s)`
     : 'Customer room booked'
@@ -480,6 +487,116 @@ export async function sendRoomBookedAlert(
     return true
   } catch (error) {
     console.error('Error sending room booked alert:', error)
+    return false
+  }
+}
+
+/** Booking step for internal alerts (every step = one email) */
+export type BookingStep =
+  | 'CREATED'
+  | 'CONFIRMED'
+  | 'PENDING'
+  | 'CHECKED_IN'
+  | 'CHECKED_OUT'
+  | 'CANCELLED'
+  | 'UPDATED'
+
+export type BookingStepAlertDetails = {
+  step: BookingStep
+  bookingReference: string
+  guestName: string
+  guestPhone: string
+  roomNumber: string
+  roomType?: string
+  checkIn: Date
+  checkOut: Date
+  totalAmount?: number
+  /** Who performed the action (staff username); optional for system/online */
+  performedByUsername?: string
+  /** For CREATED: source of booking */
+  source?: 'ONLINE' | 'STAFF'
+}
+
+const STEP_TITLES: Record<BookingStep, string> = {
+  CREATED: 'Room booked',
+  CONFIRMED: 'Booking confirmed',
+  PENDING: 'Booking pending',
+  CHECKED_IN: 'Guest checked in',
+  CHECKED_OUT: 'Guest checked out',
+  CANCELLED: 'Booking cancelled',
+  UPDATED: 'Booking updated',
+}
+
+/**
+ * Send a booking step alert to internal staff (every step = one email).
+ */
+export async function sendBookingStepAlert(
+  toEmails: string[],
+  details: BookingStepAlertDetails
+): Promise<boolean> {
+  if (!SMTP_USER || !SMTP_PASS || toEmails.length === 0) return false
+
+  const fromEmail = SMTP_FROM || SMTP_USER
+  if (!fromEmail) return false
+
+  const title = STEP_TITLES[details.step] ?? details.step
+  const checkInStr = new Date(details.checkIn).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+  const checkOutStr = new Date(details.checkOut).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+  const roomLine = `${details.roomNumber}${details.roomType ? ` (${details.roomType})` : ''}`
+  const byLine = details.performedByUsername
+    ? `Performed by: ${details.performedByUsername}`
+    : details.source === 'ONLINE'
+      ? 'Source: Customer (Online)'
+      : ''
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><meta charset="utf-8"></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; font-size: 1.25rem;">${title}</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Hotel The Retinue & Butchiraju Conventions</p>
+        </div>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <p style="margin: 0 0 12px 0;"><strong>Step:</strong> ${title}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Guest:</strong> ${details.guestName}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Phone:</strong> ${details.guestPhone}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Room:</strong> ${roomLine}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Check-in:</strong> ${checkInStr}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Check-out:</strong> ${checkOutStr}</p>
+          <p style="margin: 0 0 12px 0;"><strong>Booking reference:</strong> ${details.bookingReference}</p>
+          ${details.totalAmount != null ? `<p style="margin: 0 0 12px 0;"><strong>Total amount:</strong> ₹${Number(details.totalAmount).toLocaleString('en-IN')}</p>` : ''}
+          ${byLine ? `<p style="margin: 0;"><strong>${byLine}</strong></p>` : ''}
+        </div>
+        <p style="margin-top: 16px; font-size: 12px; color: #64748b;">This is an automated alert from the hotel management system.</p>
+      </body>
+    </html>
+  `
+
+  const text = [
+    title,
+    `Guest: ${details.guestName}`,
+    `Phone: ${details.guestPhone}`,
+    `Room: ${roomLine}`,
+    `Check-in: ${checkInStr}`,
+    `Check-out: ${checkOutStr}`,
+    `Booking reference: ${details.bookingReference}`,
+    details.totalAmount != null ? `Total amount: ₹${Number(details.totalAmount).toLocaleString('en-IN')}` : '',
+    byLine,
+  ].filter(Boolean).join('\n')
+
+  try {
+    await transporter.sendMail({
+      from: `"Hotel The Retinue" <${fromEmail}>`,
+      to: toEmails.join(', '),
+      subject: `[Alert] ${title} – ${details.bookingReference}`,
+      text,
+      html,
+    })
+    return true
+  } catch (error) {
+    console.error('Error sending booking step alert:', error)
     return false
   }
 }

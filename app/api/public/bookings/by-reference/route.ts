@@ -20,7 +20,7 @@ function phoneMatches(guestPhone: string, providedPhone: string): boolean {
 
 /**
  * GET /api/public/bookings/by-reference
- * View booking by reference + phone (no auth). Query: bookingReference, phone.
+ * View booking by reference only (no auth). Query: bookingReference (phone optional for verification).
  * For batch (multi-room) bookings, returns all rooms under the same group reference.
  */
 export async function GET(request: NextRequest) {
@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
     const ref = searchParams.get('bookingReference')?.trim().toUpperCase()
     const phone = searchParams.get('phone')?.trim()
 
-    if (!ref || !phone) {
+    if (!ref) {
       return Response.json(
-        errorResponse('VALIDATION_ERROR', 'bookingReference and phone are required'),
+        errorResponse('VALIDATION_ERROR', 'bookingReference is required'),
         { status: 400 }
       )
     }
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!phoneMatches(first.guest.phone, phone)) {
+    if (phone && !phoneMatches(first.guest.phone, phone)) {
       return Response.json(
         errorResponse('UNAUTHORIZED', 'Phone does not match this booking'),
         { status: 403 }
