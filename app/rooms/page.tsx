@@ -512,7 +512,7 @@ export default function RoomsPage() {
                                   displayStatus === 'CONFIRMED' ? 'bg-emerald-500/25 border border-emerald-500/50 shadow-emerald-500/10' :
                                   'bg-amber-500/25 border border-amber-500/50 shadow-amber-500/10'
                                 }`}
-                                title={`${booking.guest?.name || 'Guest'} - ${displayStatus}`}
+                                title={`${booking.guest?.name || 'Guest'} - ${displayStatus}${booking.source === 'ONLINE' ? ' (Online)' : ' (Staff)'}`}
                               >
                                 <p className={`text-[11px] font-semibold truncate ${
                                   displayStatus === 'CHECKED_IN' ? 'text-sky-200' :
@@ -527,6 +527,11 @@ export default function RoomsPage() {
                                   'text-amber-400'
                                 }`}>
                                   {displayStatus === 'CHECKED_IN' ? 'Checked In' : displayStatus === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
+                                </p>
+                                <p className={`text-[8px] mt-0.5 font-medium ${
+                                  booking.source === 'ONLINE' ? 'text-violet-300/90' : 'text-slate-400/90'
+                                }`}>
+                                  {booking.source === 'ONLINE' ? 'Online' : 'Staff'}
                                 </p>
                               </div>
                             ) : (
@@ -560,6 +565,14 @@ export default function RoomsPage() {
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded-lg bg-slate-700/40 border border-slate-600/50" />
                 <span className="text-slate-400 font-medium">Free</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs ml-2 pl-2 border-l border-white/10">
+                <span className="text-violet-400 font-medium">Online</span>
+                <span className="text-slate-500">= public site</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-400 font-medium">Staff</span>
+                <span className="text-slate-500">= staff booking</span>
               </div>
             </div>
           </>
