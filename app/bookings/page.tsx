@@ -132,7 +132,24 @@ export default function BookingsPage() {
   todayStart.setHours(0, 0, 0, 0)
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
-  const filteredBookings = bookings
+  const isCheckInToday = (b: any) => {
+    const today = new Date().toISOString().split('T')[0]
+    const checkIn = new Date(b.checkIn).toISOString().split('T')[0]
+    return checkIn === today
+  }
+
+  const isCheckOutToday = (b: any) => {
+    const today = new Date().toISOString().split('T')[0]
+    const checkOut = new Date(b.checkOut).toISOString().split('T')[0]
+    return checkOut === today
+  }
+
+  const filteredBookings = bookings.filter((b: any) => {
+    if (quickFilter === 'checkin_today') return isCheckInToday(b)
+    if (quickFilter === 'checkout_today') return isCheckOutToday(b)
+    if (quickFilter === 'in_house') return b.status === 'CHECKED_IN'
+    return true
+  })
 
   const updateStatusMutation = useMutationWithInvalidation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -369,8 +386,8 @@ export default function BookingsPage() {
                   key={filter}
                   onClick={() => setQuickFilter(filter)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${quickFilter === filter
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700/60 border border-white/5'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700/60 border border-white/5'
                     }`}
                 >
                   {filter === 'all' && 'All'}
@@ -487,10 +504,10 @@ export default function BookingsPage() {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
-                                  booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
-                                    booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
-                                      booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
-                                        'bg-amber-500/20 text-amber-400'
+                                booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
+                                  booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
+                                    booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                                      'bg-amber-500/20 text-amber-400'
                                 }`}>
                                 {booking.status.replace('_', ' ')}
                               </span>
@@ -603,10 +620,10 @@ export default function BookingsPage() {
                                     <div
                                       onClick={() => router.push(`/bookings/${booking.id}`)}
                                       className={`px-2 py-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] ${booking.status === 'CHECKED_IN'
-                                          ? 'bg-sky-500/25 border border-sky-500/50'
-                                          : booking.status === 'CONFIRMED'
-                                            ? 'bg-emerald-500/25 border border-emerald-500/50'
-                                            : 'bg-slate-600/40 border border-slate-500/50'
+                                        ? 'bg-sky-500/25 border border-sky-500/50'
+                                        : booking.status === 'CONFIRMED'
+                                          ? 'bg-emerald-500/25 border border-emerald-500/50'
+                                          : 'bg-slate-600/40 border border-slate-500/50'
                                         }`}
                                     >
                                       <p className="text-[11px] font-semibold text-white truncate" title={booking.guest?.name}>
@@ -700,28 +717,28 @@ export default function BookingsPage() {
                     onClick={() => router.push(`/bookings/${booking.id}`)}
                     onKeyDown={(e) => e.key === 'Enter' && router.push(`/bookings/${booking.id}`)}
                     className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 hover:shadow-lg cursor-pointer bg-slate-800/95 ${booking.status === 'CONFIRMED' ? 'border-emerald-500/40 hover:border-emerald-500/60' :
-                        booking.status === 'CHECKED_IN' ? 'border-sky-500/40 hover:border-sky-500/60' :
-                          booking.status === 'CHECKED_OUT' ? 'border-slate-500/40' :
-                            booking.status === 'CANCELLED' ? 'border-red-500/40' :
-                              'border-amber-500/40 hover:border-amber-500/60'
+                      booking.status === 'CHECKED_IN' ? 'border-sky-500/40 hover:border-sky-500/60' :
+                        booking.status === 'CHECKED_OUT' ? 'border-slate-500/40' :
+                          booking.status === 'CANCELLED' ? 'border-red-500/40' :
+                            'border-amber-500/40 hover:border-amber-500/60'
                       }`}
                   >
                     <div className="p-4 pt-3">
                       {/* Status on its own line, then name/room below */}
                       <div className="mb-3">
                         <div className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/25 text-emerald-300' :
-                            booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
-                              booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
-                                booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
-                                  'bg-amber-500/25 text-amber-300'
+                          booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
+                            booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
+                              booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
+                                'bg-amber-500/25 text-amber-300'
                           }`}>
                           {booking.status.replace('_', ' ')}
                         </div>
                         <div className="flex items-center gap-3 mt-2">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 ${booking.status === 'CONFIRMED' ? 'bg-emerald-500' :
-                              booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
-                                booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
-                                  'bg-amber-500'
+                            booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
+                              booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
+                                'bg-amber-500'
                             }`}>
                             {booking.guest.name.charAt(0).toUpperCase()}
                           </div>
