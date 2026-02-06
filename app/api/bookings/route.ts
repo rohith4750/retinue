@@ -11,7 +11,7 @@ import { generateBookingId, generateBookingReference } from '@/lib/booking-id-ge
 import { notifyInternalRoomBooked } from '@/lib/booking-alerts'
 import type { RoomBookedSourceRole } from '@/lib/email'
 
-// GET /api/bookings - List all bookings with pagination (Phase 2)
+// GET /api/bookings - List all bookings with pagination and global stats
 export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth()(request)
@@ -21,22 +21,32 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const date = searchParams.get('date')
     const search = searchParams.get('search')
-    const source = searchParams.get('source') // 'online' = from public site (hoteltheretinueonline.in)
-    const forCalendar = searchParams.get('forCalendar') === '1' || searchParams.get('includeOnline') === '1' // rooms calendar: include all sources
+    const source = searchParams.get('source')
+    // Payment status filter (PENDING, PAID, PARTIAL)
+    const paymentStatusParam = searchParams.get('paymentStatus')
+    const paymentStatus = (paymentStatusParam && ['PENDING', 'PAID', 'PARTIAL'].includes(paymentStatusParam)) 
+      ? paymentStatusParam 
+      : undefined
+    
+    const quickFilter = searchParams.get('quickFilter') // 'checkin_today', 'checkout_today', 'in_house'
+    const forCalendar = searchParams.get('forCalendar') === '1' || searchParams.get('includeOnline') === '1'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
     const where: any = {
-      // By default, show only active bookings (exclude CANCELLED and CHECKED_OUT)
-      status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
-      // Staff bookings page: exclude online (online has dedicated GET /api/bookings/online). For calendar view, include all.
+      // Default: show active (exclude CANCELLED/CHECKED_OUT) UNLESS filtering specifically
+      // But if quickFilter is set, we might want to override this default behavior
+      ...(status ? { status } : { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } }),
+      ...(paymentStatus ? { paymentStatus } : {}),
       ...(forCalendar ? {} : { source: { not: 'ONLINE' } }),
     }
-    if (status) where.status = status
+
     if (source === 'online' && !forCalendar) {
       where.source = 'ONLINE'
     }
+
+    // Date filter (specific date)
     if (date) {
       const startOfDay = new Date(date)
       startOfDay.setHours(0, 0, 0, 0)
@@ -44,8 +54,44 @@ export async function GET(request: NextRequest) {
       endOfDay.setHours(23, 59, 59, 999)
       where.checkIn = { gte: startOfDay, lte: endOfDay }
     }
-    
-    // Search functionality (id = booking ID e.g. RETINU0123)
+
+    // Date Range filter (from/to)
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
+    if (from && to) {
+      const fromDate = new Date(from)
+      const toDate = new Date(to)
+      // Find valid bookings that OVERLAP with the requested range
+      // Overlap: checkIn < toDate AND checkOut > fromDate
+      // We assume from/to include times or are dates. If dates, we might want to cover full days.
+      // Let's assume the caller passes ISO strings or dates.
+      // If we want "bookings active in this range":
+      where.AND = [
+        ...(where.AND || []),
+        { checkIn: { lt: toDate } },
+        { checkOut: { gt: fromDate } }
+      ]
+    }
+
+    // Quick Filters (Server-side)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date()
+    todayEnd.setHours(23, 59, 59, 999)
+
+    if (quickFilter === 'checkin_today') {
+      where.checkIn = { gte: todayStart, lte: todayEnd }
+      delete where.status // Allow finding checked-out bookings if they checked in today (rare but possible) or any status
+    } else if (quickFilter === 'checkout_today') {
+      where.checkOut = { gte: todayStart, lte: todayEnd }
+      delete where.status
+    } else if (quickFilter === 'in_house') {
+      where.status = 'CHECKED_IN'
+    } else if (quickFilter === 'all') {
+      delete where.status // Show everything
+    }
+
+    // Search functionality
     if (search) {
       where.OR = [
         { id: { contains: search, mode: 'insensitive' } },
@@ -56,6 +102,7 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    // fetch data
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({
         where,
@@ -75,6 +122,22 @@ export async function GET(request: NextRequest) {
       prisma.booking.count({ where }),
     ])
 
+    // Calculate Global Stats (Independent of pagination/filters, but respecting source restrictions if any)
+    // We want these stats to reflect the "whole hotel state" mostly, or at least be useful context.
+    // Usually, dashboard stats should be global (e.g. Total Revenue for today, or Total In-House).
+    // Let's calculate standard dashboard metrics:
+    const statsWhere: any = forCalendar ? {} : { source: { not: 'ONLINE' } }
+    
+    const [confirmedCount, checkedInCount, checkedOutCount, revenueAgg] = await Promise.all([
+      prisma.booking.count({ where: { ...statsWhere, status: 'CONFIRMED' } }),
+      prisma.booking.count({ where: { ...statsWhere, status: 'CHECKED_IN' } }),
+      prisma.booking.count({ where: { ...statsWhere, status: 'CHECKED_OUT' } }),
+      prisma.booking.aggregate({
+        where: statsWhere,
+        _sum: { totalAmount: true },
+      }),
+    ])
+
     return Response.json(
       successResponse({
         data: bookings,
@@ -84,6 +147,12 @@ export async function GET(request: NextRequest) {
           total,
           totalPages: Math.ceil(total / limit),
         },
+        summary: {
+          confirmed: confirmedCount,
+          checkedIn: checkedInCount,
+          checkedOut: checkedOutCount,
+          totalRevenue: revenueAgg._sum.totalAmount || 0,
+        }
       })
     )
   } catch (error) {

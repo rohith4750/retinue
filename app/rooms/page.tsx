@@ -65,7 +65,7 @@ export default function RoomsPage() {
     show: false,
     roomId: null,
   })
-  
+
   // Calendar view state
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [calendarStartDate, setCalendarStartDate] = useState(() => {
@@ -82,10 +82,19 @@ export default function RoomsPage() {
     }
   }, [])
 
+  // Calculate end date for the 7-day view
+  const calendarEndDate = new Date(calendarStartDate)
+  calendarEndDate.setDate(calendarEndDate.getDate() + 8) // +8 days to cover slightly more than the week to be safe with timezone/overlap
+
   // Fetch bookings for calendar view (include ONLINE so grid shows correct Free/Booked for all sources)
   const { data: bookingsResponse } = useQuery({
     queryKey: ['bookings-calendar', calendarStartDate.toISOString()],
-    queryFn: () => api.get('/bookings?limit=500&forCalendar=1'),
+    queryFn: () => {
+      const from = calendarStartDate.toISOString()
+      const to = calendarEndDate.toISOString()
+      // Use efficient date range filter backend instead of fetching all
+      return api.get(`/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&forCalendar=1&limit=1000`)
+    },
     staleTime: 0,
   })
   // Handle both { data: [...], pagination } and direct array from API
@@ -271,11 +280,10 @@ export default function RoomsPage() {
             />
             <button
               onClick={() => setShowDateFilter(!showDateFilter)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
-                isCheckingAvailability 
-                  ? 'bg-sky-600/20 border-sky-500 text-sky-400' 
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${isCheckingAvailability
+                  ? 'bg-sky-600/20 border-sky-500 text-sky-400'
                   : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-slate-600'
-              }`}
+                }`}
             >
               <FaFilter className="w-3 h-3" />
               <span className="text-sm">Date & Time Filter</span>
@@ -293,23 +301,21 @@ export default function RoomsPage() {
                 Clear Filter
               </button>
             )}
-            
+
             {/* View Mode Toggle */}
             <div className="flex items-center bg-slate-800/60 rounded-lg border border-white/5 p-0.5">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <FaList className="w-3 h-3" />
                 List
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'calendar' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'calendar' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <FaCalendarAlt className="w-3 h-3" />
                 Calendar
@@ -397,185 +403,179 @@ export default function RoomsPage() {
                 <p className="text-sm text-slate-500">Same rooms as the list. Add or adjust filters to see rooms here.</p>
               </div>
             ) : (
-          <>
-            {/* Calendar Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 bg-slate-900/60 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 rounded-xl bg-slate-800/80 p-1 border border-white/10">
-                  <button
-                    onClick={() => navigateCalendar('prev')}
-                    className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
-                  >
-                    <FaChevronLeft className="w-4 h-4" />
-                  </button>
-                  <h3 className="text-base font-bold text-white min-w-[120px] text-center">
-                    {calendarStartDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
-                  </h3>
-                  <button
-                    onClick={() => navigateCalendar('next')}
-                    className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
-                  >
-                    <FaChevronRight className="w-4 h-4" />
-                  </button>
+              <>
+                {/* Calendar Header */}
+                <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 bg-slate-900/60 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 rounded-xl bg-slate-800/80 p-1 border border-white/10">
+                      <button
+                        onClick={() => navigateCalendar('prev')}
+                        className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
+                      >
+                        <FaChevronLeft className="w-4 h-4" />
+                      </button>
+                      <h3 className="text-base font-bold text-white min-w-[120px] text-center">
+                        {calendarStartDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                      </h3>
+                      <button
+                        onClick={() => navigateCalendar('next')}
+                        className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
+                      >
+                        <FaChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={goToToday}
+                      className="px-3 py-2 text-xs font-semibold text-sky-300 bg-sky-500/20 hover:bg-sky-500/30 rounded-xl border border-sky-500/40 transition-all"
+                    >
+                      Today
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-white/5">
+                      {calendarRooms.length} room{calendarRooms.length !== 1 ? 's' : ''}
+                    </span>
+                    <select
+                      value={calendarFloorFilter}
+                      onChange={(e) => setCalendarFloorFilter(e.target.value)}
+                      className="px-3 py-2 text-xs bg-slate-800 border border-slate-600 rounded-xl text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 outline-none"
+                    >
+                      <option value="all">All Floors</option>
+                      {uniqueFloors.map((floor: any) => (
+                        <option key={floor} value={floor}>Floor {floor}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <button
-                  onClick={goToToday}
-                  className="px-3 py-2 text-xs font-semibold text-sky-300 bg-sky-500/20 hover:bg-sky-500/30 rounded-xl border border-sky-500/40 transition-all"
-                >
-                  Today
-                </button>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-white/5">
-                  {calendarRooms.length} room{calendarRooms.length !== 1 ? 's' : ''}
-                </span>
-                <select
-                  value={calendarFloorFilter}
-                  onChange={(e) => setCalendarFloorFilter(e.target.value)}
-                  className="px-3 py-2 text-xs bg-slate-800 border border-slate-600 rounded-xl text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 outline-none"
-                >
-                  <option value="all">All Floors</option>
-                  {uniqueFloors.map((floor: any) => (
-                    <option key={floor} value={floor}>Floor {floor}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            {/* Calendar Grid */}
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px]">
-                <thead>
-                  <tr className="bg-slate-900/40">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-36 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">Room</th>
-                    {calendarDays.map((date, i) => {
-                      const isToday = date.toDateString() === new Date().toDateString()
-                      return (
-                        <th key={i} className={`px-2 py-3 text-center min-w-[110px] border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''}`}>
-                          <div className={`text-[10px] uppercase tracking-wider font-medium ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
-                            {date.toLocaleDateString('en-IN', { weekday: 'short' })}
-                          </div>
-                          <div className={`text-lg font-bold mt-0.5 ${isToday ? 'text-sky-300' : 'text-slate-300'}`}>
-                            {date.getDate()}
-                          </div>
-                          <div className={`text-[10px] ${isToday ? 'text-sky-400/80' : 'text-slate-500'}`}>
-                            {date.toLocaleDateString('en-IN', { month: 'short' })}
-                          </div>
-                        </th>
-                      )
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {calendarRooms.map((room: any) => (
-                    <tr key={room.id} className="border-t border-white/5 hover:bg-slate-700/10 transition-colors">
-                      <td className="px-3 py-2.5 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">
-                        <div className={`inline-flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 w-full ${
-                          room.status === 'AVAILABLE' ? 'bg-emerald-500/10 border-emerald-500/40' :
-                          room.status === 'BOOKED' ? 'bg-red-500/10 border-red-500/40' :
-                          'bg-amber-500/10 border-amber-500/40'
-                        }`}>
-                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                            room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                            room.status === 'BOOKED' ? 'bg-red-400' :
-                            'bg-amber-400'
-                          }`} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-white">{room.roomNumber}</p>
-                            <p className="text-[10px] text-slate-400">{room.roomType} • F{room.floor} • ₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
-                            {room.status === 'MAINTENANCE' && room.maintenanceReason && (
-                              <p className="text-[9px] text-amber-300/90 mt-0.5 truncate" title={room.maintenanceReason}>{room.maintenanceReason}</p>
-                            )}
-                            {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
-                              <div className="text-[9px] text-red-300/90 mt-0.5 space-y-0.5">
-                                {room.checkInAt && (
-                                  <p title="Check-in time">In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                {/* Calendar Grid */}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px]">
+                    <thead>
+                      <tr className="bg-slate-900/40">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-36 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">Room</th>
+                        {calendarDays.map((date, i) => {
+                          const isToday = date.toDateString() === new Date().toDateString()
+                          return (
+                            <th key={i} className={`px-2 py-3 text-center min-w-[110px] border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''}`}>
+                              <div className={`text-[10px] uppercase tracking-wider font-medium ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
+                                {date.toLocaleDateString('en-IN', { weekday: 'short' })}
+                              </div>
+                              <div className={`text-lg font-bold mt-0.5 ${isToday ? 'text-sky-300' : 'text-slate-300'}`}>
+                                {date.getDate()}
+                              </div>
+                              <div className={`text-[10px] ${isToday ? 'text-sky-400/80' : 'text-slate-500'}`}>
+                                {date.toLocaleDateString('en-IN', { month: 'short' })}
+                              </div>
+                            </th>
+                          )
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calendarRooms.map((room: any) => (
+                        <tr key={room.id} className="border-t border-white/5 hover:bg-slate-700/10 transition-colors">
+                          <td className="px-3 py-2.5 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">
+                            <div className={`inline-flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 w-full ${room.status === 'AVAILABLE' ? 'bg-emerald-500/10 border-emerald-500/40' :
+                                room.status === 'BOOKED' ? 'bg-red-500/10 border-red-500/40' :
+                                  'bg-amber-500/10 border-amber-500/40'
+                              }`}>
+                              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                                  room.status === 'BOOKED' ? 'bg-red-400' :
+                                    'bg-amber-400'
+                                }`} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-white">{room.roomNumber}</p>
+                                <p className="text-[10px] text-slate-400">{room.roomType} • F{room.floor} • ₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
+                                {room.status === 'MAINTENANCE' && room.maintenanceReason && (
+                                  <p className="text-[9px] text-amber-300/90 mt-0.5 truncate" title={room.maintenanceReason}>{room.maintenanceReason}</p>
                                 )}
-                                {room.checkOutAt && (
-                                  <p title="Check-out time">Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
+                                  <div className="text-[9px] text-red-300/90 mt-0.5 space-y-0.5">
+                                    {room.checkInAt && (
+                                      <p title="Check-in time">In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                    )}
+                                    {room.checkOutAt && (
+                                      <p title="Check-out time">Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      {calendarDays.map((date, i) => {
-                        const booking = getRoomBookingForDate(room.id, date)
-                        const isToday = date.toDateString() === new Date().toDateString()
-                        const displayStatus = booking ? getBookingDisplayStatusForDate(booking, date) : null
-                        return (
-                          <td key={i} className={`px-1.5 py-1.5 align-top border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/8' : ''}`}>
-                            {booking ? (
-                              <div
-                                className={`px-2 py-2 rounded-xl text-center cursor-pointer transition-all hover:scale-[1.03] shadow-sm ${
-                                  displayStatus === 'CHECKED_IN' ? 'bg-sky-500/25 border border-sky-500/50 shadow-sky-500/10' :
-                                  displayStatus === 'CONFIRMED' ? 'bg-emerald-500/25 border border-emerald-500/50 shadow-emerald-500/10' :
-                                  'bg-amber-500/25 border border-amber-500/50 shadow-amber-500/10'
-                                }`}
-                                title={`${booking.guest?.name || 'Guest'} - ${displayStatus}${booking.source === 'ONLINE' ? ' (Online)' : ' (Staff)'}`}
-                              >
-                                <p className={`text-[11px] font-semibold truncate ${
-                                  displayStatus === 'CHECKED_IN' ? 'text-sky-200' :
-                                  displayStatus === 'CONFIRMED' ? 'text-emerald-200' :
-                                  'text-amber-200'
-                                }`}>
-                                  {booking.guest?.name?.split(' ')[0] || 'Guest'}
-                                </p>
-                                <p className={`text-[9px] font-medium mt-0.5 ${
-                                  displayStatus === 'CHECKED_IN' ? 'text-sky-400' :
-                                  displayStatus === 'CONFIRMED' ? 'text-emerald-400' :
-                                  'text-amber-400'
-                                }`}>
-                                  {displayStatus === 'CHECKED_IN' ? 'Checked In' : displayStatus === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
-                                </p>
-                                <p className={`text-[8px] mt-0.5 font-medium ${
-                                  booking.source === 'ONLINE' ? 'text-violet-300/90' : 'text-slate-400/90'
-                                }`}>
-                                  {booking.source === 'ONLINE' ? 'Online' : 'Staff'}
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="px-2 py-2 rounded-xl text-center bg-slate-700/15 border border-slate-600/30">
-                                <p className="text-[10px] font-medium text-slate-500">Free</p>
-                              </div>
-                            )}
+                            </div>
                           </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          {calendarDays.map((date, i) => {
+                            const booking = getRoomBookingForDate(room.id, date)
+                            const isToday = date.toDateString() === new Date().toDateString()
+                            const displayStatus = booking ? getBookingDisplayStatusForDate(booking, date) : null
+                            return (
+                              <td key={i} className={`px-1.5 py-1.5 align-top border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/8' : ''}`}>
+                                {booking ? (
+                                  <div
+                                    className={`px-2 py-2 rounded-xl text-center cursor-pointer transition-all hover:scale-[1.03] shadow-sm ${displayStatus === 'CHECKED_IN' ? 'bg-sky-500/25 border border-sky-500/50 shadow-sky-500/10' :
+                                        displayStatus === 'CONFIRMED' ? 'bg-emerald-500/25 border border-emerald-500/50 shadow-emerald-500/10' :
+                                          'bg-amber-500/25 border border-amber-500/50 shadow-amber-500/10'
+                                      }`}
+                                    title={`${booking.guest?.name || 'Guest'} - ${displayStatus}${booking.source === 'ONLINE' ? ' (Online)' : ' (Staff)'}`}
+                                  >
+                                    <p className={`text-[11px] font-semibold truncate ${displayStatus === 'CHECKED_IN' ? 'text-sky-200' :
+                                        displayStatus === 'CONFIRMED' ? 'text-emerald-200' :
+                                          'text-amber-200'
+                                      }`}>
+                                      {booking.guest?.name?.split(' ')[0] || 'Guest'}
+                                    </p>
+                                    <p className={`text-[9px] font-medium mt-0.5 ${displayStatus === 'CHECKED_IN' ? 'text-sky-400' :
+                                        displayStatus === 'CONFIRMED' ? 'text-emerald-400' :
+                                          'text-amber-400'
+                                      }`}>
+                                      {displayStatus === 'CHECKED_IN' ? 'Checked In' : displayStatus === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
+                                    </p>
+                                    <p className={`text-[8px] mt-0.5 font-medium ${booking.source === 'ONLINE' ? 'text-violet-300/90' : 'text-slate-400/90'
+                                      }`}>
+                                      {booking.source === 'ONLINE' ? 'Online' : 'Staff'}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="px-2 py-2 rounded-xl text-center bg-slate-700/15 border border-slate-600/30">
+                                    <p className="text-[10px] font-medium text-slate-500">Free</p>
+                                  </div>
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-            {/* Legend */}
-            <div className="px-5 py-3 bg-slate-900/40 border-t border-white/10 flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-4 h-4 rounded-lg bg-emerald-500/30 border border-emerald-500/50 shadow-sm" />
-                <span className="text-slate-400 font-medium">Confirmed</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-4 h-4 rounded-lg bg-sky-500/30 border border-sky-500/50 shadow-sm" />
-                <span className="text-slate-400 font-medium">Checked In</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-4 h-4 rounded-lg bg-amber-500/30 border border-amber-500/50 shadow-sm" />
-                <span className="text-slate-400 font-medium">Pending</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-4 h-4 rounded-lg bg-slate-700/40 border border-slate-600/50" />
-                <span className="text-slate-400 font-medium">Free</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs ml-2 pl-2 border-l border-white/10">
-                <span className="text-violet-400 font-medium">Online</span>
-                <span className="text-slate-500">= public site</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-400 font-medium">Staff</span>
-                <span className="text-slate-500">= staff booking</span>
-              </div>
-            </div>
-          </>
+                {/* Legend */}
+                <div className="px-5 py-3 bg-slate-900/40 border-t border-white/10 flex flex-wrap items-center gap-6">
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded-lg bg-emerald-500/30 border border-emerald-500/50 shadow-sm" />
+                    <span className="text-slate-400 font-medium">Confirmed</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded-lg bg-sky-500/30 border border-sky-500/50 shadow-sm" />
+                    <span className="text-slate-400 font-medium">Checked In</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded-lg bg-amber-500/30 border border-amber-500/50 shadow-sm" />
+                    <span className="text-slate-400 font-medium">Pending</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded-lg bg-slate-700/40 border border-slate-600/50" />
+                    <span className="text-slate-400 font-medium">Free</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs ml-2 pl-2 border-l border-white/10">
+                    <span className="text-violet-400 font-medium">Online</span>
+                    <span className="text-slate-500">= public site</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-400 font-medium">Staff</span>
+                    <span className="text-slate-500">= staff booking</span>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -599,13 +599,12 @@ export default function RoomsPage() {
                   {categoryRooms.map((room: any) => (
                     <div
                       key={room.id}
-                      className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${
-                        room.status === 'AVAILABLE'
+                      className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${room.status === 'AVAILABLE'
                           ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30'
                           : room.status === 'BOOKED'
                             ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30'
                             : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
-                      }`}
+                        }`}
                       onClick={() => {
                         if (canManageRooms) {
                           setEditingRoom(room)
@@ -613,27 +612,23 @@ export default function RoomsPage() {
                         }
                       }}
                     >
-                      <span className={`text-sm font-bold ${
-                        room.status === 'AVAILABLE' ? 'text-emerald-300' :
-                        room.status === 'BOOKED' ? 'text-red-300' :
-                        'text-yellow-300'
-                      }`}>{room.roomNumber}</span>
-                      <span className={`w-px h-5 mx-3 ${
-                        room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                        room.status === 'BOOKED' ? 'bg-red-400' :
-                        'bg-yellow-400'
-                      }`} />
+                      <span className={`text-sm font-bold ${room.status === 'AVAILABLE' ? 'text-emerald-300' :
+                          room.status === 'BOOKED' ? 'text-red-300' :
+                            'text-yellow-300'
+                        }`}>{room.roomNumber}</span>
+                      <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                          room.status === 'BOOKED' ? 'bg-red-400' :
+                            'bg-yellow-400'
+                        }`} />
                       <span className="text-sm font-semibold text-white">₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</span>
-                      <span className={`w-px h-5 mx-3 ${
-                        room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                        room.status === 'BOOKED' ? 'bg-red-400' :
-                        'bg-yellow-400'
-                      }`} />
-                      <span className={`text-[10px] font-semibold uppercase ${
-                        room.status === 'AVAILABLE' ? 'text-emerald-400' :
-                        room.status === 'BOOKED' ? 'text-red-400' :
-                        'text-yellow-400'
-                      }`}>{room.status}</span>
+                      <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                          room.status === 'BOOKED' ? 'bg-red-400' :
+                            'bg-yellow-400'
+                        }`} />
+                      <span className={`text-[10px] font-semibold uppercase ${room.status === 'AVAILABLE' ? 'text-emerald-400' :
+                          room.status === 'BOOKED' ? 'text-red-400' :
+                            'text-yellow-400'
+                        }`}>{room.status}</span>
                       {room.status === 'MAINTENANCE' && room.maintenanceReason && (
                         <>
                           <span className="w-px h-5 mx-3 bg-yellow-400" />
@@ -664,11 +659,10 @@ export default function RoomsPage() {
                       )}
                       {canManageRooms && (
                         <>
-                          <span className={`w-px h-5 mx-3 ${
-                            room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                            room.status === 'BOOKED' ? 'bg-red-400' :
-                            'bg-yellow-400'
-                          }`} />
+                          <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                              room.status === 'BOOKED' ? 'bg-red-400' :
+                                'bg-yellow-400'
+                            }`} />
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -811,7 +805,7 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
               {room ? 'Update room information' : 'Add a new room to the system'}
             </p>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -928,7 +922,7 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
                 />
               </div>
             )}
-            
+
             <div className="flex justify-end space-x-2 pt-3 border-t border-white/5">
               <button
                 type="button"

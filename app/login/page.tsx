@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
+import { api } from '@/lib/api-client'
 import { setAuth, clearAuth } from '@/lib/auth-storage'
 import { FaSpinner, FaTimes, FaEnvelope, FaLock, FaBuilding, FaHotel, FaEye, FaEyeSlash } from 'react-icons/fa'
 
@@ -50,31 +51,22 @@ function LoginContent() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Include cookies for refresh token
-        body: JSON.stringify({ email, password, rememberMe }),
-      })
+      // Use api client but handle response manually since we need the token before setting auth
+      const data = await api.post('/auth/login', { email, password, rememberMe })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed')
-      }
-
-      const accessToken = data.data?.accessToken
-      const user = data.data?.user
+      const accessToken = data?.accessToken
+      const user = data?.user
       if (!accessToken || !user) {
         throw new Error('Invalid login response')
       }
 
       setAuth(accessToken, user, rememberMe)
-
       toast.success('Login successful!')
       router.push('/dashboard')
     } catch (err: any) {
+      // API client throws errors with consistent format
       const errorMessage = err.message || 'Login failed'
+      // If it's a network error or server error, showing it here helps
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
@@ -163,7 +155,7 @@ function LoginContent() {
         <div className="absolute top-0 -right-40 w-80 h-80 bg-amber-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
         <div className="absolute -bottom-40 left-20 w-80 h-80 bg-sky-500/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
         <div className="absolute bottom-20 right-20 w-80 h-80 bg-emerald-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-6000"></div>
-        
+
         {/* Grid Pattern */}
         <div className="absolute inset-0 opacity-[0.02]" style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
@@ -174,7 +166,7 @@ function LoginContent() {
       {/* Main Content - no scroll: fit viewport */}
       <div className="flex-1 w-full min-h-0 flex items-center justify-center p-4 sm:p-6 relative z-10 overflow-hidden">
         <div className="max-w-5xl w-full max-h-full flex flex-col lg:flex-row items-center lg:items-stretch gap-6 lg:gap-0 min-h-0 overflow-hidden">
-          
+
           {/* Left Side - Logo (hidden on mobile, shown on lg) */}
           <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-6 lg:p-8 relative min-h-0 overflow-hidden">
             <div className="w-full max-w-md flex justify-center items-center min-h-0 shrink-0">
@@ -222,135 +214,135 @@ function LoginContent() {
                 <p className="text-slate-500 text-xs">Hotel & Convention Center</p>
               </div>
 
-          {/* Login Card */}
-          <div className="bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5)]">
-            <div className="text-center mb-8">
-              <p className="text-sky-400 text-sm font-medium tracking-wide mb-0.5">Butchiraju Conventions</p>
-              <h2 className="text-xl font-bold text-white mb-1">Hotel The Retinue</h2>
-              <p className="text-slate-500 text-xs uppercase tracking-wider mt-1">
-                Hotel & Convention Management
-              </p>
-            </div>
+              {/* Login Card */}
+              <div className="bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5)]">
+                <div className="text-center mb-8">
+                  <p className="text-sky-400 text-sm font-medium tracking-wide mb-0.5">Butchiraju Conventions</p>
+                  <h2 className="text-xl font-bold text-white mb-1">Hotel The Retinue</h2>
+                  <p className="text-slate-500 text-xs uppercase tracking-wider mt-1">
+                    Hotel & Convention Management
+                  </p>
+                </div>
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              {sessionExpiredMessage && (
-                <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-3 rounded-xl flex items-center justify-between text-sm">
-                  <span>Session expired. Please login again.</span>
-                  <button
-                    type="button"
-                    onClick={() => setSessionExpiredMessage(false)}
-                    className="text-amber-400/70 hover:text-amber-400 p-1"
-                    aria-label="Dismiss"
-                  >
-                    <FaTimes className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl flex items-center text-sm">
-                  <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  {error}
-                </div>
-              )}
+                <form className="space-y-5" onSubmit={handleSubmit}>
+                  {sessionExpiredMessage && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-3 rounded-xl flex items-center justify-between text-sm">
+                      <span>Session expired. Please login again.</span>
+                      <button
+                        type="button"
+                        onClick={() => setSessionExpiredMessage(false)}
+                        className="text-amber-400/70 hover:text-amber-400 p-1"
+                        aria-label="Dismiss"
+                      >
+                        <FaTimes className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl flex items-center text-sm">
+                      <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      {error}
+                    </div>
+                  )}
 
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      className="w-full pl-11 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                        Email Address
+                      </label>
+                      <div className="relative">
+                        <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          required
+                          className="w-full pl-11 pr-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"
+                          placeholder="Enter your email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                        <input
+                          id="password"
+                          name="password"
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          className="w-full pl-11 pr-12 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"
+                          placeholder="Enter your password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                        >
+                          {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          id="rememberMe"
+                          name="rememberMe"
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className="w-4 h-4 text-amber-500 bg-slate-800 border-white/20 rounded focus:ring-amber-500 focus:ring-2"
+                        />
+                        <label htmlFor="rememberMe" className="ml-2 text-sm text-slate-400">
+                          Remember me
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
                   </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                    <input
-                      id="password"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      className="w-full pl-11 pr-12 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                    >
-                      {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      id="rememberMe"
-                      name="rememberMe"
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 text-amber-500 bg-slate-800 border-white/20 rounded focus:ring-amber-500 focus:ring-2"
-                    />
-                    <label htmlFor="rememberMe" className="ml-2 text-sm text-slate-400">
-                      Remember me
-                    </label>
-                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold rounded-xl hover:from-amber-600 hover:to-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20"
                   >
-                    Forgot password?
+                    {loading ? (
+                      <span className="flex items-center justify-center">
+                        <FaSpinner className="animate-spin -ml-1 mr-3 h-5 w-5" />
+                        Signing in...
+                      </span>
+                    ) : (
+                      'Sign In'
+                    )}
                   </button>
+                </form>
+
+                {/* Footer */}
+                <div className="mt-8 pt-6 border-t border-white/5 text-center">
+                  <p className="text-xs text-slate-500">
+                    Protected by enterprise-grade security
+                  </p>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold rounded-xl hover:from-amber-600 hover:to-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <FaSpinner className="animate-spin -ml-1 mr-3 h-5 w-5" />
-                    Signing in...
-                  </span>
-                ) : (
-                  'Sign In'
-                )}
-              </button>
-            </form>
-            
-            {/* Footer */}
-            <div className="mt-8 pt-6 border-t border-white/5 text-center">
-              <p className="text-xs text-slate-500">
-                Protected by enterprise-grade security
-              </p>
-            </div>
-          </div>
-            </div>
-          </div>
-          
         </div>
       </div>
 

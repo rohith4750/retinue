@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
@@ -14,36 +14,36 @@ export default function BillsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all')
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
+  const [page, setPage] = useState(1)
+  const limit = 24 // Multiple of 2 and 3 for nice grid
 
-  const { data: bookingsResponse, isLoading } = useQuery({
-    queryKey: ['bookings', 'bills-list'],
-    queryFn: () => api.get('/bookings?limit=200'),
-    staleTime: 0,
+  // Debounce search (optional, but good practice; here relying on standard input, effectively searches on type)
+  // For better UX during typing, might want to use a debounced value or SearchInput's onSearch if available.
+  // Assuming SearchInput updates state immediately.
+
+  // Debounce search query to prevent excessive API calls
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1) // Reset to page 1 on search
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['bookings', 'bills', page, limit, debouncedSearch, paymentFilter],
+    queryFn: () => api.get(`/bookings?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`),
+    staleTime: 5000,
   })
 
-  const rawBookings = Array.isArray(bookingsResponse)
-    ? bookingsResponse
-    : (bookingsResponse?.data || [])
-  const bills = (Array.isArray(rawBookings) ? rawBookings : []).filter((b: any) => b.billNumber)
+  const bookings = response?.data || []
+  const pagination = response?.pagination || { page: 1, limit, total: 0, totalPages: 1 }
+  const totalBills = pagination.total || 0
 
-  const filteredBills = bills.filter((b: any) => {
-    const status = (b.paymentStatus || 'PENDING') as string
-    if (paymentFilter !== 'all' && status !== paymentFilter) return false
-    if (!searchQuery.trim()) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      (b.billNumber && b.billNumber.toLowerCase().includes(q)) ||
-      (b.guest?.name && b.guest.name.toLowerCase().includes(q)) ||
-      (b.guest?.phone && b.guest.phone.includes(q)) ||
-      (b.room?.roomNumber && b.room.roomNumber.toLowerCase().includes(q))
-    )
-  })
-
-  const totalPending = filteredBills.reduce((sum: number, b: any) => {
-    const rem = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
-    return sum + rem
-  }, 0)
-  const paidCount = filteredBills.filter((b: any) => (b.paymentStatus || '') === 'PAID').length
+  // Filter bills (though API should assume all bookings are bills? Or check billNumber?)
+  // Ideally API returns bookings, and all confirmed bookings have bills.
+  // We can trust the API to filter by search/paymentStatus.
 
   if (isLoading) {
     return (
@@ -83,18 +83,17 @@ export default function BillsPage() {
           {(['all', 'PENDING', 'PARTIAL', 'PAID'] as const).map((f) => (
             <button
               key={f}
-              onClick={() => setPaymentFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                paymentFilter === f
-                  ? f === 'all'
-                    ? 'bg-slate-600 text-white'
-                    : f === 'PAID'
-                      ? 'bg-emerald-500/30 text-emerald-300'
-                      : f === 'PARTIAL'
-                        ? 'bg-amber-500/30 text-amber-300'
-                        : 'bg-red-500/30 text-red-300'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
-              }`}
+              onClick={() => { setPaymentFilter(f); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${paymentFilter === f
+                ? f === 'all'
+                  ? 'bg-slate-600 text-white'
+                  : f === 'PAID'
+                    ? 'bg-emerald-500/30 text-emerald-300'
+                    : f === 'PARTIAL'
+                      ? 'bg-amber-500/30 text-amber-300'
+                      : 'bg-red-500/30 text-red-300'
+                : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
+                }`}
             >
               {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
             </button>
@@ -120,50 +119,42 @@ export default function BillsPage() {
       </div>
 
       {/* Summary strip */}
-      {filteredBills.length > 0 && (
-        <div className="flex flex-wrap items-center gap-4 mb-4 py-3 px-4 rounded-xl bg-slate-800/50 border border-white/5">
-          <span className="text-sm text-slate-400">
-            <span className="font-semibold text-white">{filteredBills.length}</span> bill{filteredBills.length !== 1 ? 's' : ''}
-          </span>
-          <span className="text-sm text-amber-400">
+      <div className="flex flex-wrap items-center gap-4 mb-4 py-3 px-4 rounded-xl bg-slate-800/50 border border-white/5">
+        <span className="text-sm text-slate-400">
+          <span className="font-semibold text-white">{totalBills}</span> bill{totalBills !== 1 ? 's' : ''} found
+        </span>
+        {/* Note: Global totals (pending/paid) are harder with server-side pagination unless specific API endpoint provides aggregated stats. 
+            For now, removing the total amounts to avoid misleading data based on just current page. 
+            The Backend GET /api/bookings returns a 'summary' object with global stats! Let's use it.
+        */}
+        {response?.summary && (
+          <span className="text-sm text-amber-400 ml-auto sm:ml-0">
             <FaRupeeSign className="inline w-3 h-3 mr-0.5" />
-            <span className="font-semibold">{totalPending.toLocaleString()}</span> total pending
+            <span className="font-semibold">{(response.summary.totalRevenue || 0).toLocaleString()}</span> total revenue
           </span>
-          <span className="text-sm text-emerald-400">
-            <span className="font-semibold">{paidCount}</span> paid
-          </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Content */}
-      {bills.length === 0 ? (
+      {totalBills === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col items-center justify-center py-16 px-4">
           <FaFileInvoiceDollar className="w-14 h-14 text-slate-600 mb-4" />
-          <h2 className="text-lg font-semibold text-slate-300 mb-2">No bills yet</h2>
+          <h2 className="text-lg font-semibold text-slate-300 mb-2">No bills found</h2>
           <p className="text-sm text-slate-500 text-center max-w-sm">
-            Bills are created when you make a booking. Create a booking to generate bills and collect payments.
+            {searchQuery || paymentFilter !== 'all' ? 'Try adjusting your search or filters.' : 'Create a booking to generate bills.'}
           </p>
-          <Link
-            href="/bookings/new"
-            className="mt-4 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"
-          >
-            New Booking
-          </Link>
-        </div>
-      ) : filteredBills.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col items-center justify-center py-12 px-4">
-          <FaSearch className="w-10 h-10 text-slate-600 mb-3" />
-          <p className="text-slate-400 text-sm">No bills match your search or filter.</p>
-          <button
-            onClick={() => { setSearchQuery(''); setPaymentFilter('all') }}
-            className="mt-3 text-sm text-sky-400 hover:text-sky-300"
-          >
-            Clear filters
-          </button>
+          {!searchQuery && paymentFilter === 'all' && (
+            <Link
+              href="/bookings/new"
+              className="mt-4 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"
+            >
+              New Booking
+            </Link>
+          )}
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredBills.map((b: any) => {
+          {bookings.map((b: any) => {
             const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
             const status = b.paymentStatus || 'PENDING'
             return (
@@ -173,12 +164,11 @@ export default function BillsPage() {
                 className="block rounded-xl border border-white/10 bg-slate-800/80 hover:bg-slate-800 hover:border-emerald-500/30 transition-all p-4"
               >
                 <div className="flex items-start justify-between gap-2 mb-3">
-                  <span className="text-xs font-mono text-slate-400 truncate" title={b.billNumber}>{b.billNumber}</span>
+                  <span className="text-xs font-mono text-slate-400 truncate" title={b.billNumber}>{b.billNumber || b.id.slice(-6).toUpperCase()}</span>
                   <span
-                    className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
-                      status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                    className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
                       status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
-                    }`}
+                      }`}
                   >
                     {status}
                   </span>
@@ -221,22 +211,21 @@ export default function BillsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredBills.map((b: any) => {
+                {bookings.map((b: any) => {
                   const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
                   const status = b.paymentStatus || 'PENDING'
                   return (
                     <tr key={b.id} className="border-b border-white/5 hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 text-sm font-mono text-slate-300 truncate max-w-[140px]" title={b.billNumber}>{b.billNumber}</td>
+                      <td className="py-3 px-4 text-sm font-mono text-slate-300 truncate max-w-[140px]" title={b.billNumber}>{b.billNumber || b.id.slice(-6).toUpperCase()}</td>
                       <td className="py-3 px-4 text-sm text-slate-200">{b.guest?.name}</td>
                       <td className="py-3 px-4 text-sm text-slate-400">{b.room?.roomNumber} ({b.room?.roomType})</td>
                       <td className="py-3 px-4 text-sm text-right text-slate-200">₹{(b.totalAmount ?? 0).toLocaleString()}</td>
                       <td className="py-3 px-4 text-sm text-right text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</td>
                       <td className="py-3 px-4 text-sm text-right font-medium text-amber-400">₹{remaining.toLocaleString()}</td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
-                          status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                        <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
                           status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
-                        }`}>
+                          }`}>
                           {status}
                         </span>
                       </td>
@@ -255,6 +244,29 @@ export default function BillsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/5">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 rounded-lg bg-slate-800/80 text-sm text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-slate-400">
+            Page <span className="text-white font-medium">{page}</span> of <span className="text-white font-medium">{pagination.totalPages}</span>
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+            disabled={page === pagination.totalPages}
+            className="px-4 py-2 rounded-lg bg-slate-800/80 text-sm text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

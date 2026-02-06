@@ -7,6 +7,9 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth()(request)
     if (authResult instanceof Response) return authResult
+    // cast to any to be safe with SessionUser type
+    const user = authResult as any
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
 
     const now = new Date()
     const today = new Date()
@@ -548,21 +551,21 @@ export async function GET(request: NextRequest) {
       upcomingCheckIns,
       upcomingCheckOuts,
       
-      // Revenue stats
-      todayRevenue: todayRevenue._sum.paidAmount || 0,
-      monthRevenue: monthRevenue._sum.paidAmount || 0,
-      revenueGrowth,
-      pendingPayments: pendingPayments._sum.balanceAmount || 0,
+      // Revenue stats (Redacted for non-admin)
+      todayRevenue: isAdmin ? (todayRevenue._sum.paidAmount || 0) : 0,
+      monthRevenue: isAdmin ? (monthRevenue._sum.paidAmount || 0) : 0,
+      revenueGrowth: isAdmin ? revenueGrowth : 0,
+      pendingPayments: isAdmin ? (pendingPayments._sum.balanceAmount || 0) : 0,
       
       // Function Hall stats
       totalHalls,
       hallBookingsThisMonth,
-      hallRevenueThisMonth,
+      hallRevenueThisMonth: isAdmin ? hallRevenueThisMonth : 0,
       hallTodayBookings,
       hallUpcoming7Days,
       hallStatusThisMonth,
       hallEventTypesThisMonth,
-      topHallsThisMonth,
+      topHallsThisMonth: isAdmin ? topHallsThisMonth : topHallsThisMonth.map(h => ({ ...h, revenue: 0 })),
       
       // Other stats
       lowStockAlerts: lowStockItems.length,
@@ -579,16 +582,27 @@ export async function GET(request: NextRequest) {
         acc[item.roomType] = item._count
         return acc
       }, {}),
-      bookingsByGuestType: guestTypeAllTime,
-      bookingsByGuestTypeThisMonth: guestTypeThisMonth,
+      
+      // Guest/Room Type Analytics (Redacted revenue if non-admin)
+      bookingsByGuestType: isAdmin 
+        ? guestTypeAllTime 
+        : Object.fromEntries(Object.entries(guestTypeAllTime).map(([k, v]) => [k, { ...v, revenue: 0 }])),
+      bookingsByGuestTypeThisMonth: isAdmin 
+        ? guestTypeThisMonth 
+        : Object.fromEntries(Object.entries(guestTypeThisMonth).map(([k, v]) => [k, { ...v, revenue: 0 }])),
       guestTypeLabels,
-      bookingsByRoomType: roomTypeAllTime,
-      bookingsByRoomTypeThisMonth: roomTypeThisMonth,
+      
+      bookingsByRoomType: isAdmin 
+        ? roomTypeAllTime 
+        : Object.fromEntries(Object.entries(roomTypeAllTime).map(([k, v]) => [k, { ...v, revenue: 0 }])),
+      bookingsByRoomTypeThisMonth: isAdmin 
+        ? roomTypeThisMonth 
+        : Object.fromEntries(Object.entries(roomTypeThisMonth).map(([k, v]) => [k, { ...v, revenue: 0 }])),
       roomTypeLabels,
       
       // Trends
-      weeklyRevenue,
-      monthlyTrend,
+      weeklyRevenue: isAdmin ? weeklyRevenue : weeklyRevenue.map(d => ({ ...d, amount: 0 })),
+      monthlyTrend: isAdmin ? monthlyTrend : monthlyTrend.map(d => ({ ...d, hotelRevenue: 0, hallRevenue: 0, total: 0 })),
       
       // Recent activities
       recentBookings,
@@ -600,11 +614,11 @@ export async function GET(request: NextRequest) {
         return acc
       }, {}),
       avgStayHoursThisMonth,
-      avgBookingValueThisMonth,
+      avgBookingValueThisMonth: isAdmin ? avgBookingValueThisMonth : 0,
       overdueCheckouts,
       flexibleCheckoutActive,
       maintenanceRooms,
-      topRoomsThisMonth,
+      topRoomsThisMonth: isAdmin ? topRoomsThisMonth : topRoomsThisMonth.map(r => ({ ...r, revenue: 0 })),
     }
 
     return Response.json(successResponse(stats))

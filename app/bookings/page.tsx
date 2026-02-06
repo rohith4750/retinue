@@ -118,36 +118,21 @@ export default function BookingsPage() {
   })
 
   // Handle new API response format: { data: [...], pagination: {...} }
-  const bookings = Array.isArray(bookingsResponse) 
-    ? bookingsResponse 
+  const bookings = Array.isArray(bookingsResponse)
+    ? bookingsResponse
     : (bookingsResponse?.data || [])
-  const pagination = bookingsResponse?.pagination || { 
-    page: 1, 
-    limit: 12, 
-    total: Array.isArray(bookingsResponse) ? bookingsResponse.length : (bookingsResponse?.data?.length || 0), 
-    totalPages: 1 
+  const pagination = bookingsResponse?.pagination || {
+    page: 1,
+    limit: 12,
+    total: Array.isArray(bookingsResponse) ? bookingsResponse.length : (bookingsResponse?.data?.length || 0),
+    totalPages: 1
   }
 
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
-  const isCheckInToday = (b: any) => {
-    const d = new Date(b.checkIn)
-    return d >= todayStart && d <= todayEnd
-  }
-  const isCheckOutToday = (b: any) => {
-    const d = new Date(b.checkOut)
-    return d >= todayStart && d <= todayEnd
-  }
-  const filteredBookings = (() => {
-    if (!bookings?.length) return []
-    if (quickFilter === 'all') return bookings
-    if (quickFilter === 'checkin_today') return bookings.filter(isCheckInToday)
-    if (quickFilter === 'checkout_today') return bookings.filter(isCheckOutToday)
-    if (quickFilter === 'in_house') return bookings.filter((b: any) => b.status === 'CHECKED_IN')
-    return bookings
-  })()
+  const filteredBookings = bookings
 
   const updateStatusMutation = useMutationWithInvalidation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -220,7 +205,7 @@ export default function BookingsPage() {
       `₹${booking.totalAmount.toLocaleString()}`,
     ])
 
-    const csvRows: string[] = rows.map((row: string[]) => 
+    const csvRows: string[] = rows.map((row: string[]) =>
       row.map((cell: string) => `"${cell}"`).join(',')
     )
 
@@ -294,9 +279,8 @@ export default function BookingsPage() {
             <div className="flex items-center bg-slate-800/60 rounded-lg border border-white/5 p-0.5">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
                 title="List view"
               >
                 <FaList className="w-3 h-3" />
@@ -304,9 +288,8 @@ export default function BookingsPage() {
               </button>
               <button
                 onClick={() => setViewMode('cards')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'cards' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'cards' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
                 title="Cards view"
               >
                 <FaThLarge className="w-3 h-3" />
@@ -314,9 +297,8 @@ export default function BookingsPage() {
               </button>
               <button
                 onClick={() => setViewMode('board')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'board' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'board' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
                 title="Board view by status"
               >
                 <FaColumns className="w-3 h-3" />
@@ -324,9 +306,8 @@ export default function BookingsPage() {
               </button>
               <button
                 onClick={() => setViewMode('timeline')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'timeline' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'timeline' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
                 title="Timeline – rooms × days"
               >
                 <FaCalendarWeek className="w-3 h-3" />
@@ -387,11 +368,10 @@ export default function BookingsPage() {
                 <button
                   key={filter}
                   onClick={() => setQuickFilter(filter)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    quickFilter === filter
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${quickFilter === filter
                       ? 'bg-sky-600 text-white'
                       : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700/60 border border-white/5'
-                  }`}
+                    }`}
                 >
                   {filter === 'all' && 'All'}
                   {filter === 'checkin_today' && `Check-in today (${bookings.filter(isCheckInToday).length})`}
@@ -474,70 +454,70 @@ export default function BookingsPage() {
                         const checkOutToday = isCheckOutToday(booking)
                         const needsAction = (booking.status === 'CONFIRMED' && checkInToday) || (booking.status === 'CHECKED_IN' && checkOutToday)
                         return (
-                        <tr
-                          key={booking.id}
-                          onClick={() => router.push(`/bookings/${booking.id}`)}
-                          className={`border-b border-white/5 hover:bg-slate-700/20 cursor-pointer transition-colors ${needsAction ? 'bg-sky-500/5 border-l-2 border-l-sky-500' : ''}`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              {checkInToday && booking.status === 'CONFIRMED' && (
-                                <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-emerald-500/25 text-emerald-400" title="Check-in today">In</span>
-                              )}
-                              {checkOutToday && booking.status === 'CHECKED_IN' && (
-                                <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-500/25 text-amber-400" title="Check-out today">Out</span>
-                              )}
-                              <div>
-                            <p className="font-medium text-white">{booking.guest?.name}</p>
-                            <p className="text-xs text-slate-500">{booking.guest?.phone}</p>
+                          <tr
+                            key={booking.id}
+                            onClick={() => router.push(`/bookings/${booking.id}`)}
+                            className={`border-b border-white/5 hover:bg-slate-700/20 cursor-pointer transition-colors ${needsAction ? 'bg-sky-500/5 border-l-2 border-l-sky-500' : ''}`}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                {checkInToday && booking.status === 'CONFIRMED' && (
+                                  <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-emerald-500/25 text-emerald-400" title="Check-in today">In</span>
+                                )}
+                                {checkOutToday && booking.status === 'CHECKED_IN' && (
+                                  <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-500/25 text-amber-400" title="Check-out today">Out</span>
+                                )}
+                                <div>
+                                  <p className="font-medium text-white">{booking.guest?.name}</p>
+                                  <p className="text-xs text-slate-500">{booking.guest?.phone}</p>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-300">
-                            {booking.room?.roomNumber} • {booking.room?.roomType}
-                          </td>
-                          <td className="px-4 py-3 text-slate-400 text-sm">
-                            {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                          <td className="px-4 py-3 text-slate-400 text-sm">
-                            {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-emerald-400">
-                            ₹{booking.totalAmount?.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg ${
-                              booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
-                              booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
-                              booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
-                              booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
-                              'bg-amber-500/20 text-amber-400'
-                            }`}>
-                              {booking.status.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex flex-wrap gap-1.5 justify-end">
-                              <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
-                              {booking.status === 'CONFIRMED' && (
-                                <>
-                                  <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')} className="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 rounded text-white">Check In</button>
-                                  <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
-                                </>
-                              )}
-                              {booking.status === 'CHECKED_IN' && (
-                                <>
-                                  <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="px-2 py-1 text-xs bg-sky-600 hover:bg-sky-500 rounded text-white">Check Out</button>
-                                  <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
-                                </>
-                              )}
-                              {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
-                                <button onClick={() => setCancelModal({ show: true, bookingId: booking.id })} className="px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 rounded" title="Cancel">Cancel</button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )})}
+                            </td>
+                            <td className="px-4 py-3 text-slate-300">
+                              {booking.room?.roomNumber} • {booking.room?.roomType}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 text-sm">
+                              {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 text-sm">
+                              {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-emerald-400">
+                              ₹{booking.totalAmount?.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
+                                    booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
+                                      booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                                        'bg-amber-500/20 text-amber-400'
+                                }`}>
+                                {booking.status.replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex flex-wrap gap-1.5 justify-end">
+                                <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
+                                {booking.status === 'CONFIRMED' && (
+                                  <>
+                                    <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')} className="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 rounded text-white">Check In</button>
+                                    <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
+                                  </>
+                                )}
+                                {booking.status === 'CHECKED_IN' && (
+                                  <>
+                                    <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="px-2 py-1 text-xs bg-sky-600 hover:bg-sky-500 rounded text-white">Check Out</button>
+                                    <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
+                                  </>
+                                )}
+                                {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                                  <button onClick={() => setCancelModal({ show: true, bookingId: booking.id })} className="px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 rounded" title="Cancel">Cancel</button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -589,9 +569,8 @@ export default function BookingsPage() {
                             return (
                               <th
                                 key={i}
-                                className={`px-2 py-3 text-center min-w-[100px] border-r border-white/5 last:border-r-0 ${
-                                  isToday ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''
-                                }`}
+                                className={`px-2 py-3 text-center min-w-[100px] border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''
+                                  }`}
                               >
                                 <div className={`text-[10px] uppercase font-medium ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
                                   {day.toLocaleDateString('en-IN', { weekday: 'short' })}
@@ -623,13 +602,12 @@ export default function BookingsPage() {
                                   {booking ? (
                                     <div
                                       onClick={() => router.push(`/bookings/${booking.id}`)}
-                                      className={`px-2 py-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] ${
-                                        booking.status === 'CHECKED_IN'
+                                      className={`px-2 py-2 rounded-lg cursor-pointer transition-all hover:scale-[1.02] ${booking.status === 'CHECKED_IN'
                                           ? 'bg-sky-500/25 border border-sky-500/50'
                                           : booking.status === 'CONFIRMED'
                                             ? 'bg-emerald-500/25 border border-emerald-500/50'
                                             : 'bg-slate-600/40 border border-slate-500/50'
-                                      }`}
+                                        }`}
                                     >
                                       <p className="text-[11px] font-semibold text-white truncate" title={booking.guest?.name}>
                                         {booking.guest?.name?.split(' ')[0] || 'Guest'}
@@ -713,165 +691,162 @@ export default function BookingsPage() {
 
             {/* Cards View – grid of compact cards */}
             {viewMode === 'cards' && filteredBookings.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-              {filteredBookings.map((booking: any) => (
-                <div
-                  key={booking.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/bookings/${booking.id}`)}
-                  onKeyDown={(e) => e.key === 'Enter' && router.push(`/bookings/${booking.id}`)}
-                  className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 hover:shadow-lg cursor-pointer bg-slate-800/95 ${
-                    booking.status === 'CONFIRMED' ? 'border-emerald-500/40 hover:border-emerald-500/60' :
-                    booking.status === 'CHECKED_IN' ? 'border-sky-500/40 hover:border-sky-500/60' :
-                    booking.status === 'CHECKED_OUT' ? 'border-slate-500/40' :
-                    booking.status === 'CANCELLED' ? 'border-red-500/40' :
-                    'border-amber-500/40 hover:border-amber-500/60'
-                  }`}
-                >
-                  <div className="p-4 pt-3">
-                    {/* Status on its own line, then name/room below */}
-                    <div className="mb-3">
-                      <div className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${
-                    booking.status === 'CONFIRMED' ? 'bg-emerald-500/25 text-emerald-300' :
-                    booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
-                    booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
-                    booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
-                    'bg-amber-500/25 text-amber-300'
-                  }`}>
-                    {booking.status.replace('_', ' ')}
-                  </div>
-                      <div className="flex items-center gap-3 mt-2">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 ${
-                        booking.status === 'CONFIRMED' ? 'bg-emerald-500' :
-                        booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
-                        booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
-                        'bg-amber-500'
-                      }`}>
-                        {booking.guest.name.charAt(0).toUpperCase()}
-                      </div>
-                        <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-white truncate">{booking.guest.name}</h3>
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                          <FaHome className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{booking.room.roomNumber} • {booking.room.roomType}</span>
-                        </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                {filteredBookings.map((booking: any) => (
+                  <div
+                    key={booking.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/bookings/${booking.id}`)}
+                    onKeyDown={(e) => e.key === 'Enter' && router.push(`/bookings/${booking.id}`)}
+                    className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 hover:shadow-lg cursor-pointer bg-slate-800/95 ${booking.status === 'CONFIRMED' ? 'border-emerald-500/40 hover:border-emerald-500/60' :
+                        booking.status === 'CHECKED_IN' ? 'border-sky-500/40 hover:border-sky-500/60' :
+                          booking.status === 'CHECKED_OUT' ? 'border-slate-500/40' :
+                            booking.status === 'CANCELLED' ? 'border-red-500/40' :
+                              'border-amber-500/40 hover:border-amber-500/60'
+                      }`}
+                  >
+                    <div className="p-4 pt-3">
+                      {/* Status on its own line, then name/room below */}
+                      <div className="mb-3">
+                        <div className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/25 text-emerald-300' :
+                            booking.status === 'CHECKED_IN' ? 'bg-sky-500/25 text-sky-300' :
+                              booking.status === 'CHECKED_OUT' ? 'bg-slate-500/25 text-slate-400' :
+                                booking.status === 'CANCELLED' ? 'bg-red-500/25 text-red-300' :
+                                  'bg-amber-500/25 text-amber-300'
+                          }`}>
+                          {booking.status.replace('_', ' ')}
+                        </div>
+                        <div className="flex items-center gap-3 mt-2">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 ${booking.status === 'CONFIRMED' ? 'bg-emerald-500' :
+                              booking.status === 'CHECKED_IN' ? 'bg-sky-500' :
+                                booking.status === 'CHECKED_OUT' ? 'bg-slate-500' :
+                                  'bg-amber-500'
+                            }`}>
+                            {booking.guest.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-white truncate">{booking.guest.name}</h3>
+                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                              <FaHome className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{booking.room.roomNumber} • {booking.room.roomType}</span>
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Dates */}
-                    <div className="space-y-2 text-xs mb-3 py-2.5 px-3 bg-slate-900/60 rounded-xl border border-white/5">
-                      <div className="flex justify-between gap-2">
-                        <span className="text-slate-500 shrink-0">Check-in</span>
-                        <span className="text-emerald-400 font-medium text-right">
-                          {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                          <span className="text-slate-400 font-normal ml-1">{new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </span>
+                      {/* Dates */}
+                      <div className="space-y-2 text-xs mb-3 py-2.5 px-3 bg-slate-900/60 rounded-xl border border-white/5">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500 shrink-0">Check-in</span>
+                          <span className="text-emerald-400 font-medium text-right">
+                            {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            <span className="text-slate-400 font-normal ml-1">{new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500 shrink-0">Check-out</span>
+                          <span className={`text-right ${booking.flexibleCheckout ? 'text-amber-400 font-medium' : 'text-red-400/90 font-medium'}`}>
+                            {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            <span className="text-slate-400 font-normal ml-1">{new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                            {booking.flexibleCheckout && <span className="text-amber-400/80 text-[9px] ml-1">(TBD)</span>}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between gap-2">
-                        <span className="text-slate-500 shrink-0">Check-out</span>
-                        <span className={`text-right ${booking.flexibleCheckout ? 'text-amber-400 font-medium' : 'text-red-400/90 font-medium'}`}>
-                          {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                          <span className="text-slate-400 font-normal ml-1">{new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-                          {booking.flexibleCheckout && <span className="text-amber-400/80 text-[9px] ml-1">(TBD)</span>}
-                        </span>
+
+                      {/* Amount — Bills/payment on Bills page only */}
+                      <div className="mb-3 flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Total</span>
+                        <p className="text-lg font-bold text-emerald-400">₹{booking.totalAmount.toLocaleString()}</p>
                       </div>
-                    </div>
 
-                    {/* Amount — Bills/payment on Bills page only */}
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Total</span>
-                      <p className="text-lg font-bold text-emerald-400">₹{booking.totalAmount.toLocaleString()}</p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
-                      <a
-                        href={`/bookings/${booking.id}`}
-                        className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-slate-300 bg-slate-700/60 hover:bg-slate-600/60 rounded-lg transition-colors"
-                      >
-                        View
-                      </a>
-                      {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                         <a
-                          href={`/bookings/${booking.id}?edit=1`}
-                          className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-slate-200 bg-sky-600/50 hover:bg-sky-500/50 rounded-lg transition-colors flex items-center justify-center gap-1"
+                          href={`/bookings/${booking.id}`}
+                          className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-slate-300 bg-slate-700/60 hover:bg-slate-600/60 rounded-lg transition-colors"
                         >
-                          <FaEdit className="w-3 h-3 shrink-0" />
-                          Edit
+                          View
                         </a>
-                      )}
-                      {booking.status === 'CONFIRMED' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setExtendModal({ show: true, booking })
-                              const currentCheckout = new Date(booking.checkOut)
-                              currentCheckout.setDate(currentCheckout.getDate() + 1)
-                              const year = currentCheckout.getFullYear()
-                              const month = String(currentCheckout.getMonth() + 1).padStart(2, '0')
-                              const day = String(currentCheckout.getDate()).padStart(2, '0')
-                              const hours = String(currentCheckout.getHours()).padStart(2, '0')
-                              const mins = String(currentCheckout.getMinutes()).padStart(2, '0')
-                              setNewCheckoutDate(`${year}-${month}-${day}T${hours}:${mins}`)
-                            }}
-                            className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-amber-400 hover:text-white hover:bg-amber-500 rounded-lg transition-colors flex items-center justify-center gap-1"
-                            title="Extend Stay"
+                        {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                          <a
+                            href={`/bookings/${booking.id}?edit=1`}
+                            className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-slate-200 bg-sky-600/50 hover:bg-sky-500/50 rounded-lg transition-colors flex items-center justify-center gap-1"
                           >
-                            <FaCalendarPlus className="w-3 h-3 shrink-0" />
-                            Extend
-                          </button>
+                            <FaEdit className="w-3 h-3 shrink-0" />
+                            Edit
+                          </a>
+                        )}
+                        {booking.status === 'CONFIRMED' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setExtendModal({ show: true, booking })
+                                const currentCheckout = new Date(booking.checkOut)
+                                currentCheckout.setDate(currentCheckout.getDate() + 1)
+                                const year = currentCheckout.getFullYear()
+                                const month = String(currentCheckout.getMonth() + 1).padStart(2, '0')
+                                const day = String(currentCheckout.getDate()).padStart(2, '0')
+                                const hours = String(currentCheckout.getHours()).padStart(2, '0')
+                                const mins = String(currentCheckout.getMinutes()).padStart(2, '0')
+                                setNewCheckoutDate(`${year}-${month}-${day}T${hours}:${mins}`)
+                              }}
+                              className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-amber-400 hover:text-white hover:bg-amber-500 rounded-lg transition-colors flex items-center justify-center gap-1"
+                              title="Extend Stay"
+                            >
+                              <FaCalendarPlus className="w-3 h-3 shrink-0" />
+                              Extend
+                            </button>
+                            <button
+                              onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')}
+                              className="flex-1 min-w-[70px] py-2 text-center text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
+                            >
+                              Check In
+                            </button>
+                          </>
+                        )}
+                        {booking.status === 'CHECKED_IN' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setExtendModal({ show: true, booking })
+                                const currentCheckout = new Date(booking.checkOut)
+                                currentCheckout.setDate(currentCheckout.getDate() + 1)
+                                const year = currentCheckout.getFullYear()
+                                const month = String(currentCheckout.getMonth() + 1).padStart(2, '0')
+                                const day = String(currentCheckout.getDate()).padStart(2, '0')
+                                const hours = String(currentCheckout.getHours()).padStart(2, '0')
+                                const mins = String(currentCheckout.getMinutes()).padStart(2, '0')
+                                setNewCheckoutDate(`${year}-${month}-${day}T${hours}:${mins}`)
+                              }}
+                              className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-amber-400 hover:text-white hover:bg-amber-500 rounded-lg transition-colors flex items-center justify-center gap-1"
+                              title="Extend Stay"
+                            >
+                              <FaCalendarPlus className="w-3 h-3 shrink-0" />
+                              Extend
+                            </button>
+                            <button
+                              onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')}
+                              className="flex-1 min-w-[70px] py-2 text-center text-[11px] font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors"
+                            >
+                              Check Out
+                            </button>
+                          </>
+                        )}
+                        {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
                           <button
-                            onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')}
-                            className="flex-1 min-w-[70px] py-2 text-center text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
+                            onClick={() => setCancelModal({ show: true, bookingId: booking.id })}
+                            className="py-2 px-2.5 text-red-400 hover:text-white hover:bg-red-500 rounded-lg transition-colors shrink-0"
+                            title="Cancel"
                           >
-                            Check In
+                            <FaTimes className="w-3.5 h-3.5" />
                           </button>
-                        </>
-                      )}
-                      {booking.status === 'CHECKED_IN' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setExtendModal({ show: true, booking })
-                              const currentCheckout = new Date(booking.checkOut)
-                              currentCheckout.setDate(currentCheckout.getDate() + 1)
-                              const year = currentCheckout.getFullYear()
-                              const month = String(currentCheckout.getMonth() + 1).padStart(2, '0')
-                              const day = String(currentCheckout.getDate()).padStart(2, '0')
-                              const hours = String(currentCheckout.getHours()).padStart(2, '0')
-                              const mins = String(currentCheckout.getMinutes()).padStart(2, '0')
-                              setNewCheckoutDate(`${year}-${month}-${day}T${hours}:${mins}`)
-                            }}
-                            className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-amber-400 hover:text-white hover:bg-amber-500 rounded-lg transition-colors flex items-center justify-center gap-1"
-                            title="Extend Stay"
-                          >
-                            <FaCalendarPlus className="w-3 h-3 shrink-0" />
-                            Extend
-                          </button>
-                          <button
-                            onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')}
-                            className="flex-1 min-w-[70px] py-2 text-center text-[11px] font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-colors"
-                          >
-                            Check Out
-                          </button>
-                        </>
-                      )}
-                      {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
-                        <button
-                          onClick={() => setCancelModal({ show: true, bookingId: booking.id })}
-                          className="py-2 px-2.5 text-red-400 hover:text-white hover:bg-red-500 rounded-lg transition-colors shrink-0"
-                          title="Cancel"
-                        >
-                          <FaTimes className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
             )}
 
             {/* Phase 2: Pagination Controls */}
@@ -983,7 +958,7 @@ export default function BookingsPage() {
                   <FaTimes className="w-5 h-5" />
                 </button>
               </div>
-              
+
               {/* Content */}
               <div className="p-4 space-y-4">
                 {/* Current Dates */}

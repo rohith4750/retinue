@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
+import { api } from '@/lib/api-client'
 
 export interface Notification {
   id: string
@@ -18,13 +19,11 @@ export function useNotifications() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch('/api/notifications?limit=20')
-      if (res.ok) {
-        const data = await res.json()
-        if (data.success) {
-          setNotifications(data.data.notifications)
-          setUnreadCount(data.data.unreadCount)
-        }
+      const data = await api.get('/notifications?limit=20')
+      // api.get returns the response body (ApiResponse) directly
+      if (data.success) {
+        setNotifications(data.data.notifications)
+        setUnreadCount(data.data.unreadCount)
       }
     } catch (error) {
       console.error('Failed to fetch notifications', error)
@@ -35,18 +34,12 @@ export function useNotifications() {
 
   const markAsRead = async (ids: string[]) => {
     try {
-      const res = await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationIds: ids }),
-      })
-      if (res.ok) {
-        // Optimistic update
-        setNotifications((prev) =>
-          prev.map((n) => (ids.includes(n.id) ? { ...n, isRead: true } : n))
-        )
-        setUnreadCount((prev) => Math.max(0, prev - ids.length))
-      }
+      await api.patch('/notifications', { notificationIds: ids })
+      // If no error thrown, success
+      setNotifications((prev) =>
+        prev.map((n) => (ids.includes(n.id) ? { ...n, isRead: true } : n))
+      )
+      setUnreadCount((prev) => Math.max(0, prev - ids.length))
     } catch (error) {
       console.error('Failed to mark notifications as read', error)
     }
@@ -54,15 +47,9 @@ export function useNotifications() {
 
   const markAllAsRead = async () => {
     try {
-      const res = await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markAllRead: true }),
-      })
-      if (res.ok) {
-        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
-        setUnreadCount(0)
-      }
+      await api.patch('/notifications', { markAllRead: true })
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      setUnreadCount(0)
     } catch (error) {
       console.error('Failed to mark all notifications as read', error)
     }
