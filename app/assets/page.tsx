@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 import {
   FaPlus, FaBox, FaHome, FaBuilding, FaEdit, FaTrash, FaMapMarkerAlt,
   FaChevronRight, FaChevronDown, FaFolder, FaFolderOpen, FaCubes, FaTools,
-  FaExclamationTriangle
+  FaExclamationTriangle, FaCheck
 } from 'react-icons/fa'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -29,7 +29,7 @@ function LocationNode({
   assets: any[]
   type: 'room' | 'hall'
   onDelete: (id: string) => void
-  onReport: (id: string) => void
+  onReport: (id: string, currentCondition?: string) => void
   getConditionColor: (condition: string) => string
 }) {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -109,26 +109,32 @@ function LocationNode({
                 >
                   <FaEdit className="w-3 h-3" />
                 </Link>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onReport(asset.id)
-                  }}
-                  title="Quick Report: Needs Repair"
-                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
-                >
-                  <FaExclamationTriangle className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onReport(asset.id)
-                  }}
-                  title="Quick Report: Needs Repair"
-                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
-                >
-                  <FaExclamationTriangle className="w-3 h-3" />
-                </button>
+
+                {/* Repair/Report Button */}
+                {(asset.condition === 'POOR' || asset.condition === 'DAMAGED') ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onReport(asset.id, asset.condition) // This will now handle repair too (we need to update the signature or handler)
+                    }}
+                    title="Mark as Repaired"
+                    className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
+                  >
+                    <FaCheck className="w-3 h-3" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onReport(asset.id, asset.condition)
+                    }}
+                    title="Quick Report: Needs Repair"
+                    className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+                  >
+                    <FaExclamationTriangle className="w-3 h-3" />
+                  </button>
+                )}
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -301,13 +307,13 @@ export default function AssetsPage() {
 
   // Report/Update mutation
   const updateMutation = useMutationWithInvalidation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/asset-locations/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: any; successMessage?: string }) => api.patch(`/asset-locations/${id}`, data),
     endpoint: '/asset-locations',
-    onSuccess: () => {
+    onSuccess: (data: any, variables: any) => {
       queryClient.invalidateQueries({ queryKey: ['asset-locations'] })
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
       queryClient.invalidateQueries({ queryKey: ['function-halls'] })
-      toast.success('Asset status updated')
+      toast.success(variables.successMessage || 'Asset status updated')
     },
     onError: (error: any) => {
       toast.error(error?.message || 'Failed to update asset')
@@ -315,8 +321,15 @@ export default function AssetsPage() {
   })
 
   // Quick Report Handler
-  const handleQuickReport = (id: string) => {
-    updateMutation.mutate({ id, data: { condition: 'DAMAGED' } })
+  const handleQuickReport = (id: string, currentCondition?: string) => {
+    const newCondition = (currentCondition === 'POOR' || currentCondition === 'DAMAGED') ? 'GOOD' : 'DAMAGED'
+    const successMessage = newCondition === 'GOOD' ? 'Asset marked as repaired' : 'Asset reported as damaged'
+
+    updateMutation.mutate({
+      id,
+      data: { condition: newCondition },
+      successMessage
+    })
   }
 
   const getConditionColor = (condition: string) => {
