@@ -166,6 +166,7 @@ export default function AssetsPage() {
 
   const [expandRooms, setExpandRooms] = useState(true)
   const [expandHalls, setExpandHalls] = useState(true)
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
 
   // Check user role
   const [user, setUser] = useState<any>(null)
@@ -282,6 +283,29 @@ export default function AssetsPage() {
   const getRoomById = (id: string) => rooms.find((r: any) => r.id === id) || filteredAssets.find((a: any) => a.roomId === id)?.room
   const getHallById = (id: string) => halls.find((h: any) => h.id === id) || filteredAssets.find((a: any) => a.functionHallId === id)?.functionHall
 
+  // Group rooms by floor for Map View
+  const roomsByFloor = useMemo(() => {
+    const grouped: Record<string, any[]> = {}
+    Object.keys(assetsByRoom).forEach((roomId) => {
+      const room = getRoomById(roomId)
+      if (room) {
+        const floor = room.floor || 'Ground' // Default to Ground if no floor
+        if (!grouped[floor]) grouped[floor] = []
+        grouped[floor].push({
+          ...room,
+          assets: assetsByRoom[roomId],
+          hasIssues: assetsByRoom[roomId].some((a: any) => a.condition === 'POOR' || a.condition === 'DAMAGED')
+        })
+      }
+    })
+    // Sort floors nicely
+    return Object.entries(grouped).sort((a, b) => {
+      if (a[0] === 'Ground') return -1
+      if (b[0] === 'Ground') return 1
+      return a[0].localeCompare(b[0], undefined, { numeric: true })
+    })
+  }, [assetsByRoom])
+
   // Calculate summary (using ALL assets, not filtered)
   const summary = useMemo(() => ({
     totalAssets: assets.length,
@@ -364,30 +388,6 @@ export default function AssetsPage() {
   const hasHallAssets = Object.keys(assetsByHall).length > 0
 
 
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
-
-  // Group rooms by floor for Map View
-  const roomsByFloor = useMemo(() => {
-    const grouped: Record<string, any[]> = {}
-    Object.keys(assetsByRoom).forEach((roomId) => {
-      const room = getRoomById(roomId)
-      if (room) {
-        const floor = room.floor || 'Ground' // Default to Ground if no floor
-        if (!grouped[floor]) grouped[floor] = []
-        grouped[floor].push({
-          ...room,
-          assets: assetsByRoom[roomId],
-          hasIssues: assetsByRoom[roomId].some((a: any) => a.condition === 'POOR' || a.condition === 'DAMAGED')
-        })
-      }
-    })
-    // Sort floors nicely
-    return Object.entries(grouped).sort((a, b) => {
-      if (a[0] === 'Ground') return -1
-      if (b[0] === 'Ground') return 1
-      return a[0].localeCompare(b[0], undefined, { numeric: true })
-    })
-  }, [assetsByRoom, getRoomById])
 
   return (
     <>
