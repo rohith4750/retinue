@@ -1,14 +1,21 @@
 import { NextRequest } from 'next/server'
-import { successResponse, errorResponse } from '@/lib/api-helpers'
+import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 import { createUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
 type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'RECEPTIONIST' | 'STAFF'
 
-// POST /api/auth/create-users - Create default users for all roles
+// POST /api/auth/create-users - Create default users for all roles (Protected)
 export async function POST(request: NextRequest) {
   try {
+    // Only SUPER_ADMIN or initial setup (if no users exist)
+    const userCount = await prisma.user.count()
+    if (userCount > 0) {
+      // If users exist, this must be a SUPER_ADMIN request
+      const authResult = await requireAuth('SUPER_ADMIN')(request)
+      if (authResult instanceof Response) return authResult
+    }
     // Default credentials for each role (now with email for login)
     const defaultUsers = [
       {
@@ -99,9 +106,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/auth/create-users - List all users (for verification)
+// GET /api/auth/create-users - List all users (for verification) - SUPER_ADMIN only
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireAuth('SUPER_ADMIN')(request)
+    if (authResult instanceof Response) return authResult
+
     const users = await prisma.user.findMany({
       select: {
         id: true,

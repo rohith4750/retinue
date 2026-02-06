@@ -113,6 +113,8 @@ model RoomSlot {
 
   room        Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
   bookings    Booking[]
+
+  @@unique([roomId, date, slotType])
 }
 
 // Guest
