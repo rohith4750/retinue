@@ -29,7 +29,8 @@ import {
   FaBomb,
   FaRobot,
   FaCalendarAlt,
-  FaPlay
+  FaPlay,
+  FaTools
 } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
@@ -602,19 +603,19 @@ export default function DbAnalyticsPage() {
           </div>
         </div>
 
-        {/* Automatic Cleanup Schedule */}
+        {/* Manual Cleanup Section */}
         <div className="bg-gradient-to-br from-violet-950/40 to-purple-950/40 backdrop-blur-xl rounded-xl border border-violet-500/30 p-5 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <FaRobot className="w-6 h-6 text-violet-400" />
               <div>
-                <h2 className="text-lg font-semibold text-slate-100">Automatic Cleanup</h2>
-                <p className="text-xs text-slate-400">Scheduled data cleanup runs every 2 months</p>
+                <h2 className="text-lg font-semibold text-slate-100">Manual Data Cleanup</h2>
+                <p className="text-xs text-slate-400">Run cleanup manually to remove old data</p>
               </div>
             </div>
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-violet-500/20 text-violet-400 border border-violet-500/30 flex items-center gap-1">
-              <FaCalendarAlt className="w-3 h-3" />
-              Every 2 Months
+              <FaTools className="w-3 h-3" />
+              Manual Mode
             </span>
           </div>
 
@@ -625,32 +626,32 @@ export default function DbAnalyticsPage() {
               <p className="text-xs text-slate-400">Password Resets</p>
             </div>
             <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-sky-400">60 days</p>
+              <p className="text-lg font-bold text-sky-400">240 days</p>
               <p className="text-xs text-slate-400">Booking History</p>
             </div>
             <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-emerald-400">90 days</p>
+              <p className="text-lg font-bold text-emerald-400">240 days</p>
               <p className="text-xs text-slate-400">Attendance</p>
             </div>
             <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-amber-400">180 days</p>
+              <p className="text-lg font-bold text-amber-400">240 days</p>
               <p className="text-xs text-slate-400">Inventory Logs</p>
             </div>
           </div>
 
-          {/* Schedule Info & Manual Trigger */}
+          {/* Manual Trigger */}
           <div className="bg-slate-900/50 rounded-lg p-4 border border-white/5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-medium text-slate-200 flex items-center gap-2">
-                  <FaClock className="w-4 h-4 text-violet-400" />
-                  Next Scheduled Run
+                  <FaTools className="w-4 h-4 text-violet-400" />
+                  Run Cleanup
                 </h3>
                 <p className="text-sm text-slate-400 mt-1">
-                  Runs on 1st of every alternate month at 2:00 AM UTC
+                  Manually trigger the cleanup process to delete old data
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  (Jan, Mar, May, Jul, Sep, Nov)
+                  (Data older than 8 months will be archived/deleted)
                 </p>
               </div>
               <button
@@ -666,7 +667,7 @@ export default function DbAnalyticsPage() {
                 ) : (
                   <>
                     <FaPlay className="w-3 h-3" />
-                    Run Now
+                    <span>Run Cleanup</span>
                   </>
                 )}
               </button>
@@ -720,9 +721,8 @@ export default function DbAnalyticsPage() {
             <p className="text-xs text-violet-300/80 flex items-start gap-2">
               <FaExclamationTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>
-                <strong>Setup:</strong> For automatic cleanup, use Vercel Cron Jobs (Pro plan) or
-                external cron service (cron-job.org - free). Add <code className="bg-slate-800 px-1 rounded">ADMIN_BACKUP_EMAIL</code> to
-                your environment variables to receive backup files.
+                <strong>Note:</strong> This process is now manual. You can run it whenever you want to free up storage space.
+                Backup files will be sent to <code className="bg-slate-800 px-1 rounded">ADMIN_BACKUP_EMAIL</code> before deletion.
               </span>
             </p>
           </div>

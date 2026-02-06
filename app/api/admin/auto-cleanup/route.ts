@@ -11,9 +11,9 @@ import { sendDatabaseBackupEmail } from '@/lib/email'
 // Retention periods (in days)
 const RETENTION_PERIODS = {
   passwordResets: 7,        // 7 days for expired tokens
-  bookingHistory: 60,       // 2 months for audit logs
-  inventoryTransactions: 180, // 6 months for inventory transactions
-  attendance: 90,           // 3 months for attendance
+  bookingHistory: 240,      // 8 months for audit logs
+  inventoryTransactions: 240, // 8 months for inventory transactions
+  attendance: 240,          // 8 months for attendance
   completedBookings: 365,   // 1 year for completed bookings (export only)
 }
 
