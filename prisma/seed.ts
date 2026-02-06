@@ -50,13 +50,13 @@ async function main() {
     { roomNumber: '103', roomType: 'STANDARD' as const, floor: 1, basePrice: 2500, capacity: 2, status: 'AVAILABLE' as const },
     { roomNumber: '104', roomType: 'STANDARD' as const, floor: 1, basePrice: 2500, capacity: 2, status: 'AVAILABLE' as const },
     // Suites (4) – ₹3500/day
-    { roomNumber: 'Suite-1', roomType: 'SUITE' as const, floor: 2, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
-    { roomNumber: 'Suite-2', roomType: 'SUITE' as const, floor: 2, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
-    { roomNumber: 'Suite-3', roomType: 'SUITE' as const, floor: 2, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
-    { roomNumber: 'Suite-4', roomType: 'SUITE' as const, floor: 2, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
+    { roomNumber: 'Suite-1', roomType: 'SUITE' as const, floor: 1, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
+    { roomNumber: 'Suite-2', roomType: 'SUITE' as const, floor: 1, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
+    { roomNumber: 'Suite-3', roomType: 'SUITE' as const, floor: 1, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
+    { roomNumber: 'Suite-4', roomType: 'SUITE' as const, floor: 1, basePrice: 3500, capacity: 4, status: 'AVAILABLE' as const },
     // Suite+ (2) – ₹4000/day
-    { roomNumber: 'Suite-+1', roomType: 'SUITE_PLUS' as const, floor: 2, basePrice: 4000, capacity: 4, status: 'AVAILABLE' as const },
-    { roomNumber: 'Suite-+2', roomType: 'SUITE_PLUS' as const, floor: 2, basePrice: 4000, capacity: 4, status: 'AVAILABLE' as const },
+    { roomNumber: 'Suite-+1', roomType: 'SUITE_PLUS' as const, floor: 1, basePrice: 4000, capacity: 4, status: 'AVAILABLE' as const },
+    { roomNumber: 'Suite-+2', roomType: 'SUITE_PLUS' as const, floor: 1, basePrice: 4000, capacity: 4, status: 'AVAILABLE' as const },
   ]
 
   for (const room of rooms) {

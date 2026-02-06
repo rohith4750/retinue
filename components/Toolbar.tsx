@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { FaBell, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield, FaBuilding, FaUser, FaMoneyBillWave } from 'react-icons/fa'
 import Link from 'next/link'
+import { NotificationBell } from './dashboard/NotificationBell'
 import { useState, useEffect } from 'react'
 
 interface ToolbarProps {
@@ -18,10 +19,10 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date()
-      setCurrentTime(now.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      setCurrentTime(now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       }))
     }
     updateTime()
@@ -85,12 +86,12 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
     <header className="app-header fixed top-0 right-0 left-0 lg:left-64 z-20 backdrop-blur-xl border-b">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Left: Page title */}
-        <div className="flex items-center space-x-3 ml-12 lg:ml-0">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20">
+        <div className="flex items-center space-x-3 ml-12 lg:ml-0 min-w-0">
+          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20">
             <PageIcon className="w-4 h-4 text-sky-400" />
           </div>
-          <div>
-            <h1 className="text-lg font-semibold app-fg">{displayTitle}</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold app-fg truncate">{displayTitle}</h1>
           </div>
         </div>
 
@@ -104,11 +105,8 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
           {/* Quick actions */}
           {actions || getQuickActions()}
 
-          {/* Notifications - placeholder */}
-          <button className="relative p-2 app-fg-muted hover:app-fg rounded-lg app-chip hover:opacity-90 transition-colors">
-            <FaBell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-sky-500 rounded-full"></span>
-          </button>
+          {/* Notifications */}
+          <NotificationBell />
         </div>
       </div>
     </header>
