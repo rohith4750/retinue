@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { 
-  FaUniversity, FaPlus, FaWallet, FaArrowUp, FaArrowDown, 
-  FaExchangeAlt, FaEdit, FaTrash, FaEye, FaChevronLeft, 
+import {
+  FaUniversity, FaPlus, FaWallet, FaArrowUp, FaArrowDown,
+  FaExchangeAlt, FaEdit, FaTrash, FaEye, FaChevronLeft,
   FaChevronRight, FaTimes, FaMoneyBillWave, FaPiggyBank, FaSave
 } from 'react-icons/fa'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
@@ -82,7 +82,7 @@ export default function BankAccountsPage() {
     mutationFn: (data: any) => api.post('/bank-accounts', data),
     endpoint: '/bank-accounts',
     onSuccess: async () => {
-      toast.success('Bank account created successfully')
+      toast.success('Account created successfully')
       setShowAddAccountForm(false)
       resetAccountForm()
       await refetchAccounts()
@@ -97,7 +97,7 @@ export default function BankAccountsPage() {
     mutationFn: (data: any) => api.put(`/bank-accounts/${selectedAccount.id}`, data),
     endpoint: '/bank-accounts',
     onSuccess: async () => {
-      toast.success('Bank account updated successfully')
+      toast.success('Account updated successfully')
       setSelectedAccount(null)
       setShowAddAccountForm(false)
       resetAccountForm()
@@ -113,7 +113,7 @@ export default function BankAccountsPage() {
     mutationFn: (id: string) => api.delete(`/bank-accounts/${id}`),
     endpoint: '/bank-accounts',
     onSuccess: async () => {
-      toast.success('Bank account deactivated')
+      toast.success('Account deactivated')
       setDeleteModal({ show: false, accountId: null })
       await refetchAccounts()
     },
@@ -255,7 +255,7 @@ export default function BankAccountsPage() {
               </h1>
               <p className="text-sm text-slate-400">
                 {detail.bankName && `${detail.bankName} • `}
-                {detail.accountNumber && `****${detail.accountNumber.slice(-4)}`}
+                {detail.accountNumber && `Ref: ${detail.accountNumber}`}
               </p>
             </div>
           </div>
@@ -306,16 +306,15 @@ export default function BankAccountsPage() {
                         key={type}
                         type="button"
                         onClick={() => setTransactionForm(f => ({ ...f, type }))}
-                        className={`py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                          transactionForm.type === type
+                        className={`py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${transactionForm.type === type
                             ? type === 'DEPOSIT'
                               ? 'bg-emerald-600 text-white'
                               : 'bg-red-600 text-white'
                             : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        }`}
+                          }`}
                       >
                         {type === 'DEPOSIT' ? <FaArrowDown className="w-4 h-4" /> : <FaArrowUp className="w-4 h-4" />}
-                        {type === 'DEPOSIT' ? 'Deposit' : 'Withdraw'}
+                        {type === 'DEPOSIT' ? 'Income / Deposit' : 'Expense / Withdraw'}
                       </button>
                     ))}
                   </div>
@@ -374,7 +373,7 @@ export default function BankAccountsPage() {
                     value={transactionForm.reference}
                     onChange={e => setTransactionForm(f => ({ ...f, reference: e.target.value }))}
                     className="form-input"
-                    placeholder="Cheque no., UPI ref, etc."
+                    placeholder="Details, Ref No., etc."
                   />
                 </div>
 
@@ -404,11 +403,10 @@ export default function BankAccountsPage() {
                 <button
                   type="submit"
                   disabled={createTransactionMutation.isPending}
-                  className={`px-6 py-2 text-white font-semibold rounded-lg disabled:opacity-50 flex items-center gap-2 ${
-                    transactionForm.type === 'DEPOSIT'
+                  className={`px-6 py-2 text-white font-semibold rounded-lg disabled:opacity-50 flex items-center gap-2 ${transactionForm.type === 'DEPOSIT'
                       ? 'bg-emerald-600 hover:bg-emerald-500'
                       : 'bg-red-600 hover:bg-red-500'
-                  }`}
+                    }`}
                 >
                   <FaSave className="w-4 h-4" />
                   {createTransactionMutation.isPending ? 'Processing...' : 'Save Transaction'}
@@ -434,11 +432,10 @@ export default function BankAccountsPage() {
               {transactions.map((txn: any) => (
                 <div key={txn.id} className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      txn.type === 'DEPOSIT' || txn.type === 'TRANSFER_IN'
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${txn.type === 'DEPOSIT' || txn.type === 'TRANSFER_IN'
                         ? 'bg-emerald-500/20'
                         : 'bg-red-500/20'
-                    }`}>
+                      }`}>
                       {getTransactionIcon(txn.type)}
                     </div>
                     <div>
@@ -457,11 +454,10 @@ export default function BankAccountsPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-bold ${
-                      txn.type === 'DEPOSIT' || txn.type === 'TRANSFER_IN'
+                    <p className={`text-sm font-bold ${txn.type === 'DEPOSIT' || txn.type === 'TRANSFER_IN'
                         ? 'text-emerald-400'
                         : 'text-red-400'
-                    }`}>
+                      }`}>
                       {txn.type === 'DEPOSIT' || txn.type === 'TRANSFER_IN' ? '+' : '-'}
                       ₹{txn.amount.toLocaleString()}
                     </p>
@@ -512,8 +508,8 @@ export default function BankAccountsPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-xl font-bold text-white">Bank Accounts</h1>
-            <p className="text-sm text-slate-400">Manage your accounts and transactions</p>
+            <h1 className="text-xl font-bold text-white">Financial Accounts</h1>
+            <p className="text-sm text-slate-400">Manage your wallets, cash drawers, and accounts</p>
           </div>
           {isAdmin && !showAddAccountForm && (
             <button
@@ -536,7 +532,7 @@ export default function BankAccountsPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 {selectedAccount ? <FaEdit className="text-sky-400" /> : <FaPlus className="text-sky-400" />}
-                {selectedAccount ? 'Edit Account' : 'Add New Bank Account'}
+                {selectedAccount ? 'Edit Account' : 'Add New Account'}
               </h2>
               <button
                 onClick={() => {
@@ -560,7 +556,7 @@ export default function BankAccountsPage() {
                     onChange={e => setAccountForm(f => ({ ...f, accountName: e.target.value }))}
                     required
                     className="form-input"
-                    placeholder="e.g., Main Business Account"
+                    placeholder="e.g., Main Cash Drawer, HDFC"
                   />
                 </div>
 
@@ -574,30 +570,30 @@ export default function BankAccountsPage() {
                     <option value="SAVINGS">Savings Account</option>
                     <option value="CURRENT">Current Account</option>
                     <option value="CASH">Cash in Hand</option>
-                    <option value="OTHER">Other</option>
+                    <option value="OTHER">Other / Wallet</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Bank Name</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Institution / Provider</label>
                   <input
                     type="text"
                     value={accountForm.bankName}
                     onChange={e => setAccountForm(f => ({ ...f, bankName: e.target.value }))}
                     className="form-input"
-                    placeholder="e.g., SBI, HDFC"
+                    placeholder="e.g., SBI, UPI, Cash Box"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Account Number (Last 4 digits)</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Ref No. / digits (Optional)</label>
                   <input
                     type="text"
                     value={accountForm.accountNumber}
                     onChange={e => setAccountForm(f => ({ ...f, accountNumber: e.target.value }))}
                     className="form-input"
-                    placeholder="e.g., 1234"
-                    maxLength={4}
+                    placeholder="Security: Last 4 digits only"
+                    maxLength={20}
                   />
                 </div>
 
@@ -648,8 +644,8 @@ export default function BankAccountsPage() {
                   className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-500 disabled:opacity-50 flex items-center gap-2"
                 >
                   <FaSave className="w-4 h-4" />
-                  {(createAccountMutation.isPending || updateAccountMutation.isPending) 
-                    ? 'Saving...' 
+                  {(createAccountMutation.isPending || updateAccountMutation.isPending)
+                    ? 'Saving...'
                     : selectedAccount ? 'Update Account' : 'Create Account'}
                 </button>
               </div>
@@ -673,27 +669,25 @@ export default function BankAccountsPage() {
             {accounts.map((account: any) => (
               <div
                 key={account.id}
-                className={`bg-slate-900/60 backdrop-blur-xl rounded-xl p-5 border transition-all ${
-                  account.isActive 
-                    ? 'border-white/5 hover:border-sky-500/30' 
+                className={`bg-slate-900/60 backdrop-blur-xl rounded-xl p-5 border transition-all ${account.isActive
+                    ? 'border-white/5 hover:border-sky-500/30'
                     : 'border-red-500/20 opacity-60'
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      account.accountType === 'SAVINGS' ? 'bg-emerald-500/20 text-emerald-400' :
-                      account.accountType === 'CURRENT' ? 'bg-sky-500/20 text-sky-400' :
-                      account.accountType === 'CASH' ? 'bg-amber-500/20 text-amber-400' :
-                      'bg-slate-500/20 text-slate-400'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${account.accountType === 'SAVINGS' ? 'bg-emerald-500/20 text-emerald-400' :
+                        account.accountType === 'CURRENT' ? 'bg-sky-500/20 text-sky-400' :
+                          account.accountType === 'CASH' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-slate-500/20 text-slate-400'
+                      }`}>
                       {getAccountTypeIcon(account.accountType)}
                     </div>
                     <div>
                       <h3 className="text-base font-semibold text-white">{account.accountName}</h3>
                       <p className="text-xs text-slate-400">
                         {account.bankName || account.accountType}
-                        {account.accountNumber && ` • ****${account.accountNumber.slice(-4)}`}
+                        {account.accountNumber && ` • ${account.accountNumber}`}
                       </p>
                     </div>
                   </div>
@@ -742,8 +736,8 @@ export default function BankAccountsPage() {
         ) : (
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-12 border border-white/5 text-center">
             <FaUniversity className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No Bank Accounts</h3>
-            <p className="text-sm text-slate-400 mb-4">Add your first bank account to start tracking finances</p>
+            <h3 className="text-lg font-semibold text-white mb-2">No Financial Accounts</h3>
+            <p className="text-sm text-slate-400 mb-4">Add your first account to start tracking finances</p>
             {isAdmin && (
               <button
                 onClick={() => {
@@ -753,7 +747,7 @@ export default function BankAccountsPage() {
                 }}
                 className="px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500"
               >
-                Add Bank Account
+                Add Account
               </button>
             )}
           </div>

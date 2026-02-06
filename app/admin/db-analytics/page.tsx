@@ -5,12 +5,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { 
-  FaDatabase, 
-  FaTable, 
-  FaLock, 
-  FaUnlock, 
-  FaSync, 
+import {
+  FaDatabase,
+  FaTable,
+  FaLock,
+  FaUnlock,
+  FaSync,
   FaChartBar,
   FaExclamationTriangle,
   FaCheckCircle,
@@ -102,14 +102,14 @@ export default function DbAnalyticsPage() {
     try {
       const response = await api.post('/admin/db-analytics', { action: 'export', table, filter })
       const exportData = response?.data || response
-      
+
       if (exportData?.data && exportData.data.length > 0) {
         // Convert to CSV format
         const jsonData = exportData.data
         const headers = Object.keys(jsonData[0])
         const csvContent = [
           headers.join(','),
-          ...jsonData.map((row: any) => 
+          ...jsonData.map((row: any) =>
             headers.map(h => {
               const val = row[h]
               if (typeof val === 'object') return JSON.stringify(val).replace(/,/g, ';')
@@ -169,7 +169,7 @@ export default function DbAnalyticsPage() {
       const response = await api.get('/admin/auto-cleanup?secret=auto-cleanup-secret-2026')
       const result = response?.data || response
       setLastCleanupResult(result)
-      
+
       if (result?.success) {
         toast.success(result.message || 'Auto-cleanup completed!')
         queryClient.invalidateQueries({ queryKey: ['db-analytics'] })
@@ -195,7 +195,7 @@ export default function DbAnalyticsPage() {
         confirmPassword: factoryResetPassword,
       })
       const result = response?.data || response
-      
+
       if (result?.success) {
         toast.success(`Factory reset complete! ${result.totalDeleted} records deleted.`)
         setFactoryResetModal(false)
@@ -386,11 +386,10 @@ export default function DbAnalyticsPage() {
                 <p className="text-xs text-slate-400">512 MB limit per project</p>
               </div>
             </div>
-            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-              analytics?.storage?.status === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${analytics?.storage?.status === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
               analytics?.storage?.status === 'WARNING' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-              'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-            }`}>
+                'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}>
               {analytics?.storage?.status || 'HEALTHY'}
             </span>
           </div>
@@ -402,12 +401,11 @@ export default function DbAnalyticsPage() {
               <span className="text-slate-300">Free: <strong className="text-emerald-400">{analytics?.storage?.remainingMB?.toFixed(2) || 512} MB</strong></span>
             </div>
             <div className="h-4 bg-slate-700 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-500 ${
-                  (analytics?.storage?.usagePercent || 0) > 90 ? 'bg-gradient-to-r from-red-500 to-red-400' :
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${(analytics?.storage?.usagePercent || 0) > 90 ? 'bg-gradient-to-r from-red-500 to-red-400' :
                   (analytics?.storage?.usagePercent || 0) > 70 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
-                  'bg-gradient-to-r from-emerald-500 to-green-400'
-                }`}
+                    'bg-gradient-to-r from-emerald-500 to-green-400'
+                  }`}
                 style={{ width: `${Math.min(analytics?.storage?.usagePercent || 0, 100)}%` }}
               />
             </div>
@@ -710,8 +708,8 @@ export default function DbAnalyticsPage() {
             <p className="text-xs text-emerald-300/80 flex items-start gap-2">
               <FaCheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>
-                <strong>Backup Enabled:</strong> Before data is deleted, CSV backup files are automatically 
-                sent to your admin email ({process.env.ADMIN_BACKUP_EMAIL || 'configured email'}). 
+                <strong>Backup Enabled:</strong> Before data is deleted, CSV backup files are automatically
+                sent to your admin email ({process.env.ADMIN_BACKUP_EMAIL || 'configured email'}).
                 This ensures you never lose important historical data.
               </span>
             </p>
@@ -722,8 +720,8 @@ export default function DbAnalyticsPage() {
             <p className="text-xs text-violet-300/80 flex items-start gap-2">
               <FaExclamationTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>
-                <strong>Setup:</strong> For automatic cleanup, use Vercel Cron Jobs (Pro plan) or 
-                external cron service (cron-job.org - free). Add <code className="bg-slate-800 px-1 rounded">ADMIN_BACKUP_EMAIL</code> to 
+                <strong>Setup:</strong> For automatic cleanup, use Vercel Cron Jobs (Pro plan) or
+                external cron service (cron-job.org - free). Add <code className="bg-slate-800 px-1 rounded">ADMIN_BACKUP_EMAIL</code> to
                 your environment variables to receive backup files.
               </span>
             </p>
@@ -737,7 +735,7 @@ export default function DbAnalyticsPage() {
             <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
           </div>
           <p className="text-sm text-red-300/70 mb-4">
-            Factory reset will <strong>permanently delete ALL data</strong> except user accounts. 
+            Factory reset will <strong>permanently delete ALL data</strong> except user accounts.
             This includes rooms, bookings, guests, inventory, staff, expenses, and all other records.
             <br /><span className="text-red-400 font-bold">This action cannot be undone!</span>
           </p>
@@ -750,7 +748,7 @@ export default function DbAnalyticsPage() {
                   Factory Reset (Keep Users Only)
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Deletes: Rooms, Bookings, Guests, Inventory, Staff, Expenses, Function Halls, Bank Data, and more
+                  Deletes: Rooms, Bookings, Guests, Inventory, Staff, Expenses, Function Halls, Financial Data, and more
                 </p>
               </div>
               <button
@@ -910,7 +908,7 @@ export default function DbAnalyticsPage() {
                   <li>All Staff, Attendance & Salary Payments</li>
                   <li>All Expenses & Utility Bills</li>
                   <li>All Function Halls & Bookings</li>
-                  <li>All Bank Accounts & Transactions</li>
+                  <li>All Financial Accounts & Transactions</li>
                   <li>All Password Reset Tokens</li>
                 </ul>
               </div>

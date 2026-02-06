@@ -48,7 +48,7 @@ export function Sidebar() {
 
   // Finance menu items
   const financeMenuItems = [
-    { href: '/bank-accounts', icon: FaUniversity, label: 'Bank Accounts', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/bank-accounts', icon: FaUniversity, label: 'Financial Accounts', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/workforce', icon: FaWallet, label: 'Workforce', roles: ['SUPER_ADMIN'] },
   ]
@@ -101,9 +101,8 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 app-sidebar backdrop-blur-xl border-r shadow-[0_18px_60px_rgba(15,23,42,0.25)] z-40 transition-transform duration-300 overflow-y-auto sidebar-scrollbar ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        className={`fixed left-0 top-0 h-full w-64 app-sidebar backdrop-blur-xl border-r shadow-[0_18px_60px_rgba(15,23,42,0.25)] z-40 transition-transform duration-300 overflow-y-auto sidebar-scrollbar ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo/Brand */}
@@ -142,11 +141,10 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          active
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${active
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-amber-400'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.label}</span>
@@ -173,11 +171,10 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          active
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${active
                             ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-sky-400'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.label}</span>
@@ -204,11 +201,10 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          active
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${active
                             ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-purple-400'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.label}</span>
@@ -235,11 +231,10 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          active
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${active
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-emerald-400'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.label}</span>
@@ -266,11 +261,10 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          active
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${active
                             ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-orange-400'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.label}</span>
@@ -297,11 +291,10 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          active
+                        className={`flex items-center space-x-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${active
                             ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-200'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.label}</span>
@@ -318,11 +311,10 @@ export function Sidebar() {
             <Link
               href="/profile"
               onClick={() => setIsMobileOpen(false)}
-              className={`flex items-center space-x-2 bg-slate-800/40 backdrop-blur-sm px-3 py-2 rounded-lg border transition-all duration-200 ${
-                pathname === '/profile'
+              className={`flex items-center space-x-2 bg-slate-800/40 backdrop-blur-sm px-3 py-2 rounded-lg border transition-all duration-200 ${pathname === '/profile'
                   ? 'border-sky-500/30 bg-sky-500/10'
                   : 'border-white/5 hover:bg-slate-800/60 hover:border-white/10'
-              }`}
+                }`}
             >
               <div className="w-8 h-8 bg-gradient-to-br from-sky-500 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-xs font-semibold text-white">{user.username.charAt(0).toUpperCase()}</span>
