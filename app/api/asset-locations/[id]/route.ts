@@ -2,86 +2,34 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/api-helpers'
 
-// GET - Get single asset location
-export async function GET(
+// PATCH - Update asset location (e.g., condition, quantity, notes)
+export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    // Allow RECEPTIONIST, ADMIN, SUPER_ADMIN to view
     const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
-    const { id } = await params
-
-    const assetLocation = await prisma.assetLocation.findUnique({
-      where: { id },
-      include: {
-        inventory: true,
-        room: true,
-        functionHall: true,
-      },
-    })
-
-    if (!assetLocation) {
-      return NextResponse.json(
-        { success: false, message: 'Asset location not found' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: assetLocation,
-    })
-  } catch (error) {
-    console.error('Get asset location error:', error)
-    return NextResponse.json(
-      { success: false, message: 'Failed to fetch asset location' },
-      { status: 500 }
-    )
-  }
-}
-
-// PUT - Update asset location
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    // Allow RECEPTIONIST, ADMIN, SUPER_ADMIN to update
-    const authResult = await requireAuth('RECEPTIONIST')(request)
-    if (authResult instanceof Response) return authResult
-
-    const { id } = await params
+    const id = params.id
     const body = await request.json()
-    const {
-      roomId,
-      functionHallId,
-      quantity,
-      condition,
-      notes,
-    } = body
+    const { condition, notes, quantity } = body
 
-    const existing = await prisma.assetLocation.findUnique({
-      where: { id },
-    })
-
-    if (!existing) {
+    // Validation
+    if (!id) {
       return NextResponse.json(
-        { success: false, message: 'Asset location not found' },
-        { status: 404 }
+        { success: false, message: 'Asset location ID is required' },
+        { status: 400 }
       )
     }
 
-    const assetLocation = await prisma.assetLocation.update({
+    // @ts-ignore - Prisma types may not include AssetLocation
+    const updated = await (prisma.assetLocation as any).update({
       where: { id },
       data: {
-        ...(roomId !== undefined && { roomId: roomId || null }),
-        ...(functionHallId !== undefined && { functionHallId: functionHallId || null }),
-        ...(quantity !== undefined && { quantity: parseInt(quantity) }),
-        ...(condition && { condition }),
-        ...(notes !== undefined && { notes: notes || null }),
+        ...(condition ? { condition } : {}),
+        ...(notes !== undefined ? { notes } : {}),
+        ...(quantity ? { quantity } : {}),
       },
       include: {
         inventory: true,
@@ -93,7 +41,7 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       message: 'Asset location updated successfully',
-      data: assetLocation,
+      data: updated,
     })
   } catch (error) {
     console.error('Update asset location error:', error)
@@ -107,27 +55,23 @@ export async function PUT(
 // DELETE - Remove asset from location
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    // Allow ADMIN and SUPER_ADMIN to delete
-    const authResult = await requireAuth('ADMIN')(request)
+    const authResult = await requireAuth('RECEPTIONIST')(request)
     if (authResult instanceof Response) return authResult
 
-    const { id } = await params
+    const id = params.id
 
-    const existing = await prisma.assetLocation.findUnique({
-      where: { id },
-    })
-
-    if (!existing) {
+    if (!id) {
       return NextResponse.json(
-        { success: false, message: 'Asset location not found' },
-        { status: 404 }
+        { success: false, message: 'Asset location ID is required' },
+        { status: 400 }
       )
     }
 
-    await prisma.assetLocation.delete({
+    // @ts-ignore - Prisma types may not include AssetLocation
+    await (prisma.assetLocation as any).delete({
       where: { id },
     })
 

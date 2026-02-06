@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     // Optional filter by status (applied after deriving effective status)
     const filtered =
-      status === undefined
+      !status
         ? roomsWithEffectiveStatus
         : roomsWithEffectiveStatus.filter((r) => r.status === status)
 

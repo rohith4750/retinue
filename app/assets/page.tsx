@@ -6,9 +6,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { 
+import {
   FaPlus, FaBox, FaHome, FaBuilding, FaEdit, FaTrash, FaMapMarkerAlt,
-  FaChevronRight, FaChevronDown, FaFolder, FaFolderOpen, FaCubes
+  FaChevronRight, FaChevronDown, FaFolder, FaFolderOpen, FaCubes, FaTools,
+  FaExclamationTriangle
 } from 'react-icons/fa'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -16,17 +17,19 @@ import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidatio
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 
 // Tree Node Component for Location
-function LocationNode({ 
-  location, 
-  assets, 
-  type, 
-  onDelete, 
-  getConditionColor 
-}: { 
+function LocationNode({
+  location,
+  assets,
+  type,
+  onDelete,
+  onReport,
+  getConditionColor
+}: {
   location: any
   assets: any[]
   type: 'room' | 'hall'
   onDelete: (id: string) => void
+  onReport: (id: string) => void
   getConditionColor: (condition: string) => string
 }) {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -35,7 +38,7 @@ function LocationNode({
   return (
     <div className="select-none">
       {/* Location Header */}
-      <div 
+      <div
         className="flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer hover:bg-slate-800/50 transition-colors group"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -43,30 +46,29 @@ function LocationNode({
         <span className="text-slate-500 w-4">
           {isExpanded ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
         </span>
-        
+
         {/* Folder Icon */}
         {isExpanded ? (
           <FaFolderOpen className={`w-4 h-4 ${type === 'room' ? 'text-amber-400' : 'text-purple-400'}`} />
         ) : (
           <FaFolder className={`w-4 h-4 ${type === 'room' ? 'text-amber-400' : 'text-purple-400'}`} />
         )}
-        
+
         {/* Location Name */}
         <span className="text-white font-medium flex-1">
           {type === 'room' ? location.roomNumber : location.name}
         </span>
-        
+
         {/* Item Count Badge */}
         <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
           {assets.length} {assets.length === 1 ? 'item' : 'items'} • {totalQuantity} qty
         </span>
-        
+
         {/* Location Type Badge */}
-        <span className={`text-[10px] px-2 py-0.5 rounded ${
-          type === 'room' 
-            ? 'bg-amber-500/20 text-amber-400' 
-            : 'bg-purple-500/20 text-purple-400'
-        }`}>
+        <span className={`text-[10px] px-2 py-0.5 rounded ${type === 'room'
+          ? 'bg-amber-500/20 text-amber-400'
+          : 'bg-purple-500/20 text-purple-400'
+          }`}>
           {type === 'room' ? `Floor ${location.floor}` : `${location.capacity} guests`}
         </span>
       </div>
@@ -75,29 +77,29 @@ function LocationNode({
       {isExpanded && (
         <div className="ml-6 border-l-2 border-slate-700/50 pl-4 mt-1 space-y-1">
           {assets.map((asset: any) => (
-            <div 
-              key={asset.id} 
+            <div
+              key={asset.id}
               className="flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-slate-800/30 transition-colors group"
             >
               {/* Tree Branch */}
               <span className="text-slate-600">└</span>
-              
+
               {/* Asset Icon */}
               <FaCubes className="w-3.5 h-3.5 text-sky-400" />
-              
+
               {/* Asset Name */}
               <span className="text-slate-200 flex-1">{asset.inventory?.itemName || 'Unknown'}</span>
-              
+
               {/* Quantity */}
               <span className="text-xs bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded font-medium">
                 ×{asset.quantity}
               </span>
-              
+
               {/* Condition */}
-              <span className={`text-[10px] px-2 py-0.5 rounded border ${getConditionColor(asset.condition)}`}>
+              <span className={`text-xs px-2 py-0.5 rounded border ${getConditionColor(asset.condition)}`}>
                 {asset.condition}
               </span>
-              
+
               {/* Actions */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Link
@@ -107,6 +109,26 @@ function LocationNode({
                 >
                   <FaEdit className="w-3 h-3" />
                 </Link>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onReport(asset.id)
+                  }}
+                  title="Quick Report: Needs Repair"
+                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+                >
+                  <FaExclamationTriangle className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onReport(asset.id)
+                  }}
+                  title="Quick Report: Needs Repair"
+                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition-colors"
+                >
+                  <FaExclamationTriangle className="w-3 h-3" />
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -130,17 +152,19 @@ export default function AssetsPage() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
+  const [showMaintenanceOnly, setShowMaintenanceOnly] = useState(false)
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; assetId: string | null }>({
     show: false,
     assetId: null
   })
+
   const [expandRooms, setExpandRooms] = useState(true)
   const [expandHalls, setExpandHalls] = useState(true)
 
   // Check user role
   const [user, setUser] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
-  
+
   useEffect(() => {
     setMounted(true)
     const userData = localStorage.getItem('user')
@@ -203,16 +227,26 @@ export default function AssetsPage() {
     return (hallsData as any)?.halls || []
   }, [hallsData])
 
-  // Filter assets by search
+  // Filter assets
   const filteredAssets = useMemo(() => {
-    if (!debouncedSearch) return assets
-    const searchLower = debouncedSearch.toLowerCase()
-    return assets.filter((asset: any) => 
-      asset.inventory?.itemName?.toLowerCase().includes(searchLower) ||
-      asset.room?.roomNumber?.toLowerCase().includes(searchLower) ||
-      asset.functionHall?.name?.toLowerCase().includes(searchLower)
-    )
-  }, [assets, debouncedSearch])
+    let result = assets
+
+    // Filter by maintenance status if active
+    if (showMaintenanceOnly) {
+      result = result.filter((a: any) => a.condition === 'POOR' || a.condition === 'DAMAGED')
+    }
+
+    // Filter by search
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase()
+      result = result.filter((asset: any) =>
+        asset.inventory?.itemName?.toLowerCase().includes(searchLower) ||
+        asset.room?.roomNumber?.toLowerCase().includes(searchLower) ||
+        asset.functionHall?.name?.toLowerCase().includes(searchLower)
+      )
+    }
+    return result
+  }, [assets, debouncedSearch, showMaintenanceOnly])
 
   // Group assets by room
   const assetsByRoom = useMemo(() => {
@@ -242,12 +276,13 @@ export default function AssetsPage() {
   const getRoomById = (id: string) => rooms.find((r: any) => r.id === id) || filteredAssets.find((a: any) => a.roomId === id)?.room
   const getHallById = (id: string) => halls.find((h: any) => h.id === id) || filteredAssets.find((a: any) => a.functionHallId === id)?.functionHall
 
-  // Calculate summary
+  // Calculate summary (using ALL assets, not filtered)
   const summary = useMemo(() => ({
     totalAssets: assets.length,
     totalQuantity: assets.reduce((sum: number, a: any) => sum + (a.quantity || 0), 0),
     roomsWithAssets: Object.keys(assetsByRoom).length,
-    hallsWithAssets: Object.keys(assetsByHall).length
+    hallsWithAssets: Object.keys(assetsByHall).length,
+    needsRepair: assets.filter((a: any) => a.condition === 'POOR' || a.condition === 'DAMAGED').length
   }), [assets, assetsByRoom, assetsByHall])
 
   // Delete mutation
@@ -263,6 +298,26 @@ export default function AssetsPage() {
       toast.error(error?.message || 'Failed to remove asset')
     }
   })
+
+  // Report/Update mutation
+  const updateMutation = useMutationWithInvalidation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/asset-locations/${id}`, data),
+    endpoint: '/asset-locations',
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['asset-locations'] })
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      queryClient.invalidateQueries({ queryKey: ['function-halls'] })
+      toast.success('Asset status updated')
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to update asset')
+    }
+  })
+
+  // Quick Report Handler
+  const handleQuickReport = (id: string) => {
+    updateMutation.mutate({ id, data: { condition: 'DAMAGED' } })
+  }
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
@@ -307,6 +362,24 @@ export default function AssetsPage() {
               onChange={setSearchQuery}
               className="w-64"
             />
+
+            {/* Maintenance Filter Toggle */}
+            <button
+              onClick={() => setShowMaintenanceOnly(!showMaintenanceOnly)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${showMaintenanceOnly
+                ? 'bg-red-500/20 border-red-500 text-red-400'
+                : 'bg-slate-800/60 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                }`}
+            >
+              <FaTools className="w-3.5 h-3.5" />
+              <span className="text-sm font-medium">Needs Repair</span>
+              {summary.needsRepair > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-md font-bold ${showMaintenanceOnly ? 'bg-red-500/20 text-red-300' : 'bg-slate-700 text-slate-300'
+                  }`}>
+                  {summary.needsRepair}
+                </span>
+              )}
+            </button>
           </div>
 
           <Link
@@ -319,7 +392,27 @@ export default function AssetsPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          {/* Needs Repair Card - Critical Status */}
+          <div
+            onClick={() => setShowMaintenanceOnly(true)}
+            className={`cursor-pointer transition-all hover:scale-[1.02] rounded-xl p-4 border ${showMaintenanceOnly
+              ? 'bg-red-500/20 border-red-500'
+              : 'bg-slate-900/60 backdrop-blur-xl border-white/5 hover:border-red-500/50'
+              }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${showMaintenanceOnly ? 'bg-red-500/20' : 'bg-red-500/10'
+                }`}>
+                <FaTools className="text-red-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{summary.needsRepair}</p>
+                <p className={`text-xs ${showMaintenanceOnly ? 'text-red-300' : 'text-slate-400'}`}>Needs Repair</p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-sky-500/20 rounded-lg flex items-center justify-center">
@@ -371,7 +464,7 @@ export default function AssetsPage() {
           {/* Hotel Rooms Section */}
           {(hasRoomAssets || !hasHallAssets) && (
             <div className="border-b border-white/5">
-              <div 
+              <div
                 className="flex items-center gap-3 px-4 py-3 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-colors"
                 onClick={() => setExpandRooms(!expandRooms)}
               >
@@ -384,7 +477,7 @@ export default function AssetsPage() {
                   {Object.keys(assetsByRoom).length} locations
                 </span>
               </div>
-              
+
               {expandRooms && (
                 <div className="px-4 py-2 space-y-1">
                   {hasRoomAssets ? (
@@ -398,6 +491,7 @@ export default function AssetsPage() {
                           assets={roomAssets}
                           type="room"
                           onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
+                          onReport={handleQuickReport}
                           getConditionColor={getConditionColor}
                         />
                       )
@@ -412,7 +506,7 @@ export default function AssetsPage() {
 
           {/* Function Halls Section */}
           <div>
-            <div 
+            <div
               className="flex items-center gap-3 px-4 py-3 bg-purple-500/5 cursor-pointer hover:bg-purple-500/10 transition-colors"
               onClick={() => setExpandHalls(!expandHalls)}
             >
@@ -425,7 +519,7 @@ export default function AssetsPage() {
                 {Object.keys(assetsByHall).length} locations
               </span>
             </div>
-            
+
             {expandHalls && (
               <div className="px-4 py-2 space-y-1">
                 {hasHallAssets ? (
@@ -439,6 +533,7 @@ export default function AssetsPage() {
                         assets={hallAssets}
                         type="hall"
                         onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
+                        onReport={handleQuickReport}
                         getConditionColor={getConditionColor}
                       />
                     )

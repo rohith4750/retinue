@@ -66,13 +66,14 @@ export default function AssignAssetPage() {
   }, [existingAsset])
 
   // Fetch ALL rooms for asset locator – no status filter so every room (AVAILABLE, BOOKED, MAINTENANCE) appears for tagging
-  const { data: roomsData } = useQuery({
+  const { data: roomsData, isLoading: isLoadingRooms, error: roomsError } = useQuery({
     queryKey: ['rooms', 'asset-locator-all'],
     queryFn: () => api.get('/rooms'), // GET /rooms returns all rooms with effective status; no ?status= filter
     enabled: mounted && !!canAccess,
     staleTime: 0,
     refetchOnMount: 'always',
   })
+
 
   // Fetch function halls
   const { data: hallsData } = useQuery({
@@ -134,7 +135,7 @@ export default function AssignAssetPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const submitData = {
       inventoryId: formData.inventoryId,
       roomId: locationType === 'room' ? formData.roomId : null,
@@ -210,11 +211,10 @@ export default function AssignAssetPage() {
                   setLocationType('room')
                   setFormData(prev => ({ ...prev, functionHallId: '' }))
                 }}
-                className={`p-4 rounded-xl border text-sm font-medium transition-all flex flex-col items-center gap-2 ${
-                  locationType === 'room'
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                    : 'bg-slate-800/50 border-white/5 text-slate-400 hover:border-white/10'
-                }`}
+                className={`p-4 rounded-xl border text-sm font-medium transition-all flex flex-col items-center gap-2 ${locationType === 'room'
+                  ? 'bg-amber-500/20 border-amber-500 text-amber-400'
+                  : 'bg-slate-800/50 border-white/5 text-slate-400 hover:border-white/10'
+                  }`}
               >
                 <FaHome className="w-6 h-6" />
                 Hotel Room
@@ -225,11 +225,10 @@ export default function AssignAssetPage() {
                   setLocationType('hall')
                   setFormData(prev => ({ ...prev, roomId: '' }))
                 }}
-                className={`p-4 rounded-xl border text-sm font-medium transition-all flex flex-col items-center gap-2 ${
-                  locationType === 'hall'
-                    ? 'bg-purple-500/20 border-purple-500 text-purple-400'
-                    : 'bg-slate-800/50 border-white/5 text-slate-400 hover:border-white/10'
-                }`}
+                className={`p-4 rounded-xl border text-sm font-medium transition-all flex flex-col items-center gap-2 ${locationType === 'hall'
+                  ? 'bg-purple-500/20 border-purple-500 text-purple-400'
+                  : 'bg-slate-800/50 border-white/5 text-slate-400 hover:border-white/10'
+                  }`}
               >
                 <FaBuilding className="w-6 h-6" />
                 Function Hall
@@ -249,8 +248,9 @@ export default function AssignAssetPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, roomId: e.target.value }))}
                 required
                 className="form-input"
+                disabled={isLoadingRooms}
               >
-                <option value="">-- Select a room --</option>
+                <option value="">{isLoadingRooms ? 'Loading rooms...' : '-- Select a room --'}</option>
                 {rooms.map((room: any) => {
                   const status = room.status || 'AVAILABLE'
                   return (
