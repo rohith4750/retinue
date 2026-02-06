@@ -365,232 +365,392 @@ export default function AssetsPage() {
 
   return (
     <>
-      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <SearchInput
-              placeholder="Search assets..."
-              value={searchQuery}
-              onChange={setSearchQuery}
-              className="w-64"
-            />
+  // ... (inside AssetsPage)
+      const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
 
-            {/* Maintenance Filter Toggle */}
-            <button
-              onClick={() => setShowMaintenanceOnly(!showMaintenanceOnly)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${showMaintenanceOnly
-                ? 'bg-red-500/20 border-red-500 text-red-400'
-                : 'bg-slate-800/60 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+  // Group rooms by floor for Map View
+  const roomsByFloor = useMemo(() => {
+    const grouped: Record<string, any[]> = { }
+    Object.keys(assetsByRoom).forEach((roomId) => {
+      const room = getRoomById(roomId)
+      if (room) {
+        const floor = room.floor || 'Ground' // Default to Ground if no floor
+      if (!grouped[floor]) grouped[floor] = []
+      grouped[floor].push({
+        ...room,
+        assets: assetsByRoom[roomId],
+          hasIssues: assetsByRoom[roomId].some((a: any) => a.condition === 'POOR' || a.condition === 'DAMAGED')
+        })
+      }
+    })
+    // Sort floors nicely
+    return Object.entries(grouped).sort((a, b) => {
+      if (a[0] === 'Ground') return -1
+      if (b[0] === 'Ground') return 1
+      return a[0].localeCompare(b[0], undefined, {numeric: true })
+    })
+  }, [assetsByRoom, getRoomById])
+
+      return (
+      <>
+        <div className="w-full px-4 lg:px-6 py-4 relative z-10">
+          {/* Header */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <SearchInput
+                placeholder="Search assets..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                className="w-64"
+              />
+
+              {/* View Filter Toggle */}
+              <div className="flex bg-slate-800/60 p-1 rounded-xl border border-white/5">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'list'
+                    ? 'bg-sky-500 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
+                >
+                  List View
+                </button>
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'map'
+                    ? 'bg-sky-500 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
+                >
+                  Floor Map
+                </button>
+              </div>
+
+              {/* Maintenance Filter Toggle */}
+              <button
+                onClick={() => setShowMaintenanceOnly(!showMaintenanceOnly)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${showMaintenanceOnly
+                  ? 'bg-red-500/20 border-red-500 text-red-400'
+                  : 'bg-slate-800/60 border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                  }`}
+              >
+                <FaTools className="w-3.5 h-3.5" />
+                <span className="text-sm font-medium">Needs Repair</span>
+                {summary.needsRepair > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-md font-bold ${showMaintenanceOnly ? 'bg-red-500/20 text-red-300' : 'bg-slate-700 text-slate-300'
+                    }`}>
+                    {summary.needsRepair}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <Link
+              href="/assets/assign"
+              className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+            >
+              <FaPlus className="w-3 h-3" />
+              <span>Assign Asset</span>
+            </Link>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            {/* Needs Repair Card - Critical Status */}
+            <div
+              onClick={() => setShowMaintenanceOnly(true)}
+              className={`cursor-pointer transition-all hover:scale-[1.02] rounded-xl p-4 border ${showMaintenanceOnly
+                ? 'bg-red-500/20 border-red-500'
+                : 'bg-slate-900/60 backdrop-blur-xl border-white/5 hover:border-red-500/50'
                 }`}
             >
-              <FaTools className="w-3.5 h-3.5" />
-              <span className="text-sm font-medium">Needs Repair</span>
-              {summary.needsRepair > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-md font-bold ${showMaintenanceOnly ? 'bg-red-500/20 text-red-300' : 'bg-slate-700 text-slate-300'
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${showMaintenanceOnly ? 'bg-red-500/20' : 'bg-red-500/10'
                   }`}>
-                  {summary.needsRepair}
-                </span>
-              )}
-            </button>
-          </div>
-
-          <Link
-            href="/assets/assign"
-            className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
-          >
-            <FaPlus className="w-3 h-3" />
-            <span>Assign Asset</span>
-          </Link>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          {/* Needs Repair Card - Critical Status */}
-          <div
-            onClick={() => setShowMaintenanceOnly(true)}
-            className={`cursor-pointer transition-all hover:scale-[1.02] rounded-xl p-4 border ${showMaintenanceOnly
-              ? 'bg-red-500/20 border-red-500'
-              : 'bg-slate-900/60 backdrop-blur-xl border-white/5 hover:border-red-500/50'
-              }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${showMaintenanceOnly ? 'bg-red-500/20' : 'bg-red-500/10'
-                }`}>
-                <FaTools className="text-red-400" />
+                  <FaTools className="text-red-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{summary.needsRepair}</p>
+                  <p className={`text-xs ${showMaintenanceOnly ? 'text-red-300' : 'text-slate-400'}`}>Needs Repair</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{summary.needsRepair}</p>
-                <p className={`text-xs ${showMaintenanceOnly ? 'text-red-300' : 'text-slate-400'}`}>Needs Repair</p>
+            </div>
+
+            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-sky-500/20 rounded-lg flex items-center justify-center">
+                  <FaBox className="text-sky-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{summary.totalAssets}</p>
+                  <p className="text-xs text-slate-400">Assignments</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                  <FaMapMarkerAlt className="text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{summary.totalQuantity}</p>
+                  <p className="text-xs text-slate-400">Total Items</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                  <FaHome className="text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{summary.roomsWithAssets}</p>
+                  <p className="text-xs text-slate-400">Rooms</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <FaBuilding className="text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{summary.hallsWithAssets}</p>
+                  <p className="text-xs text-slate-400">Halls</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-500/20 rounded-lg flex items-center justify-center">
-                <FaBox className="text-sky-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{summary.totalAssets}</p>
-                <p className="text-xs text-slate-400">Assignments</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                <FaMapMarkerAlt className="text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{summary.totalQuantity}</p>
-                <p className="text-xs text-slate-400">Total Items</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                <FaHome className="text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{summary.roomsWithAssets}</p>
-                <p className="text-xs text-slate-400">Rooms</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                <FaBuilding className="text-purple-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{summary.hallsWithAssets}</p>
-                <p className="text-xs text-slate-400">Halls</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          {viewMode === 'map' ? (
+            // Floor Map View
+            <div className="space-y-6">
+              {roomsByFloor.map(([floor, rooms]) => (
+                <div key={floor} className="bg-slate-900/60 backdrop-blur-xl rounded-xl border border-white/5 overflow-hidden">
+                  <div className="px-4 py-3 bg-white/5 border-b border-white/5 flex items-center gap-2">
+                    <FaHome className="text-slate-400" />
+                    <h3 className="text-sm font-semibold text-white">Floor {floor}</h3>
+                    <span className="text-xs bg-slate-700 px-2 py-0.5 rounded-full text-slate-300">
+                      {rooms.length} Rooms
+                    </span>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                    {rooms.map((room) => (
+                      <div
+                        key={room.id}
+                        onClick={() => {
+                          setSearchQuery(room.roomNumber)
+                          setViewMode('list')
+                        }}
+                        className={`
+                        relative group cursor-pointer p-3 rounded-lg border transition-all hover:scale-105
+                        ${room.hasIssues
+                            ? 'bg-red-500/10 border-red-500/50 hover:bg-red-500/20 hover:border-red-500 animate-[pulse_3s_ease-in-out_infinite]'
+                            : 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/50'
+                          }
+                      `}
+                      >
+                        <div className="text-center">
+                          <span className={`text-lg font-bold ${room.hasIssues ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {room.roomNumber}
+                          </span>
+                          <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+                            <FaBox className="w-3 h-3" />
+                            <span>{room.assets.length} items</span>
+                          </div>
+                        </div>
 
-        {/* Tree View */}
-        <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl border border-white/5 overflow-hidden">
-          {/* Hotel Rooms Section */}
-          {(hasRoomAssets || !hasHallAssets) && (
-            <div className="border-b border-white/5">
-              <div
-                className="flex items-center gap-3 px-4 py-3 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-colors"
-                onClick={() => setExpandRooms(!expandRooms)}
-              >
-                <span className="text-amber-400">
-                  {expandRooms ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
-                </span>
-                <FaHome className="w-4 h-4 text-amber-400" />
-                <span className="text-white font-semibold flex-1">Hotel Rooms</span>
-                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full">
-                  {Object.keys(assetsByRoom).length} locations
-                </span>
-              </div>
+                        {/* Detailed Tooltip on Hover */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 rounded-lg border border-white/10 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 p-2">
+                          <p className="text-xs font-semibold text-slate-200 border-b border-white/10 pb-1 mb-1">Room {room.roomNumber}</p>
+                          {room.hasIssues ? (
+                            <div className="flex items-center gap-1.5 text-xs text-red-400 mb-1">
+                              <FaExclamationTriangle className="w-3 h-3" />
+                              <span>Needs Repair</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-400 mb-1">
+                              <FaCheck className="w-3 h-3" />
+                              <span>All Good</span>
+                            </div>
+                          )}
+                          <p className="text-[10px] text-slate-500">Click to view details</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
 
-              {expandRooms && (
-                <div className="px-4 py-2 space-y-1">
-                  {hasRoomAssets ? (
-                    Object.entries(assetsByRoom).map(([roomId, roomAssets]) => {
-                      const room = getRoomById(roomId)
-                      if (!room) return null
+              {/* Function Halls separate section */}
+              {hasHallAssets && (
+                <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl border border-white/5 overflow-hidden">
+                  <div className="px-4 py-3 bg-white/5 border-b border-white/5 flex items-center gap-2">
+                    <FaBuilding className="text-slate-400" />
+                    <h3 className="text-sm font-semibold text-white">Function Halls</h3>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {Object.entries(assetsByHall).map(([hallId, assets]) => {
+                      const hall = getHallById(hallId)
+                      if (!hall) return null
+                      const hasIssues = assets.some((a: any) => a.condition === 'POOR' || a.condition === 'DAMAGED')
+
                       return (
-                        <LocationNode
-                          key={roomId}
-                          location={room}
-                          assets={roomAssets}
-                          type="room"
-                          onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
-                          onReport={handleQuickReport}
-                          getConditionColor={getConditionColor}
-                        />
+                        <div
+                          key={hallId}
+                          onClick={() => {
+                            setSearchQuery(hall.name)
+                            setViewMode('list')
+                          }}
+                          className={`
+                          relative group cursor-pointer p-4 rounded-lg border transition-all hover:scale-[1.02]
+                          ${hasIssues
+                              ? 'bg-red-500/10 border-red-500/50 hover:bg-red-500/20'
+                              : 'bg-purple-500/5 border-purple-500/20 hover:bg-purple-500/10'
+                            }
+                        `}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`font-bold ${hasIssues ? 'text-red-400' : 'text-purple-400'}`}>
+                              {hall.name}
+                            </span>
+                            {hasIssues ? (
+                              <FaExclamationTriangle className="text-red-400 animate-pulse" />
+                            ) : (
+                              <FaCheck className="text-purple-500/50" />
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {assets.length} total assets
+                          </div>
+                        </div>
                       )
-                    })
-                  ) : (
-                    <p className="text-sm text-slate-500 py-4 text-center">No assets assigned to rooms</p>
-                  )}
+                    })}
+                  </div>
                 </div>
               )}
             </div>
-          )}
+          ) : (
+            // List View (Existing)
+            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl border border-white/5 overflow-hidden">
+              {/* Hotel Rooms Section */}
+              {(hasRoomAssets || !hasHallAssets) && (
+                <div className="border-b border-white/5">
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-colors"
+                    onClick={() => setExpandRooms(!expandRooms)}
+                  >
+                    <span className="text-amber-400">
+                      {expandRooms ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
+                    </span>
+                    <FaHome className="w-4 h-4 text-amber-400" />
+                    <span className="text-white font-semibold flex-1">Hotel Rooms</span>
+                    <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full">
+                      {Object.keys(assetsByRoom).length} locations
+                    </span>
+                  </div>
 
-          {/* Function Halls Section */}
-          <div>
-            <div
-              className="flex items-center gap-3 px-4 py-3 bg-purple-500/5 cursor-pointer hover:bg-purple-500/10 transition-colors"
-              onClick={() => setExpandHalls(!expandHalls)}
-            >
-              <span className="text-purple-400">
-                {expandHalls ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
-              </span>
-              <FaBuilding className="w-4 h-4 text-purple-400" />
-              <span className="text-white font-semibold flex-1">Function Halls</span>
-              <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">
-                {Object.keys(assetsByHall).length} locations
-              </span>
-            </div>
+                  {expandRooms && (
+                    <div className="px-4 py-2 space-y-1">
+                      {hasRoomAssets ? (
+                        Object.entries(assetsByRoom).map(([roomId, roomAssets]) => {
+                          const room = getRoomById(roomId)
+                          if (!room) return null
+                          return (
+                            <LocationNode
+                              key={roomId}
+                              location={room}
+                              assets={roomAssets}
+                              type="room"
+                              onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
+                              onReport={handleQuickReport}
+                              getConditionColor={getConditionColor}
+                            />
+                          )
+                        })
+                      ) : (
+                        <p className="text-sm text-slate-500 py-4 text-center">No assets assigned to rooms</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {expandHalls && (
-              <div className="px-4 py-2 space-y-1">
-                {hasHallAssets ? (
-                  Object.entries(assetsByHall).map(([hallId, hallAssets]) => {
-                    const hall = getHallById(hallId)
-                    if (!hall) return null
-                    return (
-                      <LocationNode
-                        key={hallId}
-                        location={hall}
-                        assets={hallAssets}
-                        type="hall"
-                        onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
-                        onReport={handleQuickReport}
-                        getConditionColor={getConditionColor}
-                      />
-                    )
-                  })
-                ) : (
-                  <p className="text-sm text-slate-500 py-4 text-center">No assets assigned to function halls</p>
+              {/* Function Halls Section */}
+              <div>
+                <div
+                  className="flex items-center gap-3 px-4 py-3 bg-purple-500/5 cursor-pointer hover:bg-purple-500/10 transition-colors"
+                  onClick={() => setExpandHalls(!expandHalls)}
+                >
+                  <span className="text-purple-400">
+                    {expandHalls ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
+                  </span>
+                  <FaBuilding className="w-4 h-4 text-purple-400" />
+                  <span className="text-white font-semibold flex-1">Function Halls</span>
+                  <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">
+                    {Object.keys(assetsByHall).length} locations
+                  </span>
+                </div>
+
+                {expandHalls && (
+                  <div className="px-4 py-2 space-y-1">
+                    {hasHallAssets ? (
+                      Object.entries(assetsByHall).map(([hallId, hallAssets]) => {
+                        const hall = getHallById(hallId)
+                        if (!hall) return null
+                        return (
+                          <LocationNode
+                            key={hallId}
+                            location={hall}
+                            assets={hallAssets}
+                            type="hall"
+                            onDelete={(id) => setDeleteModal({ show: true, assetId: id })}
+                            onReport={handleQuickReport}
+                            getConditionColor={getConditionColor}
+                          />
+                        )
+                      })
+                    ) : (
+                      <p className="text-sm text-slate-500 py-4 text-center">No assets assigned to function halls</p>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {filteredAssets.length === 0 && (
+            <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-12 border border-white/5 text-center mt-6">
+              <FaBox className="text-4xl text-slate-500 mx-auto mb-3" />
+              <p className="text-base font-semibold text-slate-300 mb-1.5">No assets assigned yet</p>
+              <p className="text-xs text-slate-500 mb-4">Click &quot;Assign Asset&quot; to assign items from Stock & Assets to rooms or halls</p>
+              <Link
+                href="/assets/assign"
+                className="inline-block px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+              >
+                Assign First Asset
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Empty State */}
-        {filteredAssets.length === 0 && (
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-12 border border-white/5 text-center mt-6">
-            <FaBox className="text-4xl text-slate-500 mx-auto mb-3" />
-            <p className="text-base font-semibold text-slate-300 mb-1.5">No assets assigned yet</p>
-            <p className="text-xs text-slate-500 mb-4">Click &quot;Assign Asset&quot; to assign items from Stock & Assets to rooms or halls</p>
-            <Link
-              href="/assets/assign"
-              className="inline-block px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
-            >
-              Assign First Asset
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        show={deleteModal.show}
-        title="Remove Asset"
-        message="Are you sure you want to remove this asset from its location?"
-        action="Remove"
-        type="delete"
-        onConfirm={() => {
-          if (deleteModal.assetId) {
-            deleteMutation.mutate(deleteModal.assetId)
-          }
-        }}
-        onCancel={() => setDeleteModal({ show: false, assetId: null })}
-        isLoading={deleteMutation.isPending}
-        confirmText="Remove"
-      />
-    </>
-  )
+        {/* Delete Confirmation Modal */}
+        <ConfirmationModal
+          show={deleteModal.show}
+          title="Remove Asset"
+          message="Are you sure you want to remove this asset from its location?"
+          action="Remove"
+          type="delete"
+          onConfirm={() => {
+            if (deleteModal.assetId) {
+              deleteMutation.mutate(deleteModal.assetId)
+            }
+          }}
+          onCancel={() => setDeleteModal({ show: false, assetId: null })}
+          isLoading={deleteMutation.isPending}
+          confirmText="Remove"
+        />
+      </>
+      )
 }
