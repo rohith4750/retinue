@@ -300,7 +300,7 @@ export function BillPDF({ bill }: BillPDFProps) {
   const { booking } = bill
   const { guest, room } = booking
   const days = getNumberOfDays(booking.checkIn, booking.checkOut)
-  const pricePerDay = bill.subtotal / days
+  const pricePerDay = (bill.subtotal || 0) / days
   const itemName = `${room.roomType} Room ${room.roomNumber}`
 
   const formatDate = (dateString: string) =>
@@ -320,8 +320,8 @@ export function BillPDF({ bill }: BillPDFProps) {
         <View style={styles.headerBlock}>
           <View style={styles.headerLeft}>
             <View style={styles.logoArea}>
-              <Image 
-                src="/images/hotel-logo.png" 
+              <Image
+                src="/images/hotel-logo.png"
                 style={styles.logoImage}
               />
             </View>
@@ -357,8 +357,9 @@ export function BillPDF({ bill }: BillPDFProps) {
             <Text style={[styles.col2, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{itemName}</Text>
             <Text style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{days}</Text>
-            <Text style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={(e) => []}>₹ {pricePerDay.toFixed(2)}</Text>
-            <Text style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={(e) => []}>₹ {bill.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{days}</Text>
+            <Text style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={(e) => []}>₹ {(pricePerDay || 0).toFixed(2)}</Text>
+            <Text style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={(e) => []}>₹ {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={styles.itemTableTotalRow}>
             <Text style={[styles.itemTableTotalText, styles.col1]} hyphenationCallback={(e) => []}></Text>
@@ -366,7 +367,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             <Text style={[styles.itemTableTotalText, styles.col3]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col4]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col5]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={(e) => []}>₹ {bill.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            <Text style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={(e) => []}>₹ {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
           </View>
         </View>
 
@@ -378,24 +379,24 @@ export function BillPDF({ bill }: BillPDFProps) {
             <Text style={styles.descText} hyphenationCallback={(e) => []}>Check in: {formatShortDate(booking.checkIn)}</Text>
             <Text style={styles.descText} hyphenationCallback={(e) => []}>Check out: {formatShortDate(booking.checkOut)}</Text>
             <Text style={styles.descText} hyphenationCallback={(e) => []}>{pricePerDay.toFixed(0)}/- per day</Text>
-            <Text style={styles.descText} hyphenationCallback={(e) => []}>{days} day{days !== 1 ? 's' : ''} × {pricePerDay.toFixed(0)} = {bill.subtotal.toLocaleString('en-IN')}/-</Text>
+            <Text style={styles.descText} hyphenationCallback={(e) => []}>{days} day{days !== 1 ? 's' : ''} × {(pricePerDay || 0).toFixed(0)} = {(bill.subtotal || 0).toLocaleString('en-IN')}/-</Text>
           </View>
           <View style={styles.rightCol}>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Sub Total</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {bill.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Total</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {bill.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Received</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {bill.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Balance</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {bill.balanceAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.balanceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
           </View>
         </View>
@@ -403,7 +404,7 @@ export function BillPDF({ bill }: BillPDFProps) {
         {/* Invoice amount in words */}
         <View style={styles.amountWordsSection}>
           <Text style={styles.sectionTitle}>Invoice Amount In Words</Text>
-          <Text style={styles.amountWordsText}>{amountInWords(bill.totalAmount)}</Text>
+          <Text style={styles.amountWordsText}>{amountInWords(bill.totalAmount || 0)}</Text>
         </View>
 
         {/* Terms */}
@@ -421,8 +422,8 @@ export function BillPDF({ bill }: BillPDFProps) {
         {/* Authorized signatory */}
         <View style={styles.signatorySection}>
           <Text style={styles.signatoryFor}>For {HOTEL_INFO.brandName}</Text>
-          <Image 
-            src="/images/signature.png" 
+          <Image
+            src="/images/signature.png"
             style={styles.signatureImage}
           />
           <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
