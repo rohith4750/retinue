@@ -403,29 +403,34 @@ export async function POST(request: NextRequest) {
         // 2. Delete bookings (depends on rooms, guests, roomSlots)
         counts.bookings = (await tx.booking.deleteMany()).count
 
-        // 3. Delete room slots (depends on rooms)
-        counts.roomSlots = (await tx.roomSlot.deleteMany()).count
+        // 3. Delete room slots (KEEP slots to preserve calendar structure)
+        // counts.roomSlots = (await tx.roomSlot.deleteMany()).count
+        counts.roomSlots = 0
 
         // 4. Delete guests
         counts.guests = (await tx.guest.deleteMany()).count
 
-        // 5. Delete rooms
-        counts.rooms = (await tx.room.deleteMany()).count
+        // 5. Delete rooms (KEEP rooms as per user request)
+        // counts.rooms = (await tx.room.deleteMany()).count
+        counts.rooms = 0
 
         // 6. Delete function hall bookings (depends on function halls)
         counts.functionHallBookings = (await tx.functionHallBooking.deleteMany()).count
 
-        // 7. Delete function halls
-        counts.functionHalls = (await tx.functionHall.deleteMany()).count
+        // 7. Delete function halls (KEEP halls as part of structure)
+        // counts.functionHalls = (await tx.functionHall.deleteMany()).count
+        counts.functionHalls = 0
 
         // 8. Delete inventory transactions (depends on inventory)
         counts.inventoryTransactions = (await tx.inventoryTransaction.deleteMany()).count
 
-        // 9. Delete inventory (depends on asset locations)
-        counts.inventory = (await tx.inventory.deleteMany()).count
+        // 9. Delete inventory (KEEP inventory catalog)
+        // counts.inventory = (await tx.inventory.deleteMany()).count
+        counts.inventory = 0
 
-        // 10. Delete asset locations
-        counts.assetLocations = (await tx.assetLocation.deleteMany()).count
+        // 10. Delete asset locations (KEEP asset setup)
+        // counts.assetLocations = (await tx.assetLocation.deleteMany()).count
+        counts.assetLocations = 0
 
         // 11. Delete salary payments (depends on staff)
         counts.salaryPayments = (await tx.salaryPayment.deleteMany()).count
@@ -433,8 +438,9 @@ export async function POST(request: NextRequest) {
         // 12. Delete attendance (depends on staff)
         counts.attendance = (await tx.attendance.deleteMany()).count
 
-        // 13. Delete staff
-        counts.staff = (await tx.staff.deleteMany()).count
+        // 13. Delete staff (KEEP staff records)
+        // counts.staff = (await tx.staff.deleteMany()).count
+        counts.staff = 0
 
         // 14. Delete expenses
         counts.expenses = (await tx.expense.deleteMany()).count
@@ -445,8 +451,9 @@ export async function POST(request: NextRequest) {
         // 16. Delete bank transactions (depends on bank accounts)
         counts.bankTransactions = (await tx.bankTransaction.deleteMany()).count
 
-        // 17. Delete bank accounts
-        counts.bankAccounts = (await tx.bankAccount.deleteMany()).count
+        // 17. Delete bank accounts (KEEP bank accounts)
+        // counts.bankAccounts = (await tx.bankAccount.deleteMany()).count
+        counts.bankAccounts = 0
 
         // 18. Delete password resets (depends on users - but we keep users)
         counts.passwordResets = (await tx.passwordReset.deleteMany()).count
@@ -459,7 +466,7 @@ export async function POST(request: NextRequest) {
 
       return Response.json(successResponse({ 
         success: true,
-        message: 'Factory reset completed. All data deleted except user accounts.',
+        message: 'Factory reset completed. Transactional data deleted. Master data (Rooms, Users, Staff, Inventory) preserved.',
         deletedCounts: result,
         totalDeleted,
       }))
