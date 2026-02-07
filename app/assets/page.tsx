@@ -541,12 +541,13 @@ export default function AssetsPage() {
                         setViewMode('list')
                       }}
                       className={`
-                        relative group cursor-pointer p-3 rounded-lg border transition-all hover:scale-105
+                        relative group cursor-pointer p-3 rounded-lg border transition-all hover:scale-105 animate-in zoom-in fade-in duration-500 fill-mode-both
                         ${room.hasIssues
-                          ? 'bg-red-500/10 border-red-500/50 hover:bg-red-500/20 hover:border-red-500 animate-[pulse_3s_ease-in-out_infinite]'
+                          ? 'bg-red-500/10 border-red-500/50 hover:bg-red-500/20 hover:border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-[pulse_3s_ease-in-out_infinite]'
                           : 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/50'
                         }
                       `}
+                      style={{ animationDelay: `${Math.random() * 200}ms` }}
                     >
                       <div className="text-center">
                         <span className={`text-lg font-bold ${room.hasIssues ? 'text-red-400' : 'text-emerald-400'}`}>

@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { 
-  FaHome, FaCheckCircle, FaCalendarAlt, FaDollarSign, FaExclamationTriangle, 
+import {
+  FaHome, FaCheckCircle, FaCalendarAlt, FaDollarSign, FaExclamationTriangle,
   FaBox, FaUsers, FaArrowUp, FaArrowDown, FaBed, FaBuilding, FaClock,
   FaChartLine, FaUserPlus, FaClipboardList, FaMoneyBillWave, FaPercentage,
   FaCalendarCheck, FaSignOutAlt, FaSignInAlt, FaTachometerAlt, FaUserTag
@@ -32,7 +32,7 @@ const ROOM_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string }
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
-  
+
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (userData) {
@@ -81,7 +81,7 @@ export default function DashboardPage() {
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-4 lg:px-6 py-4 relative z-10 space-y-6">
-        
+
         {/* Welcome Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -114,32 +114,31 @@ export default function DashboardPage() {
         {/* Quick Stats - Row 1 */}
         <div className={`grid grid-cols-2 ${canViewFinance ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
           {/* Occupancy Rate */}
-          <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 backdrop-blur-xl border border-sky-500/20 rounded-2xl p-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-sky-400/10 rounded-full blur-2xl"></div>
+          <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 backdrop-blur-xl border border-sky-500/20 rounded-2xl p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-sky-400/20 rounded-full blur-2xl group-hover:bg-sky-400/30 transition-all"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
                 <FaPercentage className="text-sky-400 text-xl" />
-                <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                  (stats?.occupancyRate || 0) >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
-                }`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${(stats?.occupancyRate || 0) >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
+                  }`}>
                   {(stats?.occupancyRate || 0) >= 70 ? 'Good' : 'Low'}
                 </span>
               </div>
-              <p className="text-3xl font-bold text-white">{stats?.occupancyRate || 0}%</p>
-              <p className="text-xs text-slate-400 mt-1">Occupancy Rate</p>
+              <p className="text-3xl font-bold text-white tracking-tight">{stats?.occupancyRate || 0}%</p>
+              <p className="text-xs text-sky-200/70 mt-1 font-medium">Occupancy Rate</p>
             </div>
           </div>
 
           {/* Available Rooms */}
-          <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-800/20 backdrop-blur-xl border border-emerald-500/20 rounded-2xl p-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-400/10 rounded-full blur-2xl"></div>
+          <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-800/20 backdrop-blur-xl border border-emerald-500/20 rounded-2xl p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-all"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
                 <FaCheckCircle className="text-emerald-400 text-xl" />
-                <span className="text-xs text-slate-400">of {stats?.totalRooms || 0}</span>
+                <span className="text-xs text-emerald-200/70 font-medium">of {stats?.totalRooms || 0}</span>
               </div>
-              <p className="text-3xl font-bold text-white">{stats?.availableRooms || 0}</p>
-              <p className="text-xs text-slate-400 mt-1">Available Rooms</p>
+              <p className="text-3xl font-bold text-white tracking-tight">{stats?.availableRooms || 0}</p>
+              <p className="text-xs text-emerald-200/70 mt-1 font-medium">Available Rooms</p>
             </div>
           </div>
 
@@ -186,11 +185,10 @@ export default function DashboardPage() {
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Revenue</p>
                   <p className="text-2xl font-bold text-white mt-2">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
                 </div>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                  (stats?.revenueGrowth || 0) >= 0 
-                    ? 'bg-emerald-500/20 text-emerald-400' 
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${(stats?.revenueGrowth || 0) >= 0
+                    ? 'bg-emerald-500/20 text-emerald-400'
                     : 'bg-red-500/20 text-red-400'
-                }`}>
+                  }`}>
                   {(stats?.revenueGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
                   {Math.abs(stats?.revenueGrowth || 0)}%
                 </div>
@@ -208,11 +206,10 @@ export default function DashboardPage() {
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Bookings</p>
                   <p className="text-2xl font-bold text-white mt-2">{stats?.monthBookings || 0}</p>
                 </div>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                  (stats?.bookingGrowth || 0) >= 0 
-                    ? 'bg-emerald-500/20 text-emerald-400' 
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${(stats?.bookingGrowth || 0) >= 0
+                    ? 'bg-emerald-500/20 text-emerald-400'
                     : 'bg-red-500/20 text-red-400'
-                }`}>
+                  }`}>
                   {(stats?.bookingGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
                   {Math.abs(stats?.bookingGrowth || 0)}%
                 </div>
@@ -262,16 +259,15 @@ export default function DashboardPage() {
                   const maxAmount = Math.max(...(stats?.weeklyRevenue?.map((d: any) => d.amount) || [1]))
                   const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0
                   const isToday = index === (stats?.weeklyRevenue?.length || 0) - 1
-                  
+
                   return (
                     <div key={index} className="flex-1 flex flex-col items-center gap-1">
                       <div className="w-full relative" style={{ height: '140px' }}>
-                        <div 
-                          className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
-                            isToday 
-                              ? 'bg-gradient-to-t from-sky-600 to-sky-400' 
+                        <div
+                          className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${isToday
+                              ? 'bg-gradient-to-t from-sky-600 to-sky-400'
                               : 'bg-gradient-to-t from-slate-700 to-slate-600'
-                          }`}
+                            }`}
                           style={{ height: `${Math.max(height, 5)}%` }}
                         >
                           {day.amount > 0 && (
@@ -313,7 +309,7 @@ export default function DashboardPage() {
                   <span className="text-sm font-semibold text-white">{stats?.availableRooms || 0}</span>
                 </div>
                 <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                     style={{ width: `${stats?.totalRooms ? ((stats?.availableRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
                   />
@@ -329,13 +325,13 @@ export default function DashboardPage() {
                   <span className="text-sm font-semibold text-white">{stats?.bookedRooms || 0}</span>
                 </div>
                 <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-red-500 rounded-full transition-all duration-500"
                     style={{ width: `${stats?.totalRooms ? ((stats?.bookedRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
                   />
                 </div>
               </div>
-              
+
               {/* Room Type Distribution */}
               <div className="mt-6 pt-4 border-t border-white/5">
                 <p className="text-xs text-slate-400 mb-3 uppercase tracking-wider">By Room Type</p>
@@ -795,29 +791,27 @@ export default function DashboardPage() {
                   const hotelHeight = maxAmount > 0 ? (month.hotelRevenue / maxAmount) * 100 : 0
                   const hallHeight = maxAmount > 0 ? (month.hallRevenue / maxAmount) * 100 : 0
                   const isCurrentMonth = index === (stats?.monthlyTrend?.length || 0) - 1
-                  
+
                   return (
                     <div key={index} className="flex-1 flex flex-col items-center gap-1">
                       <div className="w-full flex gap-1" style={{ height: '180px' }}>
                         {/* Hotel Revenue Bar */}
                         <div className="flex-1 relative">
-                          <div 
-                            className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
-                              isCurrentMonth 
-                                ? 'bg-gradient-to-t from-amber-600 to-amber-400' 
+                          <div
+                            className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${isCurrentMonth
+                                ? 'bg-gradient-to-t from-amber-600 to-amber-400'
                                 : 'bg-gradient-to-t from-amber-700/60 to-amber-600/60'
-                            }`}
+                              }`}
                             style={{ height: `${Math.max(hotelHeight, 2)}%` }}
                           />
                         </div>
                         {/* Hall Revenue Bar */}
                         <div className="flex-1 relative">
-                          <div 
-                            className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
-                              isCurrentMonth 
-                                ? 'bg-gradient-to-t from-purple-600 to-purple-400' 
+                          <div
+                            className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${isCurrentMonth
+                                ? 'bg-gradient-to-t from-purple-600 to-purple-400'
                                 : 'bg-gradient-to-t from-purple-700/60 to-purple-600/60'
-                            }`}
+                              }`}
                             style={{ height: `${Math.max(hallHeight, 2)}%` }}
                           />
                         </div>
@@ -856,7 +850,7 @@ export default function DashboardPage() {
                 const count = stats?.bookingsByStatus?.[item.status] || 0
                 const total = Object.values(stats?.bookingsByStatus || {}).reduce((a: number, b: any) => a + b, 0) as number
                 const percentage = total > 0 ? ((count / total) * 100).toFixed(0) : 0
-                
+
                 return (
                   <div key={item.status} className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${item.color}`}></div>
@@ -867,7 +861,7 @@ export default function DashboardPage() {
                 )
               })}
             </div>
-            
+
             {/* Guest Stats */}
             <div className="mt-6 pt-4 border-t border-white/5">
               <div className="flex items-center justify-between">
@@ -920,12 +914,11 @@ export default function DashboardPage() {
                       {canViewFinance && (
                         <p className="text-sm font-semibold text-white">₹{(booking.totalAmount || 0).toLocaleString()}</p>
                       )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
-                        booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
-                        booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
-                        'bg-yellow-500/20 text-yellow-400'
-                      }`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
+                          booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
+                            booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
+                              'bg-yellow-500/20 text-yellow-400'
+                        }`}>
                         {booking.status}
                       </span>
                     </div>
@@ -971,11 +964,10 @@ export default function DashboardPage() {
                       {canViewFinance && (
                         <p className="text-sm font-semibold text-white">₹{(booking.totalAmount || 0).toLocaleString()}</p>
                       )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
-                        booking.status === 'COMPLETED' ? 'bg-slate-500/20 text-slate-400' :
-                        'bg-yellow-500/20 text-yellow-400'
-                      }`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
+                          booking.status === 'COMPLETED' ? 'bg-slate-500/20 text-slate-400' :
+                            'bg-yellow-500/20 text-yellow-400'
+                        }`}>
                         {booking.status}
                       </span>
                     </div>

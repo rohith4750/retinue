@@ -68,19 +68,20 @@ export function isSessionExpired(): boolean {
 export function setupSessionListeners(onTimeout: () => void) {
   const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click']
   
-  // Debounce reset to avoid excessive calls
-  let resetDebounceId: NodeJS.Timeout | null = null
-  const debouncedReset = () => {
-    if (resetDebounceId) {
-      clearTimeout(resetDebounceId)
-    }
-    resetDebounceId = setTimeout(() => {
+  // Throttle reset to avoid excessive calls (max once per 10 seconds)
+  let lastResetTimestamp = 0
+  const throttleInterval = 10000 // 10 seconds
+
+  const throttledReset = () => {
+    const now = Date.now()
+    if (now - lastResetTimestamp > throttleInterval) {
+      lastResetTimestamp = now
       resetSessionTimeout(onTimeout)
-    }, 100)
+    }
   }
 
   events.forEach((event) => {
-    window.addEventListener(event, debouncedReset, { passive: true })
+    window.addEventListener(event, throttledReset, { passive: true })
   })
 
   // Remove any existing visibility handler
@@ -95,8 +96,12 @@ export function setupSessionListeners(onTimeout: () => void) {
       if (isInitialized && isSessionExpired()) {
         onTimeout()
       } else {
-        // Just update activity time, don't reset full timeout on tab switch
-        lastActivityTime = Date.now()
+        // Just update activity time
+        const now = Date.now()
+        if (now - lastResetTimestamp > throttleInterval) {
+          lastResetTimestamp = now
+          resetSessionTimeout(onTimeout)
+        }
       }
     }
   }
@@ -106,18 +111,13 @@ export function setupSessionListeners(onTimeout: () => void) {
   return () => {
     // Cleanup all event listeners
     events.forEach((event) => {
-      window.removeEventListener(event, debouncedReset)
+      window.removeEventListener(event, throttledReset)
     })
     
     // Cleanup visibility handler
     if (visibilityHandler) {
       document.removeEventListener('visibilitychange', visibilityHandler)
       visibilityHandler = null
-    }
-    
-    // Clear debounce timer
-    if (resetDebounceId) {
-      clearTimeout(resetDebounceId)
     }
   }
 }

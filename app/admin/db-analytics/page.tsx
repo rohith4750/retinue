@@ -729,7 +729,9 @@ export default function DbAnalyticsPage() {
         </div>
 
         {/* Danger Zone - Factory Reset */}
-        <div className="bg-red-950/30 backdrop-blur-xl rounded-xl border border-red-500/30 p-5 mb-6">
+        <div className="bg-red-950/30 backdrop-blur-xl rounded-xl border border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.2)] p-5 mb-6 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(239,68,68,0.05)_10px,rgba(239,68,68,0.05)_20px)] pointer-events-none" />
+
           <div className="flex items-center gap-3 mb-4">
             <FaSkullCrossbones className="w-5 h-5 text-red-500" />
             <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>

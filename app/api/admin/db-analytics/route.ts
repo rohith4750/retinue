@@ -403,9 +403,12 @@ export async function POST(request: NextRequest) {
         // 2. Delete bookings (depends on rooms, guests, roomSlots)
         counts.bookings = (await tx.booking.deleteMany()).count
 
-        // 3. Delete room slots (KEEP slots to preserve calendar structure)
+        // 3. Delete room slots (KEEP slots to preserve calendar structure, but RESET availability)
         // counts.roomSlots = (await tx.roomSlot.deleteMany()).count
         counts.roomSlots = 0
+        await tx.roomSlot.updateMany({
+          data: { isAvailable: true }
+        })
 
         // 4. Delete guests
         counts.guests = (await tx.guest.deleteMany()).count
