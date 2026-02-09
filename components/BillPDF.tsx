@@ -2,13 +2,15 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
-// Register Poppins Font via CDN (Reliable for client-side PDF gen)
+import { PoppinsRegular, PoppinsMedium, PoppinsBold } from './font-data'
+
+// Register Poppins Font using embedded Base64 data (Most reliable for all environments)
 Font.register({
   family: 'Poppins',
   fonts: [
-    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.woff' },
-    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-500-normal.woff', fontWeight: 'medium' },
-    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-normal.woff', fontWeight: 'bold' },
+    { src: `data:font/ttf;base64,${PoppinsRegular}` },
+    { src: `data:font/ttf;base64,${PoppinsMedium}`, fontWeight: 'medium' },
+    { src: `data:font/ttf;base64,${PoppinsBold}`, fontWeight: 'bold' },
   ],
 })
 
