@@ -2,15 +2,13 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
-// Register Poppins Font from local files
-// Note: In client-side rendering (which this is), these paths are fetched from the public folder.
-// No strict checking of existing files: if they are 404, it might fallback or error, but this is the correct way for client-side @react-pdf
+// Register Poppins Font via CDN (Reliable for client-side PDF gen)
 Font.register({
   family: 'Poppins',
   fonts: [
-    { src: '/fonts/Poppins-Regular.ttf' },
-    { src: '/fonts/Poppins-Medium.ttf', fontWeight: 'medium' },
-    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 'bold' },
+    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-400-normal.woff' },
+    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-500-normal.woff', fontWeight: 'medium' },
+    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-700-normal.woff', fontWeight: 'bold' },
   ],
 })
 
