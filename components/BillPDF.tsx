@@ -2,15 +2,15 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
-import path from 'path'
-
 // Register Poppins Font from local files
+// Note: In client-side rendering (which this is), these paths are fetched from the public folder.
+// No strict checking of existing files: if they are 404, it might fallback or error, but this is the correct way for client-side @react-pdf
 Font.register({
   family: 'Poppins',
   fonts: [
-    { src: path.join(process.cwd(), 'public/fonts/Poppins-Regular.ttf') },
-    { src: path.join(process.cwd(), 'public/fonts/Poppins-Medium.ttf'), fontWeight: 'medium' },
-    { src: path.join(process.cwd(), 'public/fonts/Poppins-Bold.ttf'), fontWeight: 'bold' },
+    { src: '/fonts/Poppins-Regular.ttf' },
+    { src: '/fonts/Poppins-Medium.ttf', fontWeight: 'medium' },
+    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 'bold' },
   ],
 })
 
