@@ -1,7 +1,17 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
+
+// Register Poppins Font
+Font.register({
+  family: 'Poppins',
+  fonts: [
+    { src: 'https://fonts.gstatic.com/s/poppins/v20/pxiEyp8kv8JHgFVrJJfecg.ttf' }, // Regular 400
+    { src: 'https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFQ.ttf', fontWeight: 'medium' }, // Medium 500
+    { src: 'https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLCz7Z1xlFQ.ttf', fontWeight: 'bold' }, // Bold 700
+  ],
+})
 
 // Tax Invoice design: dark red bar, dark grey header, red table headers, two-tone footer
 const DARK_RED = '#8B2500'
@@ -11,7 +21,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 0,
     fontSize: 10,
-    fontFamily: 'Helvetica',
+    fontFamily: 'Poppins',
     backgroundColor: '#ffffff',
   },
   // Top contact bar - full width, white with bottom border
@@ -34,30 +44,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 16,
     marginTop: 16,
+    alignItems: 'center',
   },
   headerLeft: {
-    width: '50%',
+    width: '60%',
     backgroundColor: '#ffffff',
     paddingVertical: 0,
     paddingLeft: 24,
     paddingRight: 16,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   logoArea: {
-    width: 140,
-    height: 140,
-    marginBottom: 12,
+    width: 80,
+    height: 80,
+    marginRight: 16,
+    marginBottom: 0,
   },
   logoImage: {
-    width: 120,
-    height: 120,
+    width: 80,
+    height: 80,
     objectFit: 'contain',
   },
   hotelNameHeader: {
     color: '#111827',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 0,
+    lineHeight: 1,
   },
   stateText: {
     display: 'none',
@@ -74,7 +88,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 12,
+    marginBottom: 4,
+    textTransform: 'uppercase', // Premium look
+    letterSpacing: 2,
   },
   invoiceMeta: {
     fontSize: 10,
