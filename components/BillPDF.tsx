@@ -2,14 +2,15 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
+import path from 'path'
 
-// Register Poppins Font
+// Register Poppins Font from local files
 Font.register({
   family: 'Poppins',
   fonts: [
-    { src: 'https://fonts.gstatic.com/s/poppins/v20/pxiEyp8kv8JHgFVrJJfecg.ttf' }, // Regular 400
-    { src: 'https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFQ.ttf', fontWeight: 'medium' }, // Medium 500
-    { src: 'https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLCz7Z1xlFQ.ttf', fontWeight: 'bold' }, // Bold 700
+    { src: path.join(process.cwd(), 'public/fonts/Poppins-Regular.ttf') },
+    { src: path.join(process.cwd(), 'public/fonts/Poppins-Medium.ttf'), fontWeight: 'medium' },
+    { src: path.join(process.cwd(), 'public/fonts/Poppins-Bold.ttf'), fontWeight: 'bold' },
   ],
 })
 
