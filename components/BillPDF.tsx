@@ -1,18 +1,6 @@
-import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
-import { PoppinsRegular, PoppinsMedium, PoppinsBold } from './font-data'
-
-// Register Poppins Font using embedded Base64 data (Most reliable for all environments)
-Font.register({
-  family: 'Poppins',
-  fonts: [
-    { src: `data:font/ttf;base64,${PoppinsRegular}` },
-    { src: `data:font/ttf;base64,${PoppinsMedium}`, fontWeight: 'medium' },
-    { src: `data:font/ttf;base64,${PoppinsBold}`, fontWeight: 'bold' },
-  ],
-})
 
 // Tax Invoice design: dark red bar, dark grey header, red table headers, two-tone footer
 const DARK_RED = '#8B2500'
@@ -22,7 +10,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 0,
     fontSize: 10,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
   },
   // Top contact bar - full width, white with bottom border
