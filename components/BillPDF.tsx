@@ -44,13 +44,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoArea: {
-    width: 60,
-    height: 60,
+    width: 140,
+    height: 140,
     marginBottom: 12,
   },
   logoImage: {
-    width: 60,
-    height: 60,
+    width: 120,
+    height: 120,
     objectFit: 'contain',
   },
   hotelNameHeader: {
