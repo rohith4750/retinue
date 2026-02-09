@@ -14,62 +14,61 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
   },
-  // Top contact bar - full width, dark red
+  // Top contact bar - full width, white with bottom border
   contactBar: {
     flexDirection: 'row',
-    backgroundColor: DARK_RED,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
     paddingVertical: 8,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   contactBarText: {
-    color: '#ffffff',
+    color: '#374151',
     fontSize: 9,
   },
-  // Main header block - dark grey, left side
+  // Main header block - white, left side
   headerBlock: {
     flexDirection: 'row',
     marginBottom: 16,
+    marginTop: 16,
   },
   headerLeft: {
-    width: '42%',
-    backgroundColor: DARK_GREY,
-    paddingVertical: 20,
+    width: '50%',
+    backgroundColor: '#ffffff',
+    paddingVertical: 0,
     paddingLeft: 24,
     paddingRight: 16,
+    justifyContent: 'center',
   },
   logoArea: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 12,
-    overflow: 'hidden',
   },
   logoImage: {
     width: 60,
     height: 60,
-    objectFit: 'cover',
+    objectFit: 'contain',
   },
   hotelNameHeader: {
-    color: '#ffffff',
+    color: '#111827',
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   stateText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 9,
+    display: 'none',
   },
   // Invoice title and details - right of header
   headerRight: {
     flex: 1,
-    paddingTop: 12,
+    paddingTop: 0,
     paddingRight: 24,
     alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   taxInvoiceTitle: {
     fontSize: 24,
@@ -106,12 +105,14 @@ const styles = StyleSheet.create({
   },
   itemTableHeader: {
     flexDirection: 'row',
-    backgroundColor: DARK_RED,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
     paddingVertical: 8,
     paddingHorizontal: 10,
   },
   itemTableHeaderText: {
-    color: '#fff',
+    color: '#111827',
     fontSize: 9,
     fontWeight: 'bold',
   },
@@ -124,21 +125,24 @@ const styles = StyleSheet.create({
   },
   itemTableTotalRow: {
     flexDirection: 'row',
-    backgroundColor: DARK_RED,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
     paddingVertical: 8,
     paddingHorizontal: 10,
   },
   itemTableTotalText: {
-    color: '#fff',
+    color: '#111827',
     fontSize: 10,
     fontWeight: 'bold',
   },
-  col1: { width: '8%' },
-  col2: { flex: 1, paddingRight: 8 },
-  col3: { width: '12%' },
-  col4: { width: '12%' },
-  col5: { width: '14%' },
-  col6: { width: '14%', textAlign: 'right' },
+  col1: { width: '5%' },
+  col2: { width: '25%' },
+  col3: { width: '15%' },
+  col4: { width: '15%' },
+  col5: { width: '10%' },
+  col6: { width: '15%', textAlign: 'right' },
+  col7: { width: '15%', textAlign: 'right' },
   // Two columns: description left, payment summary right
   twoCol: {
     flexDirection: 'row',
@@ -316,7 +320,7 @@ export function BillPDF({ bill }: BillPDFProps) {
           <Text style={styles.contactBarText}>📍 {HOTEL_INFO.shortAddress}</Text>
         </View>
 
-        {/* Header row: dark grey block + Tax Invoice title */}
+        {/* Header row: white block + Tax Invoice title */}
         <View style={styles.headerBlock}>
           <View style={styles.headerLeft}>
             <View style={styles.logoArea}>
@@ -325,8 +329,7 @@ export function BillPDF({ bill }: BillPDFProps) {
                 style={styles.logoImage}
               />
             </View>
-            <Text style={styles.hotelNameHeader}>{HOTEL_INFO.brandName}</Text>
-            <Text style={styles.stateText}>State: {HOTEL_INFO.stateCode}</Text>
+            <Text style={styles.hotelNameHeader}>Hotel The Retinue</Text>
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.taxInvoiceTitle}>Tax Invoice</Text>
@@ -342,24 +345,25 @@ export function BillPDF({ bill }: BillPDFProps) {
           {guest.address && <Text style={styles.billToText}>{guest.address}</Text>}
         </View>
 
-        {/* Item details table - red header */}
+        {/* Item details table - white header */}
         <View style={styles.itemTable}>
           <View style={styles.itemTableHeader}>
-            <Text style={[styles.itemTableHeaderText, styles.col1]}>#</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col2]}>Item name</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col3]}>HSN/SAC</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col4]}>Quantity</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col5]}>Price/Unit</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col6]}>Amount</Text>
+            <Text style={[styles.itemTableHeaderText, styles.col1]}>S.No</Text>
+            <Text style={[styles.itemTableHeaderText, styles.col2]}>Particulars</Text>
+            <Text style={[styles.itemTableHeaderText, styles.col3]}>Check In</Text>
+            <Text style={[styles.itemTableHeaderText, styles.col4]}>Check Out</Text>
+            <Text style={[styles.itemTableHeaderText, styles.col5]}>Days</Text>
+            <Text style={[styles.itemTableHeaderText, styles.col6]}>Tariff</Text>
+            <Text style={[styles.itemTableHeaderText, styles.col7]}>Amount</Text>
           </View>
           <View style={styles.itemTableRow}>
             <Text style={[styles.col1, { fontSize: 9 }]} hyphenationCallback={(e) => []}>1</Text>
             <Text style={[styles.col2, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{itemName}</Text>
-            <Text style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{days}</Text>
-            <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{days}</Text>
-            <Text style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={(e) => []}>₹ {(pricePerDay || 0).toFixed(2)}</Text>
-            <Text style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={(e) => []}>₹ {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            <Text style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(booking.checkIn)}</Text>
+            <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(booking.checkOut)}</Text>
+            <Text style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{days}</Text>
+            <Text style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(pricePerDay || 0).toFixed(2)}</Text>
+            <Text style={[styles.col7, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={styles.itemTableTotalRow}>
             <Text style={[styles.itemTableTotalText, styles.col1]} hyphenationCallback={(e) => []}></Text>
@@ -367,7 +371,8 @@ export function BillPDF({ bill }: BillPDFProps) {
             <Text style={[styles.itemTableTotalText, styles.col3]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col4]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col5]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={(e) => []}>₹ {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            <Text style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={(e) => []}></Text>
+            <Text style={[styles.itemTableTotalText, styles.col7]} hyphenationCallback={(e) => []}>₹ {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
           </View>
         </View>
 
@@ -416,12 +421,12 @@ export function BillPDF({ bill }: BillPDFProps) {
           <Text style={styles.termsText}>4. Early check-in or late check-out may incur additional charges.</Text>
           <Text style={styles.termsText}>5. Guests are responsible for any damage to hotel property during their stay.</Text>
           <Text style={styles.termsText}>6. The hotel is not responsible for any loss of valuables. Please use the safety deposit box.</Text>
-          <Text style={[styles.termsText, { marginTop: 8 }]}>Thank you for choosing {HOTEL_INFO.brandName}. We appreciate your business!</Text>
+          <Text style={[styles.termsText, { marginTop: 8 }]}>Thank you for choosing Hotel The Retinue. We appreciate your business!</Text>
         </View>
 
         {/* Authorized signatory */}
         <View style={styles.signatorySection}>
-          <Text style={styles.signatoryFor}>For {HOTEL_INFO.brandName}</Text>
+          <Text style={styles.signatoryFor}>For Hotel The Retinue</Text>
           <Image
             src="/images/signature.png"
             style={styles.signatureImage}
