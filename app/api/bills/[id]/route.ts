@@ -98,6 +98,14 @@ export async function GET(
       a.room.roomNumber.localeCompare(b.room.roomNumber),
     );
 
+    // Find the "primary" booking for bill metadata (earliest created)
+    // This ensures consistent Bill Number regardless of which room is viewed
+    const primaryBillBooking = relatedBookings.reduce(
+      (prev, curr) =>
+        new Date(curr.createdAt) < new Date(prev.createdAt) ? curr : prev,
+      relatedBookings[0],
+    );
+
     // Calculate consolidated totals
     const consolidated = {
       subtotal: relatedBookings.reduce((sum, b) => sum + (b.subtotal || 0), 0),
@@ -130,7 +138,7 @@ export async function GET(
     const billData = {
       id: booking.id,
       bookingId: booking.id,
-      billNumber: booking.billNumber, // Primary bill number
+      billNumber: primaryBillBooking.billNumber, // Primary bill number (from earliest booking)
       // Consolidated totals
       subtotal: consolidated.subtotal,
       tax: consolidated.tax,
