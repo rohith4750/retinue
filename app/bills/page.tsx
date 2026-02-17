@@ -32,18 +32,15 @@ export default function BillsPage() {
   }, [searchQuery])
 
   const { data: response, isLoading } = useQuery({
-    queryKey: ['bookings', 'bills', page, limit, debouncedSearch, paymentFilter],
-    queryFn: () => api.get(`/bookings?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`),
+    queryKey: ['bills', page, limit, debouncedSearch, paymentFilter],
+    queryFn: () => api.get(`/bills?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`),
     staleTime: 5000,
   })
 
+  // Data structure from /api/bills is the same array of objects, but consolidated
   const bookings = response?.data || []
   const pagination = response?.pagination || { page: 1, limit, total: 0, totalPages: 1 }
   const totalBills = pagination.total || 0
-
-  // Filter bills (though API should assume all bookings are bills? Or check billNumber?)
-  // Ideally API returns bookings, and all confirmed bookings have bills.
-  // We can trust the API to filter by search/paymentStatus.
 
   if (isLoading) {
     return (
@@ -123,10 +120,6 @@ export default function BillsPage() {
         <span className="text-sm text-slate-400">
           <span className="font-semibold text-white">{totalBills}</span> bill{totalBills !== 1 ? 's' : ''} found
         </span>
-        {/* Note: Global totals (pending/paid) are harder with server-side pagination unless specific API endpoint provides aggregated stats. 
-            For now, removing the total amounts to avoid misleading data based on just current page. 
-            The Backend GET /api/bookings returns a 'summary' object with global stats! Let's use it.
-        */}
         {response?.summary && (
           <span className="text-sm text-amber-400 ml-auto sm:ml-0">
             <FaRupeeSign className="inline w-3 h-3 mr-0.5" />
@@ -157,24 +150,51 @@ export default function BillsPage() {
           {bookings.map((b: any) => {
             const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
             const status = b.paymentStatus || 'PENDING'
+            const isConsolidated = b.isConsolidated || b.roomCount > 1
+
             return (
               <Link
                 key={b.id}
                 href={`/bills/${b.id}`}
-                className="block rounded-xl border border-white/10 bg-slate-800/80 hover:bg-slate-800 hover:border-emerald-500/30 transition-all p-4"
+                className="block rounded-xl border border-white/10 bg-slate-800/80 hover:bg-slate-800 hover:border-emerald-500/30 transition-all p-4 relative overflow-hidden group"
               >
+                {isConsolidated && (
+                  <div className="absolute top-0 right-0 bg-sky-600/90 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-bl-lg z-10">
+                    Consolidated
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between gap-2 mb-3">
-                  <span className="text-xs font-mono text-slate-400 truncate" title={b.billNumber}>{b.billNumber || b.id.slice(-6).toUpperCase()}</span>
+                  <span className="text-xs font-mono text-slate-400 truncate" title={b.billNumber}>
+                    {b.billNumber || b.id.slice(-6).toUpperCase()}
+                  </span>
                   <span
                     className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-                      status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                        status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-red-500/20 text-red-400'
                       }`}
                   >
                     {status}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-white truncate">{b.guest?.name}</p>
-                <p className="text-xs text-slate-400 mb-3">{b.room?.roomNumber} • {b.room?.roomType}</p>
+
+                <p className="text-sm font-semibold text-white truncate mb-1">{b.guest?.name}</p>
+
+                {isConsolidated ? (
+                  <div className="text-xs text-sky-400 mb-3 flex items-center gap-1">
+                    <span className="px-1.5 py-0.5 rounded bg-sky-900/40 text-sky-300 font-mono">
+                      {b.roomCount} Rooms
+                    </span>
+                    <span className="text-slate-500 truncate max-w-[120px]">
+                      {b.displayRoomNumber || b.roomNumbers?.join(', ')}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 mb-3">
+                    {b.room?.roomNumber} • {b.room?.roomType}
+                  </p>
+                )}
+
                 <div className="flex items-center justify-between text-xs border-t border-white/5 pt-3">
                   <span className="text-slate-500">Total</span>
                   <span className="font-semibold text-white">₹{(b.totalAmount ?? 0).toLocaleString()}</span>
@@ -189,7 +209,9 @@ export default function BillsPage() {
                     <span className="font-medium text-amber-400">₹{remaining.toLocaleString()}</span>
                   </div>
                 )}
-                <p className="mt-3 text-center text-xs text-emerald-400 font-medium">View Bill →</p>
+                <p className="mt-3 text-center text-xs text-emerald-400 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+                  View Bill →
+                </p>
               </Link>
             )
           })}
@@ -202,7 +224,7 @@ export default function BillsPage() {
                 <tr className="border-b border-white/10 bg-slate-800/60">
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Bill #</th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Guest</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Room</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Room(s)</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Total</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Paid</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Due</th>
@@ -214,17 +236,31 @@ export default function BillsPage() {
                 {bookings.map((b: any) => {
                   const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
                   const status = b.paymentStatus || 'PENDING'
+                  const isConsolidated = b.isConsolidated || b.roomCount > 1
+
                   return (
                     <tr key={b.id} className="border-b border-white/5 hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 text-sm font-mono text-slate-300 truncate max-w-[140px]" title={b.billNumber}>{b.billNumber || b.id.slice(-6).toUpperCase()}</td>
-                      <td className="py-3 px-4 text-sm text-slate-200">{b.guest?.name}</td>
-                      <td className="py-3 px-4 text-sm text-slate-400">{b.room?.roomNumber} ({b.room?.roomType})</td>
+                      <td className="py-3 px-4 text-sm font-mono text-slate-300 truncate max-w-[140px]" title={b.billNumber}>
+                        {b.billNumber || b.id.slice(-6).toUpperCase()}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-200">
+                        {b.guest?.name}
+                        {isConsolidated && <span className="ml-2 text-[10px] bg-sky-900/50 text-sky-400 px-1.5 py-0.5 rounded">CONSOL</span>}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-400">
+                        {isConsolidated ? (
+                          <span className="text-sky-300">{b.roomCount} Rooms ({b.displayRoomNumber})</span>
+                        ) : (
+                          <>{b.room?.roomNumber} ({b.room?.roomType})</>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-sm text-right text-slate-200">₹{(b.totalAmount ?? 0).toLocaleString()}</td>
                       <td className="py-3 px-4 text-sm text-right text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</td>
                       <td className="py-3 px-4 text-sm text-right font-medium text-amber-400">₹{remaining.toLocaleString()}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-                          status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                            status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                              'bg-red-500/20 text-red-400'
                           }`}>
                           {status}
                         </span>
