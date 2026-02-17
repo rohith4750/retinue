@@ -108,7 +108,7 @@ export default function BillPage() {
       notes: 'Paid at time of booking',
     })
   }
-  ;(bill.history || []).forEach((h: any) => {
+  ; (bill.history || []).forEach((h: any) => {
     if (h.action === 'PAYMENT_RECEIVED' && h.changes) {
       let amount = Number(h.changes.paymentReceived)
       if (!amount && h.changes.paidAmount?.to != null) amount = Number(h.changes.paidAmount.to) - Number(h.changes.paidAmount.from ?? 0)
@@ -166,6 +166,30 @@ export default function BillPage() {
     }
   }
 
+  const handlePrint = async () => {
+    try {
+      const blob = await pdf(<BillPDF bill={bill} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      // Open in new window for reliable printing across browsers
+      const printWindow = window.open(url)
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print()
+        }
+      } else {
+        // Fallback if popup blocked
+        const link = document.createElement('a')
+        link.href = url
+        link.target = '_blank'
+        link.click()
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000) // Cleanup after 1 min
+    } catch (error) {
+      console.error('Error printing PDF:', error)
+      toast.error('Failed to prepare print document')
+    }
+  }
+
   return (
     <>
       <div className="glow-sky top-20 right-20" />
@@ -189,7 +213,7 @@ export default function BillPage() {
               Download PDF
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-medium hover:bg-sky-500 transition-colors flex items-center gap-2"
             >
               <FaPrint className="w-4 h-4" />
@@ -381,11 +405,10 @@ export default function BillPage() {
               <p className="text-xs text-slate-400 mt-1">Bill # {bill.billNumber}</p>
               <p className="text-xs text-slate-400">Date: {new Date(bill.createdAt).toLocaleString('en-IN')}</p>
             </div>
-            <span className={`px-3 py-1 rounded-lg text-sm font-bold ${
-              bill.paymentStatus === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+            <span className={`px-3 py-1 rounded-lg text-sm font-bold ${bill.paymentStatus === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
               bill.paymentStatus === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-              'bg-red-500/20 text-red-400'
-            }`}>
+                'bg-red-500/20 text-red-400'
+              }`}>
               {bill.paymentStatus}
             </span>
           </div>
@@ -416,35 +439,60 @@ export default function BillPage() {
             const totalAmount = bill.totalAmount ?? 0
             const storedTax = bill.tax ?? 0
             const displayTax = storedTax > 0 ? storedTax : Math.max(0, totalAmount - subtotal)
+
+            // Check for consolidated items
+            const items = bill.booking.items || [bill.booking]
+            const isConsolidated = items.length > 1
+
             return (
-              <table className="w-full mb-6">
-                <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-left py-2 text-slate-400 font-medium">Description</th>
-                    <th className="text-right py-2 text-slate-400 font-medium">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-white/5">
-                    <td className="py-3 text-slate-300">Room charges</td>
-                    <td className="py-3 text-right text-slate-100">₹{subtotal.toLocaleString()}</td>
-                  </tr>
-                  <tr className="border-b border-white/5">
-                    <td className="py-3 text-slate-300">GST (18%)</td>
-                    <td className="py-3 text-right text-slate-100">₹{displayTax.toLocaleString()}</td>
-                  </tr>
-                  {discount > 0 && (
+              <div className="mb-6">
+                {isConsolidated && (
+                  <div className="mb-4 p-3 bg-sky-500/10 border border-sky-500/20 rounded-lg text-sm text-sky-300">
+                    <span className="font-semibold">Consolidated Bill:</span> This bill includes charges for {items.length} rooms.
+                  </div>
+                )}
+
+                <table className="w-full">
+                  <thead>
                     <tr className="border-b border-white/5">
-                      <td className="py-3 text-slate-300">Discount</td>
-                      <td className="py-3 text-right text-emerald-400">-₹{discount.toLocaleString()}</td>
+                      <th className="text-left py-2 text-slate-400 font-medium">Description</th>
+                      <th className="text-right py-2 text-slate-400 font-medium">Amount</th>
                     </tr>
-                  )}
-                  <tr className="bg-slate-800/40">
-                    <td className="py-3 font-semibold text-slate-100">Total</td>
-                    <td className="py-3 text-right font-semibold text-slate-100">₹{totalAmount.toLocaleString()}</td>
-                  </tr>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {items.map((item: any, idx: number) => {
+                      // Fallback for single legacy booking
+                      const rNum = item.room?.roomNumber || item.roomNumber || booking.room.roomNumber
+                      const rType = item.room?.roomType || item.roomType || booking.room.roomType
+                      const iSubtotal = item.subtotal ?? (bill.subtotal || 0)
+                      return (
+                        <tr key={idx} className="border-b border-white/5">
+                          <td className="py-3 text-slate-300">
+                            Room charges - {rType} {rNum}
+                            {item.days && <span className="text-xs text-slate-500 block">({item.days} days)</span>}
+                          </td>
+                          <td className="py-3 text-right text-slate-100">₹{iSubtotal.toLocaleString()}</td>
+                        </tr>
+                      )
+                    })}
+
+                    <tr className="border-b border-white/5">
+                      <td className="py-3 text-slate-300">GST (18%)</td>
+                      <td className="py-3 text-right text-slate-100">₹{displayTax.toLocaleString()}</td>
+                    </tr>
+                    {discount > 0 && (
+                      <tr className="border-b border-white/5">
+                        <td className="py-3 text-slate-300">Discount</td>
+                        <td className="py-3 text-right text-emerald-400">-₹{discount.toLocaleString()}</td>
+                      </tr>
+                    )}
+                    <tr className="bg-slate-800/40">
+                      <td className="py-3 font-semibold text-slate-100">Total</td>
+                      <td className="py-3 text-right font-semibold text-slate-100">₹{totalAmount.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             )
           })()}
 

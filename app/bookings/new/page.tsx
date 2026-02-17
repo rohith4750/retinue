@@ -35,12 +35,12 @@ function NewBookingContent() {
       checkOut: '',
       flexibleCheckout: false,
       paymentMode: 'CASH' as const,
-      advanceAmount: '0',
-      discount: '0',
+      advanceAmount: '',
+      discount: '',
       applyGst: false,
       extraBed: false,
-      extraBedCount: '1',
-      extraBedPrice: '500',
+      extraBedCount: '',
+      extraBedPrice: '',
     }),
     [roomIdParam, slotIdParam]
   )
@@ -114,7 +114,7 @@ function NewBookingContent() {
     }
     const validation = ID_PROOF_PATTERNS[type]
     if (!validation) return true
-    
+
     const cleanValue = value.replace(/\s/g, '').toUpperCase()
     if (!validation.pattern.test(cleanValue)) {
       setIdProofError(validation.message)
@@ -182,17 +182,17 @@ function NewBookingContent() {
       if (!data.checkIn || !data.checkOut) {
         throw new Error('Check-in and check-out dates are required')
       }
-      
+
       const checkInDate = new Date(data.checkIn)
       const checkOutDate = new Date(data.checkOut)
-      
+
       if (isNaN(checkInDate.getTime())) {
         throw new Error('Invalid check-in date')
       }
       if (isNaN(checkOutDate.getTime())) {
         throw new Error('Invalid check-out date')
       }
-      
+
       const checkInISO = checkInDate.toISOString()
       const checkOutISO = checkOutDate.toISOString()
 
@@ -252,35 +252,35 @@ function NewBookingContent() {
     onError: (error: any) => {
       // Phase 2: Better error handling with user-friendly messages
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create booking'
-      
+
       // Map error codes to user-friendly messages
       const errorMessages: Record<string, string> = {
         'ROOM_UNAVAILABLE': 'The selected room is not available. Please choose another room.',
         'DATE_CONFLICT': 'The room is already booked for these dates. Please select different dates.',
         'INVALID_DATE': 'Invalid date range. Please check your check-in and check-out dates.',
-        'VALIDATION_ERROR': errorMessage.includes('check-in') 
+        'VALIDATION_ERROR': errorMessage.includes('check-in')
           ? 'Invalid check-in date. Please select a valid date and time.'
           : errorMessage.includes('check-out')
-          ? 'Invalid check-out date. Please select a valid date and time.'
-          : 'Please check all fields and try again.',
+            ? 'Invalid check-out date. Please select a valid date and time.'
+            : 'Please check all fields and try again.',
       }
-      
+
       const errorCode = error?.response?.data?.error
       const friendlyMessage = errorMessages[errorCode] || errorMessage
-      
+
       toast.error(friendlyMessage)
     },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate form before submission
     if (!validate()) {
       toast.error('Please fix the errors in the form')
       return
     }
-    
+
     createMutation.mutate(formData)
   }
 
@@ -296,19 +296,19 @@ function NewBookingContent() {
     const baseAmount = selectedRooms.reduce((total, room) => {
       return total + ((selectedSlot?.price || room?.basePrice || 0) * days)
     }, 0)
-    
+
     // Extra bed calculation
     const extraBedCount = formData.extraBed ? parseInt(formData.extraBedCount) || 1 : 0
     const extraBedPrice = parseFloat(formData.extraBedPrice) || 0
     const extraBedAmount = extraBedCount * extraBedPrice * days
-    
+
     const discountAmount = parseFloat(formData.discount) || 0
     const subtotal = baseAmount + extraBedAmount - discountAmount
-    
+
     // GST only if toggle is on
     const tax = formData.applyGst ? subtotal * 0.18 : 0 // 18% GST only if applied
     const totalAmount = Math.max(0, subtotal + tax)
-    
+
     // Advance and balance
     const advanceAmount = parseFloat(formData.advanceAmount) || 0
     const balanceAmount = Math.max(0, totalAmount - advanceAmount)
@@ -485,12 +485,12 @@ function NewBookingContent() {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     const newCheckIn = e.target.value
                     updateField('checkIn', newCheckIn)
-                    
+
                     // Auto-set checkout to next day 11 AM if not already set
                     if (newCheckIn && !formData.checkOut) {
                       updateField('checkOut', setDefaultCheckout(newCheckIn))
                     }
-                    
+
                     // Clear room selection when dates change
                     if (formData.roomIds.length > 0) {
                       updateField('roomIds', [])
@@ -513,7 +513,7 @@ function NewBookingContent() {
                       const newCheckOut = e.target.value
                       updateField('checkOut', newCheckOut)
                       updateField('flexibleCheckout', false) // Disable flexible if manually changed
-                      
+
                       // Min 12h stay; multi-day allowed
                       if (formData.checkIn && newCheckOut) {
                         const checkInTime = new Date(formData.checkIn).getTime()
@@ -525,7 +525,7 @@ function NewBookingContent() {
                           updateField('checkOut', corrected.toISOString().slice(0, 16))
                         }
                       }
-                      
+
                       // Clear room selection when dates change
                       if (formData.roomIds.length > 0) {
                         updateField('roomIds', [])
@@ -544,7 +544,7 @@ function NewBookingContent() {
                       Minimum stay 12 hours. Multi-day bookings allowed.
                     </p>
                   )}
-                  
+
                   {/* Flexible Checkout Toggle */}
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input
@@ -608,7 +608,7 @@ function NewBookingContent() {
                   </p>
                 </div>
               )}
-              
+
               {!formData.checkIn || !formData.checkOut ? (
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 text-center">
                   <p className="text-sm text-slate-400">Select check-in and check-out date & time first</p>
@@ -646,17 +646,15 @@ function NewBookingContent() {
                               updateField('roomIds', Array.from(new Set([...formData.roomIds, room.id])))
                             }
                           }}
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${
-                            isSelected
-                              ? 'border-sky-500 bg-sky-500/10 ring-2 ring-sky-500/30'
-                              : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                          }`}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${isSelected
+                            ? 'border-sky-500 bg-sky-500/10 ring-2 ring-sky-500/30'
+                            : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                            }`}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-bold text-slate-100">Room {room.roomNumber}</span>
-                            <span className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                              isSelected ? 'border-sky-500 bg-sky-500' : 'border-slate-500'
-                            }`}>
+                            <span className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'border-sky-500 bg-sky-500' : 'border-slate-500'
+                              }`}>
                               {isSelected && (
                                 <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
