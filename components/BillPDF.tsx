@@ -339,7 +339,7 @@ export function BillPDF({ bill }: BillPDFProps) {
           <View style={styles.headerRight}>
             <Text style={styles.taxInvoiceTitle}>Tax Invoice</Text>
             <Text style={styles.invoiceMeta} hyphenationCallback={(e) => []}>Invoice No.: {bill.billNumber}</Text>
-            <Text style={styles.invoiceMeta} hyphenationCallback={(e) => []}>Date: {formatDate(bill.createdAt)}</Text>
+            <Text style={styles.invoiceMeta} hyphenationCallback={(e) => []}>Date: {formatDate(booking.checkOut)}</Text>
           </View>
         </View>
 

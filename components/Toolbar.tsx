@@ -83,7 +83,7 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
   }
 
   return (
-    <header className="app-header fixed top-0 right-0 left-0 lg:left-64 z-20 backdrop-blur-xl border-b">
+    <header className="app-header fixed top-0 right-0 left-0 lg:left-80 z-20 backdrop-blur-xl border-b">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Left: Page title */}
         <div className="flex items-center space-x-3 ml-12 lg:ml-0 min-w-0">

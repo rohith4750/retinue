@@ -7,7 +7,7 @@ export function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 lg:left-64 z-10 app-footer backdrop-blur-xl border-t">
+    <footer className="fixed bottom-0 left-0 right-0 lg:left-80 z-10 app-footer backdrop-blur-xl border-t">
       <div className="flex items-center justify-between px-4 py-2">
         {/* Left: Brand */}
         <div className="flex items-center space-x-2 text-slate-400 text-xs">

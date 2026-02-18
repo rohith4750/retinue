@@ -137,17 +137,17 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     <div className="min-h-screen relative flex app-shell">
       {/* Sidebar */}
       <Sidebar />
-      
+
       {/* Main content area */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:ml-80 flex flex-col min-h-screen">
         {/* Toolbar - Fixed */}
         <Toolbar />
-        
+
         {/* Page content - with padding for fixed toolbar and footer */}
         <main className="flex-1 pt-16 pb-12">
           {children}
         </main>
-        
+
         {/* Footer */}
         <Footer />
       </div>
