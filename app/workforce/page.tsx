@@ -128,7 +128,7 @@ export default function WorkforcePage() {
     return []
   }, [paymentsResponse])
 
-  const paymentSummary = paymentsResponse?.summary || { total: 0, hotel: 0, convention: 0, count: 0 }
+
 
   // Create a map of paid staff for quick lookup
   const paidStaffMap = useMemo(() => {
@@ -139,8 +139,22 @@ export default function WorkforcePage() {
     return map
   }, [paymentsList])
 
-  // Check if staff has been paid
-  const isPaid = (staffId: string) => paidStaffMap.has(staffId)
+  // Get today's date at midnight for comparison
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const isFutureDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    d.setHours(0, 0, 0, 0)
+    return d > today
+  }
+
+  // Check if staff has been paid (Strictly PAID, not just scheduled)
+  const isPaid = (staffId: string) => {
+    const payment = paidStaffMap.get(staffId)
+    return !!payment && !isFutureDate(payment.paymentDate)
+  }
+
   const getPayment = (staffId: string) => paidStaffMap.get(staffId)
 
   // Group staff by business unit and filter active only
@@ -149,9 +163,33 @@ export default function WorkforcePage() {
   const conventionStaff = activeStaff.filter((s: any) => s.businessUnit === 'CONVENTION')
 
   // Calculate pending
+  // Pending includes: No payment record OR Scheduled payment (future)
   const pendingStaff = activeStaff.filter((s: any) => !isPaid(s.id))
+
+  // Paid includes only strictly paid (past/today)
   const paidStaff = activeStaff.filter((s: any) => isPaid(s.id))
-  const totalPendingSalary = pendingStaff.reduce((sum: number, s: any) => sum + (s.salary || s.dailyWage || 0), 0)
+
+  const totalPendingSalary = pendingStaff.reduce((sum: number, s: any) => {
+    // If scheduled, use the actual payment amount, otherwise use salary/wage
+    const payment = getPayment(s.id)
+    return sum + (payment ? payment.netAmount : (s.salary || s.dailyWage || 0))
+  }, 0)
+
+  // Recalculate summary to exclude scheduled payments
+  const paymentSummary = useMemo(() => {
+    // Filter payments that are actually paid (not future)
+    const activePayments = paymentsList.filter((p: any) => !isFutureDate(p.paymentDate))
+
+    const hotelPayments = activePayments.filter((p: any) => p.staff?.businessUnit === 'HOTEL' || !p.staff?.businessUnit)
+    const conventionPayments = activePayments.filter((p: any) => p.staff?.businessUnit === 'CONVENTION')
+
+    return {
+      total: activePayments.reduce((sum: number, p: any) => sum + p.netAmount, 0),
+      hotel: hotelPayments.reduce((sum: number, p: any) => sum + p.netAmount, 0),
+      convention: conventionPayments.reduce((sum: number, p: any) => sum + p.netAmount, 0),
+      count: activePayments.length
+    }
+  }, [paymentsList])
 
   // Pay salary mutation (CREATE)
   const paySalaryMutation = useMutationWithInvalidation({
