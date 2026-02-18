@@ -17,9 +17,13 @@ import {
   FaTimes,
   FaRupeeSign,
   FaCheckCircle,
+  FaEdit,
+  FaTrash
 } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
+import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
+import { ConfirmationModal } from '@/components/ConfirmationModal'
 
 const MONTHS = [
   { value: '1', label: 'January' },
@@ -47,9 +51,18 @@ export default function WorkforcePage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [user, setUser] = useState<any>(null)
-  
+
   // Selected staff for payment
   const [payingStaff, setPayingStaff] = useState<any>(null)
+
+  // Editing payment
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null)
+
+  // Delete modal
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean, paymentId: string | null }>({
+    show: false,
+    paymentId: null
+  })
 
   // Filters
   const currentYear = new Date().getFullYear()
@@ -115,7 +128,7 @@ export default function WorkforcePage() {
     return []
   }, [paymentsResponse])
 
-  const paymentSummary = paymentsResponse?.summary || { total: 0, hotel: 0, convention: 0, count: 0 }
+
 
   // Create a map of paid staff for quick lookup
   const paidStaffMap = useMemo(() => {
@@ -126,8 +139,22 @@ export default function WorkforcePage() {
     return map
   }, [paymentsList])
 
-  // Check if staff has been paid
-  const isPaid = (staffId: string) => paidStaffMap.has(staffId)
+  // Get today's date at midnight for comparison
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const isFutureDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    d.setHours(0, 0, 0, 0)
+    return d > today
+  }
+
+  // Check if staff has been paid (Strictly PAID, not just scheduled)
+  const isPaid = (staffId: string) => {
+    const payment = paidStaffMap.get(staffId)
+    return !!payment && !isFutureDate(payment.paymentDate)
+  }
+
   const getPayment = (staffId: string) => paidStaffMap.get(staffId)
 
   // Group staff by business unit and filter active only
@@ -136,17 +163,40 @@ export default function WorkforcePage() {
   const conventionStaff = activeStaff.filter((s: any) => s.businessUnit === 'CONVENTION')
 
   // Calculate pending
+  // Pending includes: No payment record OR Scheduled payment (future)
   const pendingStaff = activeStaff.filter((s: any) => !isPaid(s.id))
-  const paidStaff = activeStaff.filter((s: any) => isPaid(s.id))
-  const totalPendingSalary = pendingStaff.reduce((sum: number, s: any) => sum + (s.salary || s.dailyWage || 0), 0)
 
-  // Pay salary mutation
-  const paySalaryMutation = useMutation({
+  // Paid includes only strictly paid (past/today)
+  const paidStaff = activeStaff.filter((s: any) => isPaid(s.id))
+
+  const totalPendingSalary = pendingStaff.reduce((sum: number, s: any) => {
+    // If scheduled, use the actual payment amount, otherwise use salary/wage
+    const payment = getPayment(s.id)
+    return sum + (payment ? payment.netAmount : (s.salary || s.dailyWage || 0))
+  }, 0)
+
+  // Recalculate summary to exclude scheduled payments
+  const paymentSummary = useMemo(() => {
+    // Filter payments that are actually paid (not future)
+    const activePayments = paymentsList.filter((p: any) => !isFutureDate(p.paymentDate))
+
+    const hotelPayments = activePayments.filter((p: any) => p.staff?.businessUnit === 'HOTEL' || !p.staff?.businessUnit)
+    const conventionPayments = activePayments.filter((p: any) => p.staff?.businessUnit === 'CONVENTION')
+
+    return {
+      total: activePayments.reduce((sum: number, p: any) => sum + p.netAmount, 0),
+      hotel: hotelPayments.reduce((sum: number, p: any) => sum + p.netAmount, 0),
+      convention: conventionPayments.reduce((sum: number, p: any) => sum + p.netAmount, 0),
+      count: activePayments.length
+    }
+  }, [paymentsList])
+
+  // Pay salary mutation (CREATE)
+  const paySalaryMutation = useMutationWithInvalidation({
     mutationFn: (data: any) => api.post('/salary-payments', data),
+    endpoint: '/salary-payments',
+    additionalInvalidations: [['expenses'], ['expenses-summary']],
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['salary-payments'] })
-      queryClient.invalidateQueries({ queryKey: ['expenses'] })
-      queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
       toast.success(`Salary paid successfully for ${payingStaff?.name}`)
       setPayingStaff(null)
       resetPaymentForm()
@@ -157,7 +207,40 @@ export default function WorkforcePage() {
     },
   })
 
+  // Update salary mutation (UPDATE)
+  const updatePaymentMutation = useMutationWithInvalidation({
+    mutationFn: (data: any) => api.put(`/salary-payments/${editingPaymentId}`, data),
+    endpoint: '/salary-payments',
+    additionalInvalidations: [['expenses'], ['expenses-summary']],
+    onSuccess: () => {
+      toast.success(`Salary payment updated successfully`)
+      setPayingStaff(null)
+      setEditingPaymentId(null)
+      resetPaymentForm()
+      refetchPayments()
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to update salary')
+    },
+  })
+
+  // Delete salary mutation (DELETE)
+  const deletePaymentMutation = useMutationWithInvalidation({
+    mutationFn: (id: string) => api.delete(`/salary-payments/${id}`),
+    endpoint: '/salary-payments',
+    additionalInvalidations: [['expenses'], ['expenses-summary']],
+    onSuccess: () => {
+      toast.success(`Salary payment deleted successfully`)
+      setDeleteModal({ show: false, paymentId: null })
+      refetchPayments()
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to delete salary')
+    },
+  })
+
   const resetPaymentForm = () => {
+    setEditingPaymentId(null)
     setPaymentForm({
       amount: '',
       bonus: '0',
@@ -170,6 +253,7 @@ export default function WorkforcePage() {
 
   const openPayment = (staff: any) => {
     setPayingStaff(staff)
+    setEditingPaymentId(null)
     setPaymentForm({
       amount: (staff.staffType === 'DAILY' ? staff.dailyWage : staff.salary)?.toString() || '',
       bonus: '0',
@@ -178,6 +262,26 @@ export default function WorkforcePage() {
       paymentMethod: 'CASH',
       notes: '',
     })
+  }
+
+  const openEditPayment = (payment: any) => {
+    setPayingStaff(payment.staff) // Set staff so the form appears
+    setEditingPaymentId(payment.id)
+    setPaymentForm({
+      amount: payment.amount.toString(),
+      bonus: payment.bonus.toString(),
+      deductions: payment.deductions.toString(),
+      paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
+      paymentMethod: payment.paymentMethod || 'CASH',
+      notes: payment.notes || '',
+    })
+
+    // Scroll to top to see form
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleDeletePayment = (id: string) => {
+    setDeleteModal({ show: true, paymentId: id })
   }
 
   const handlePaySalary = (e: React.FormEvent) => {
@@ -190,7 +294,7 @@ export default function WorkforcePage() {
       return
     }
 
-    paySalaryMutation.mutate({
+    const payload = {
       staffId: payingStaff.id,
       month: parseInt(selectedMonth),
       year: parseInt(selectedYear),
@@ -200,7 +304,13 @@ export default function WorkforcePage() {
       paymentDate: paymentForm.paymentDate,
       paymentMethod: paymentForm.paymentMethod,
       notes: paymentForm.notes || null,
-    })
+    }
+
+    if (editingPaymentId) {
+      updatePaymentMutation.mutate(payload)
+    } else {
+      paySalaryMutation.mutate(payload)
+    }
   }
 
   const netAmount = (parseFloat(paymentForm.amount) || 0) + (parseFloat(paymentForm.bonus) || 0) - (parseFloat(paymentForm.deductions) || 0)
@@ -217,6 +327,7 @@ export default function WorkforcePage() {
   }
 
   const isLoading = staffLoading || paymentsLoading
+  const isSubmitting = paySalaryMutation.isPending || updatePaymentMutation.isPending
 
   return (
     <>
@@ -328,7 +439,7 @@ export default function WorkforcePage() {
                   <FaRupeeSign className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">Pay Salary - {payingStaff.name}</h2>
+                  <h2 className="text-lg font-bold text-slate-100">{editingPaymentId ? 'Edit Payment' : 'Pay Salary'} - {payingStaff.name}</h2>
                   <p className="text-xs text-slate-400">
                     {payingStaff.role} • {payingStaff.staffType === 'DAILY' ? 'Daily Wage' : 'Monthly'} • {monthLabel} {selectedYear}
                   </p>
@@ -424,10 +535,10 @@ export default function WorkforcePage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={paySalaryMutation.isPending || netAmount <= 0}
+                    disabled={isSubmitting || netAmount <= 0}
                     className="btn-success px-6 py-2 flex items-center gap-2"
                   >
-                    {paySalaryMutation.isPending ? (
+                    {isSubmitting ? (
                       <>
                         <LoadingSpinner size="sm" />
                         Processing...
@@ -435,7 +546,7 @@ export default function WorkforcePage() {
                     ) : (
                       <>
                         <FaCheck className="w-4 h-4" />
-                        Pay {formatCurrency(netAmount)}
+                        {editingPaymentId ? 'Update Payment' : `Pay ${formatCurrency(netAmount)}`}
                       </>
                     )}
                   </button>
@@ -506,6 +617,7 @@ export default function WorkforcePage() {
                     <th className="text-right py-2 px-3 text-slate-400 font-medium">Deduct</th>
                     <th className="text-right py-2 px-3 text-slate-400 font-medium">Net</th>
                     <th className="text-left py-2 px-3 text-slate-400 font-medium">Method</th>
+                    <th className="text-left py-2 px-3 text-slate-400 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -535,6 +647,24 @@ export default function WorkforcePage() {
                           {payment.paymentMethod || 'Cash'}
                         </span>
                       </td>
+                      <td className="py-2 px-3">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openEditPayment(payment)}
+                            className="text-sky-400 hover:text-sky-300 p-1"
+                            title="Edit"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePayment(payment.id)}
+                            className="text-red-400 hover:text-red-300 p-1"
+                            title="Delete"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -543,6 +673,21 @@ export default function WorkforcePage() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        show={deleteModal.show}
+        title="Delete Salary Payment"
+        message="Are you sure you want to delete this payment record? This will revert the staff status to pending."
+        onConfirm={() => {
+          if (deleteModal.paymentId) {
+            deletePaymentMutation.mutate(deleteModal.paymentId)
+          }
+        }}
+        onCancel={() => setDeleteModal({ show: false, paymentId: null })}
+        isLoading={deletePaymentMutation.isPending}
+        action="Delete"
+        type="delete"
+      />
     </>
   )
 }
@@ -612,24 +757,29 @@ function StaffCard({
             const isSelected = payingStaffId === staff.id
             const salary = staff.staffType === 'DAILY' ? staff.dailyWage : staff.salary
 
+            // Check if payment is scheduled for future
+            const isScheduled = payment && new Date(payment.paymentDate).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0)
+
             return (
               <div
                 key={staff.id}
-                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                  paid
-                    ? 'bg-emerald-500/10 border-emerald-500/30'
-                    : isSelected
+                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${paid
+                  ? isScheduled
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-emerald-500/10 border-emerald-500/30'
+                  : isSelected
                     ? 'bg-sky-500/10 border-sky-500/30'
                     : 'bg-slate-800/40 border-white/5 hover:border-white/10'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${
-                    paid 
-                      ? 'bg-emerald-500/30 text-emerald-400' 
-                      : 'bg-slate-700 text-slate-300'
-                  }`}>
-                    {paid ? <FaCheck className="w-4 h-4" /> : staff.name.charAt(0).toUpperCase()}
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${paid
+                    ? isScheduled
+                      ? 'bg-amber-500/30 text-amber-400'
+                      : 'bg-emerald-500/30 text-emerald-400'
+                    : 'bg-slate-700 text-slate-300'
+                    }`}>
+                    {paid ? (isScheduled ? <FaClock className="w-4 h-4" /> : <FaCheck className="w-4 h-4" />) : staff.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-200">{staff.name}</p>
@@ -641,12 +791,12 @@ function StaffCard({
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className={`text-sm font-semibold ${paid ? 'text-emerald-400' : 'text-slate-300'}`}>
+                    <p className={`text-sm font-semibold ${paid ? (isScheduled ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-300'}`}>
                       {formatCurrency(payment?.netAmount || salary || 0)}
                     </p>
                     {paid && (
-                      <p className="text-xs text-emerald-400/70">
-                        Paid {new Date(payment.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                      <p className={`text-xs ${isScheduled ? 'text-amber-400/70' : 'text-emerald-400/70'}`}>
+                        {isScheduled ? 'Scheduled ' : 'Paid '} {new Date(payment.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                       </p>
                     )}
                   </div>
@@ -655,11 +805,10 @@ function StaffCard({
                     <button
                       onClick={() => onPay(staff)}
                       disabled={isSelected}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                        isSelected
-                          ? 'bg-sky-600 text-white'
-                          : 'bg-emerald-600 text-white hover:bg-emerald-500'
-                      }`}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${isSelected
+                        ? 'bg-sky-600 text-white'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                        }`}
                     >
                       {isSelected ? 'Paying...' : 'Pay'}
                     </button>

@@ -6,7 +6,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AuthenticatedLayout } from '@/components/AuthenticatedLayout'
 import { ThemeProvider } from '@/components/ThemeProvider'
 
-const poppins = Poppins({ 
+const poppins = Poppins({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-poppins',
@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   keywords: ['hotel', 'management', 'booking', 'hospitality', 'rooms'],
   themeColor: '#0284c7',
   manifest: '/manifest.json',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
 }
 
 export default function RootLayout({

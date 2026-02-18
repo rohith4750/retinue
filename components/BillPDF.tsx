@@ -283,6 +283,16 @@ interface BillPDFProps {
         address?: string
         idProof?: string
       }
+      items?: Array<{
+        roomNumber: string
+        roomType: string
+        checkIn: string
+        checkOut: string
+        days: number
+        subtotal: number
+        tax: number
+        totalAmount: number
+      }>
     }
   }
 }
@@ -361,15 +371,32 @@ export function BillPDF({ bill }: BillPDFProps) {
             <Text style={[styles.itemTableHeaderText, styles.col6]}>Tariff</Text>
             <Text style={[styles.itemTableHeaderText, styles.col7]}>Amount</Text>
           </View>
-          <View style={styles.itemTableRow}>
-            <Text style={[styles.col1, { fontSize: 9 }]} hyphenationCallback={(e) => []}>1</Text>
-            <Text style={[styles.col2, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{itemName}</Text>
-            <Text style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(booking.checkIn)}</Text>
-            <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(booking.checkOut)}</Text>
-            <Text style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{days}</Text>
-            <Text style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(pricePerDay || 0).toFixed(2)}</Text>
-            <Text style={[styles.col7, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
-          </View>
+
+          {/* Render items (for consolidated bills) or single fallback */}
+          {(bill.booking.items || [bill.booking]).map((item: any, index: number) => {
+            // For fallback (single booking), use root booking data if item properties missing
+            const isFallback = !item.roomNumber
+            const currentRoom = isFallback ? booking.room : { roomNumber: item.roomNumber, roomType: item.roomType }
+            const currentCheckIn = isFallback ? booking.checkIn : item.checkIn
+            const currentCheckOut = isFallback ? booking.checkOut : item.checkOut
+            const currentDays = isFallback ? days : item.days
+            const currentSubtotal = isFallback ? (bill.subtotal || 0) : (item.subtotal || 0)
+            // Calculate tariff per day from subtotal
+            const currentTariff = currentSubtotal / currentDays
+
+            return (
+              <View key={index} style={styles.itemTableRow}>
+                <Text style={[styles.col1, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{index + 1}</Text>
+                <Text style={[styles.col2, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{currentRoom.roomType} Room {currentRoom.roomNumber}</Text>
+                <Text style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(currentCheckIn)}</Text>
+                <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(currentCheckOut)}</Text>
+                <Text style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{currentDays}</Text>
+                <Text style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(currentTariff || 0).toFixed(2)}</Text>
+                <Text style={[styles.col7, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(currentSubtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              </View>
+            )
+          })}
+
           <View style={styles.itemTableTotalRow}>
             <Text style={[styles.itemTableTotalText, styles.col1]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col2]} hyphenationCallback={(e) => []}>Total</Text>
@@ -385,11 +412,21 @@ export function BillPDF({ bill }: BillPDFProps) {
         <View style={styles.twoCol}>
           <View style={styles.leftCol}>
             <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.descText} hyphenationCallback={(e) => []}>Room - {room.roomType.toLowerCase()} - {room.roomNumber}</Text>
-            <Text style={styles.descText} hyphenationCallback={(e) => []}>Check in: {formatShortDate(booking.checkIn)}</Text>
-            <Text style={styles.descText} hyphenationCallback={(e) => []}>Check out: {formatShortDate(booking.checkOut)}</Text>
-            <Text style={styles.descText} hyphenationCallback={(e) => []}>{pricePerDay.toFixed(0)}/- per day</Text>
-            <Text style={styles.descText} hyphenationCallback={(e) => []}>{days} day{days !== 1 ? 's' : ''} × {(pricePerDay || 0).toFixed(0)} = {(bill.subtotal || 0).toLocaleString('en-IN')}/-</Text>
+            {/* List rooms briefly in description */}
+            {(bill.booking.items || [bill.booking]).map((item: any, i: number) => {
+              const isFallback = !item.roomNumber
+              const rNum = isFallback ? booking.room.roomNumber : item.roomNumber
+              const rType = isFallback ? booking.room.roomType : item.roomType
+              const sTotal = isFallback ? bill.subtotal : item.subtotal
+              return (
+                <Text key={i} style={styles.descText} hyphenationCallback={(e) => []}>
+                  • {rType} - {rNum}: ₹{(sTotal || 0).toLocaleString('en-IN')}/-
+                </Text>
+              )
+            })}
+            <Text style={[styles.descText, { marginTop: 4 }]} hyphenationCallback={(e) => []}>
+              Consolidated Invoice for {bill.booking.items ? bill.booking.items.length : 1} Room(s).
+            </Text>
           </View>
           <View style={styles.rightCol}>
             <View style={styles.paymentSummaryRow}>
@@ -420,13 +457,7 @@ export function BillPDF({ bill }: BillPDFProps) {
         {/* Terms */}
         <View style={styles.termsSection}>
           <Text style={styles.sectionTitle}>Terms And Conditions</Text>
-          <Text style={styles.termsText}>1. Payment is due upon checkout unless prior arrangements have been made.</Text>
-          <Text style={styles.termsText}>2. Cancellation must be made 24 hours prior to check-in to avoid charges.</Text>
-          <Text style={styles.termsText}>3. Check-in time is 2:00 PM and check-out time is 11:00 AM.</Text>
-          <Text style={styles.termsText}>4. Early check-in or late check-out may incur additional charges.</Text>
-          <Text style={styles.termsText}>5. Guests are responsible for any damage to hotel property during their stay.</Text>
-          <Text style={styles.termsText}>6. The hotel is not responsible for any loss of valuables. Please use the safety deposit box.</Text>
-          <Text style={[styles.termsText, { marginTop: 8 }]}>Thank you for choosing Hotel The Retinue. We appreciate your business!</Text>
+          <Text style={styles.termsText}>Thanks for doing business with us!</Text>
         </View>
 
         {/* Authorized signatory */}
