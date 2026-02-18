@@ -37,79 +37,67 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // 1. Fetch Distinct "Bill Headers" (Group by Guest + CheckIn + CheckOut)
-    // This gives us one representative booking per group.
-    const [billHeaders, total] = await Promise.all([
-      prisma.booking.findMany({
-        where,
-        distinct: ["guestId", "checkIn", "checkOut"],
-        skip,
-        take: limit,
-        include: {
-          guest: true,
-          room: true,
-        },
-        orderBy: { checkIn: "desc" },
-      }),
-      // Count unique groups - approximating count by distinct ID fetch
-      // Since precise count with complex distinct is tricky in Prisma, we use filtering on distinct fields
-      prisma.booking
-        .findMany({
-          where,
-          distinct: ["guestId", "checkIn", "checkOut"],
-          select: { id: true },
-        })
-        .then((res) => res.length),
-    ]);
+    // 1. Fetch ALL matching bookings (non-cancelled and potentially non-checked-out)
+    // We group in memory because Prisma distinct doesn't support nested fields like guest.phone
+    const allBookings = await prisma.booking.findMany({
+      where,
+      include: {
+        guest: true,
+        room: true,
+      },
+      orderBy: { checkIn: "desc" },
+    });
 
-    // 2. Hydrate with consolidated totals
-    const consolidatedBills = await Promise.all(
-      billHeaders.map(async (header) => {
-        // Find siblings (same guest, same dates, excluding self is NOT needed as we want total count)
-        const siblings = await prisma.booking.findMany({
-          where: {
-            guestId: header.guestId,
-            checkIn: header.checkIn,
-            checkOut: header.checkOut,
-            status: { notIn: ["CANCELLED"] },
-          },
-          include: { room: true },
-        });
+    // 2. Group by Guest Phone
+    const groups = new Map<string, any[]>();
+    allBookings.forEach((b) => {
+      const phone = b.guest?.phone || b.guestId;
+      if (!groups.has(phone)) {
+        groups.set(phone, []);
+      }
+      groups.get(phone)!.push(b);
+    });
 
-        // Aggregate
-        const totalAmount = siblings.reduce((sum, b) => sum + b.totalAmount, 0);
-        const paidAmount = siblings.reduce((sum, b) => sum + b.paidAmount, 0);
+    const uniqueGroups = Array.from(groups.values());
+    const total = uniqueGroups.length;
 
-        // Recalculate balance to be safe
-        const calculatedBalance = Math.max(0, totalAmount - paidAmount);
+    // 3. Paginate and Hydrate
+    const paginatedGroups = uniqueGroups.slice(skip, skip + limit);
 
-        // Determine overall payment status
-        let status = "PENDING";
-        if (calculatedBalance <= 0) status = "PAID";
-        else if (paidAmount > 0) status = "PARTIAL";
+    const consolidatedBills = paginatedGroups.map((siblings) => {
+      const header = siblings[0]; // Representative (latest check-in)
 
-        const roomNumbers = siblings.map((b) => b.room.roomNumber).sort();
+      // Aggregate
+      const totalAmount = siblings.reduce((sum, b) => sum + b.totalAmount, 0);
+      const paidAmount = siblings.reduce((sum, b) => sum + b.paidAmount, 0);
+      const calculatedBalance = Math.max(0, totalAmount - paidAmount);
 
-        return {
-          ...header,
-          // Overwrite with consolidated values
-          totalAmount,
-          paidAmount,
-          balanceAmount: calculatedBalance,
-          paymentStatus: status,
-          // Extra info for frontend
-          roomCount: siblings.length,
-          roomNumbers,
-          isConsolidated: siblings.length > 1,
-          // Use primary room + count
-          primaryRoom: header.room,
-          displayRoomNumber:
-            siblings.length > 1
-              ? `${header.room.roomNumber} + ${siblings.length - 1}`
-              : header.room.roomNumber,
-        };
-      }),
-    );
+      // Determine overall payment status
+      let status = "PENDING";
+      if (calculatedBalance <= 0) status = "PAID";
+      else if (paidAmount > 0) status = "PARTIAL";
+
+      const roomNumbers = siblings
+        .map((b) => b.room.roomNumber)
+        .sort()
+        .filter((v, i, a) => a.indexOf(v) === i); // Unique room numbers
+
+      return {
+        ...header,
+        totalAmount,
+        paidAmount,
+        balanceAmount: calculatedBalance,
+        paymentStatus: status,
+        roomCount: siblings.length,
+        roomNumbers,
+        isConsolidated: siblings.length > 1,
+        primaryRoom: header.room,
+        displayRoomNumber:
+          siblings.length > 1
+            ? `${header.room.roomNumber} + ${siblings.length - 1}`
+            : header.room.roomNumber,
+      };
+    });
 
     // Calculate Summary Stats (Optional - returning 0 for now to keep it lightweight)
     const summary = {

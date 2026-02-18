@@ -60,27 +60,24 @@ export async function GET(
       if (user) bookedByUser = { id: user.id, username: user.username };
     }
 
-    // AUTOMATIC CONSOLIDATION: Find other bookings for same guest with overlapping dates
-    // Logic: Same guestId + (checkIn date matches OR stay overlaps) + Not Cancelled
     let relatedBookings: any[] = [];
 
-    // Define the range for this booking
-    const thisCheckIn = new Date(booking.checkIn);
-    const thisCheckOut = new Date(booking.checkOut);
-
-    // To catch "batch" bookings, we often look for bookings created around the same time or with same checkin
-    // Let's use a robust overlap check: same guest + overlaps with this booking's dates
-    // And also ensure status is active
+    // AUTOMATIC CONSOLIDATION: Find other bookings for the same customer (linked by Phone Number)
+    // Logic: Same guest phone + Not Cancelled + Active/Recent (within 60 days of this stay)
     const siblings = await prisma.booking.findMany({
       where: {
-        guestId: booking.guestId,
+        guest: { phone: booking.guest.phone },
         id: { not: booking.id }, // Exclude self
         status: { notIn: ["CANCELLED"] },
-        // Check for overlap: (StartA <= EndB) and (EndA >= StartB)
-        // Simplified: matches check-in date roughly (bookings usually made together)
+        // Only group bookings that are somewhat related in time (within +/- 60 days of this check-in)
+        // This prevents grouping a booking from a year ago with a new one
         checkIn: {
-          gte: new Date(thisCheckIn.setHours(0, 0, 0, 0)),
-          lte: new Date(thisCheckIn.setHours(23, 59, 59, 999)),
+          gte: new Date(
+            new Date(booking.checkIn).getTime() - 60 * 24 * 60 * 60 * 1000,
+          ),
+          lte: new Date(
+            new Date(booking.checkIn).getTime() + 60 * 24 * 60 * 60 * 1000,
+          ),
         },
       },
       include: {
@@ -94,14 +91,14 @@ export async function GET(
     relatedBookings = [booking, ...siblings];
 
     // Sort by room number for display
-    relatedBookings.sort((a, b) =>
+    relatedBookings.sort((a: any, b: any) =>
       a.room.roomNumber.localeCompare(b.room.roomNumber),
     );
 
     // Find the "primary" booking for bill metadata (earliest created)
     // This ensures consistent Bill Number regardless of which room is viewed
     const primaryBillBooking = relatedBookings.reduce(
-      (prev, curr) =>
+      (prev: any, curr: any) =>
         new Date(curr.createdAt) < new Date(prev.createdAt) ? curr : prev,
       relatedBookings[0],
     );
@@ -226,13 +223,13 @@ export async function PUT(
     // 1. Find the Primary Booking
     let booking = await prisma.booking.findUnique({
       where: { id: params.id },
-      include: { history: true, room: true },
+      include: { history: true, room: true, guest: true },
     });
 
     if (!booking) {
       booking = await prisma.booking.findFirst({
         where: { billNumber: params.id },
-        include: { history: true, room: true },
+        include: { history: true, room: true, guest: true },
       });
     }
 
@@ -252,16 +249,19 @@ export async function PUT(
       );
     }
 
-    // 2. Find Related Bookings (Consolidated Group)
-    const thisCheckIn = new Date(booking.checkIn);
+    // 2. Find Related Bookings (Consolidated Group by Phone)
     const siblings = await prisma.booking.findMany({
       where: {
-        guestId: booking.guestId,
+        guest: { phone: booking.guest.phone },
         id: { not: booking.id },
         status: { notIn: ["CANCELLED"] },
         checkIn: {
-          gte: new Date(thisCheckIn.setHours(0, 0, 0, 0)),
-          lte: new Date(thisCheckIn.setHours(23, 59, 59, 999)),
+          gte: new Date(
+            new Date(booking.checkIn).getTime() - 60 * 24 * 60 * 60 * 1000,
+          ),
+          lte: new Date(
+            new Date(booking.checkIn).getTime() + 60 * 24 * 60 * 60 * 1000,
+          ),
         },
       },
       include: { history: true, room: true },
