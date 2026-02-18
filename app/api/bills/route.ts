@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     const where: any = {
-      status: { notIn: ["CANCELLED", "CHECKED_OUT"] }, // Default to active bills
+      status: { notIn: ["CANCELLED"] }, // Default to active bills
     };
 
     if (paymentStatus) {

@@ -566,7 +566,9 @@ export default function BookingsPage() {
                 const dayTs = dayStart(day)
                 return filteredBookings.find((b: any) => {
                   if (b.room?.id !== roomId) return false
-                  if (b.status === 'CANCELLED' || b.status === 'CHECKED_OUT') return false
+                  // Only hide CANCELLED bookings from timeline. 
+                  // CHECKED_OUT bookings should be visible so we can see occupancy history.
+                  if (b.status === 'CANCELLED') return false
                   const inTs = dayStart(new Date(b.checkIn))
                   const outTs = dayStart(new Date(b.checkOut))
                   return dayTs >= inTs && dayTs < outTs

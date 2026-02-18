@@ -55,11 +55,9 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     const where: any = {
-      // Default: show active (exclude CANCELLED/CHECKED_OUT) UNLESS filtering specifically
+      // Default: show active (exclude CANCELLED) UNLESS filtering specifically
       // But if quickFilter is set, we might want to override this default behavior
-      ...(status
-        ? { status }
-        : { status: { notIn: ["CANCELLED", "CHECKED_OUT"] } }),
+      ...(status ? { status } : { status: { notIn: ["CANCELLED"] } }),
       ...(paymentStatus ? { paymentStatus } : {}),
       ...(forCalendar ? {} : { source: { not: "ONLINE" } }),
     };
