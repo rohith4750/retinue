@@ -403,7 +403,7 @@ export default function BillPage() {
             <div>
               <h2 className="text-xl font-bold text-slate-100">Invoice</h2>
               <p className="text-xs text-slate-400 mt-1">Bill # {bill.billNumber}</p>
-              <p className="text-xs text-slate-400">Date: {new Date(bill.createdAt).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-slate-400">Date: {new Date(booking.checkOut).toLocaleString('en-IN')}</p>
             </div>
             <span className={`px-3 py-1 rounded-lg text-sm font-bold ${bill.paymentStatus === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
               bill.paymentStatus === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
