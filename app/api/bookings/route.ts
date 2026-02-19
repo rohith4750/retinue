@@ -66,13 +66,19 @@ export async function GET(request: NextRequest) {
       where.source = "ONLINE";
     }
 
-    // Date filter (specific date)
+    // Date filter (specific date) - find ALL bookings active on this date (overlap)
     if (date) {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
-      where.checkIn = { gte: startOfDay, lte: endOfDay };
+
+      // Check for overlap: checkIn < endOfDay AND checkOut > startOfDay
+      where.AND = [
+        ...(where.AND || []),
+        { checkIn: { lt: endOfDay } },
+        { checkOut: { gt: startOfDay } },
+      ];
     }
 
     // Date Range filter (from/to)
