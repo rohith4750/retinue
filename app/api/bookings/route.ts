@@ -321,13 +321,24 @@ export async function POST(request: NextRequest) {
           const checkInDateOnly = new Date(checkInDate);
           checkInDateOnly.setHours(0, 0, 0, 0);
 
-          const slot = await tx.roomSlot.create({
-            data: {
+          const slot = await tx.roomSlot.upsert({
+            where: {
+              roomId_date_slotType: {
+                roomId,
+                date: checkInDateOnly,
+                slotType: "FULL_DAY",
+              },
+            },
+            create: {
               roomId,
               date: checkInDateOnly,
               slotType: "FULL_DAY",
               price: room.basePrice,
               isAvailable: false,
+            },
+            update: {
+              isAvailable: false,
+              price: room.basePrice,
             },
           });
 
