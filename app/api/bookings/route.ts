@@ -523,7 +523,8 @@ export async function POST(request: NextRequest) {
     // Check for specific Prisma errors
     let detail = error.message || "An unexpected error occurred";
     if (error.code === "P2002") {
-      detail = "A booking with this ID or reference already exists.";
+      const field = error.meta?.target || "ID, reference, or bill number";
+      detail = `A booking with this duplicate ${field} already exists. Please sync database schema (db push) if this is a consolidated booking.`;
     }
 
     return Response.json(errorResponse("INTERNAL_ERROR", detail), {

@@ -6,18 +6,15 @@
 import { prisma } from "./prisma";
 
 const BOOKING_ID_PREFIX = "RETINU";
-const ID_LENGTH = 4; // Number of digits after prefix
+const ID_LENGTH = 6; // Number of digits after prefix
 
 /**
  * Generate next booking ID
- * Format: RETINU0123, RETINU0124, etc.
- * @param tx - Optional transaction client (for use inside transactions)
+ * Handles collisions with a retry loop and fallback entropy.
  */
 export async function generateBookingId(tx?: any): Promise<string> {
   const client = tx || prisma;
 
-  // Get the highest existing ID to start with
-  // Ordering by ID descending is more reliable than createdAt for sequences
   const lastBooking = await client.booking.findFirst({
     where: {
       id: {
@@ -40,7 +37,7 @@ export async function generateBookingId(tx?: any): Promise<string> {
 
   // Double-check uniqueness with retry loop (handles race conditions and same-transaction batching)
   let attempts = 0;
-  while (attempts < 10) {
+  while (attempts < 15) {
     const paddedNumber = nextNumber.toString().padStart(ID_LENGTH, "0");
     const newId = `${BOOKING_ID_PREFIX}${paddedNumber}`;
 
@@ -55,15 +52,18 @@ export async function generateBookingId(tx?: any): Promise<string> {
     }
 
     console.warn(`[ID-GEN] ID collision for ${newId}, retrying...`);
-    // If ID exists (possibly from an uncommitted part of same transaction), increment and try again
     nextNumber++;
     attempts++;
   }
 
-  // Final fallback if many collisions (unlikely)
-  const fallback = `${BOOKING_ID_PREFIX}${Date.now().toString().slice(-ID_LENGTH)}`;
+  // Final fallback with high entropy: Prefix + Random(3) + Timestamp(3)
+  const entropy = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  const tsPart = Date.now().toString().slice(-3);
+  const fallback = `${BOOKING_ID_PREFIX}${entropy}${tsPart}`;
   console.error(
-    `[ID-GEN] ID generation exhausted retries, using fallback: ${fallback}`,
+    `[ID-GEN] ID generation exhausted retries, using entropy fallback: ${fallback}`,
   );
   return fallback;
 }
