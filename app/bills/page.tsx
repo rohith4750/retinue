@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar } from 'react-icons/fa'
+import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
 
@@ -170,8 +170,8 @@ export default function BillsPage() {
                   </span>
                   <span
                     className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-                        status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                          'bg-red-500/20 text-red-400'
+                      status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-red-500/20 text-red-400'
                       }`}
                   >
                     {status}
@@ -209,9 +209,19 @@ export default function BillsPage() {
                     <span className="font-medium text-amber-400">₹{remaining.toLocaleString()}</span>
                   </div>
                 )}
-                <p className="mt-3 text-center text-xs text-emerald-400 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
-                  View Bill →
-                </p>
+                <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
+                  <Link
+                    href={`/bookings/${b.id}/edit`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                    title="Edit Booking"
+                  >
+                    <FaEdit className="w-4 h-4" />
+                  </Link>
+                  <p className="text-xs text-emerald-400 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+                    View Bill →
+                  </p>
+                </div>
               </Link>
             )
           })}
@@ -259,20 +269,30 @@ export default function BillsPage() {
                       <td className="py-3 px-4 text-sm text-right font-medium text-amber-400">₹{remaining.toLocaleString()}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-                            status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                              'bg-red-500/20 text-red-400'
+                          status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-red-500/20 text-red-400'
                           }`}>
                           {status}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <Link
-                          href={`/bills/${b.id}`}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30"
-                        >
-                          <FaReceipt className="w-3 h-3" />
-                          View
-                        </Link>
+                        <div className="flex items-center justify-center gap-2">
+                          <Link
+                            href={`/bills/${b.id}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30"
+                            title="View Bill"
+                          >
+                            <FaReceipt className="w-3.5 h-3.5" />
+                            View
+                          </Link>
+                          <Link
+                            href={`/bookings/${b.id}/edit`}
+                            className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                            title="Edit Booking"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   )
