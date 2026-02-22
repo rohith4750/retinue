@@ -121,45 +121,72 @@ export default function BillPage() {
       notes: 'Paid at time of booking',
     })
   }
-  ; (bill.history || []).forEach((h: any) => {
-    if (h.action === 'PAYMENT_RECEIVED' && h.changes) {
-      let amount = Number(h.changes.paymentReceived)
-      if (!amount && h.changes.paidAmount?.to != null) amount = Number(h.changes.paidAmount.to) - Number(h.changes.paidAmount.from ?? 0)
-      amount = amount || 0
-      if (amount > 0) {
+
+  // Use a map to consolidate history entries with same timestamp/action for cleaner view
+  const consolidatedHistoryMapping = new Map<string, any>()
+    ; (bill.history || []).forEach((h: any) => {
+      const ts = new Date(h.timestamp).getTime()
+      const roundedTs = Math.floor(ts / 1000) * 1000
+      const key = `${h.action}-${roundedTs}`
+      if (!consolidatedHistoryMapping.has(key)) {
+        consolidatedHistoryMapping.set(key, h)
+      }
+    })
+
+  Array.from(consolidatedHistoryMapping.values())
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .forEach((h: any) => {
+      if (h.action === 'PAYMENT_RECEIVED' && h.changes) {
+        let amount = Number(h.changes.paymentReceived)
+        if (!amount && h.changes.paidAmount?.to != null) amount = Number(h.changes.paidAmount.to) - Number(h.changes.paidAmount.from ?? 0)
+        amount = amount || 0
+        if (amount > 0) {
+          paymentTransactions.push({
+            type: 'PAYMENT',
+            label: 'Payment received',
+            amount,
+            date: new Date(h.timestamp).toLocaleString('en-IN'),
+            mode: h.changes.paymentMode ? String(h.changes.paymentMode).replace('_', ' ') : undefined,
+            notes: h.notes,
+            historyId: h.id,
+          })
+        }
+      }
+      if (h.action === 'BILL_ADJUSTED' && h.changes?.discount?.to !== undefined) {
+        const prev = Number(h.changes.discount.from) || 0
+        const now = Number(h.changes.discount.to) || 0
+        if (prev !== now) {
+          paymentTransactions.push({
+            type: 'ADJUSTMENT',
+            label: now > prev ? 'Additional discount applied' : 'Discount reduced',
+            amount: Math.abs(now - prev),
+            date: new Date(h.timestamp).toLocaleString('en-IN'),
+            notes: `Discount changed from ₹${prev.toLocaleString()} to ₹${now.toLocaleString()}`,
+          })
+        }
+      }
+      if (h.action === 'PAYMENT_CORRECTED' && h.changes?.paidAmount?.to != null) {
+        const newTotal = Number(h.changes.paidAmount.to)
         paymentTransactions.push({
-          type: 'PAYMENT',
-          label: 'Payment received',
-          amount,
+          type: 'CORRECTION',
+          label: 'Payment corrected',
+          amount: newTotal,
           date: new Date(h.timestamp).toLocaleString('en-IN'),
-          mode: h.changes.paymentMode ? String(h.changes.paymentMode).replace('_', ' ') : undefined,
           notes: h.notes,
-          historyId: h.id,
         })
       }
-    }
-    if (h.action === 'PAYMENT_CORRECTED' && h.changes?.paidAmount?.to != null) {
-      const newTotal = Number(h.changes.paidAmount.to)
-      paymentTransactions.push({
-        type: 'CORRECTION',
-        label: 'Payment corrected',
-        amount: newTotal,
-        date: new Date(h.timestamp).toLocaleString('en-IN'),
-        notes: h.notes,
-      })
-    }
-    if (h.action === 'PAYMENT_EDITED' && h.changes) {
-      const prev = Number(h.changes.previousAmount) || 0
-      const newAmt = Number(h.changes.newAmount) || 0
-      paymentTransactions.push({
-        type: 'EDIT',
-        label: 'Payment edited',
-        amount: newAmt,
-        date: new Date(h.timestamp).toLocaleString('en-IN'),
-        notes: h.notes || `Was ₹${prev.toLocaleString()}, now ₹${newAmt.toLocaleString()}`,
-      })
-    }
-  })
+      if (h.action === 'PAYMENT_EDITED' && h.changes) {
+        const prev = Number(h.changes.previousAmount) || 0
+        const newAmt = Number(h.changes.newAmount) || 0
+        paymentTransactions.push({
+          type: 'EDIT',
+          label: 'Payment edited',
+          amount: newAmt,
+          date: new Date(h.timestamp).toLocaleString('en-IN'),
+          notes: h.notes || `Was ₹${prev.toLocaleString()}, now ₹${newAmt.toLocaleString()}`,
+        })
+      }
+    })
 
   const handleDownloadPDF = async () => {
     try {
@@ -250,28 +277,27 @@ export default function BillPage() {
               Edit details
             </button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <p className="text-xs text-slate-500 mb-0.5">Advance</p>
-              <p className="text-lg font-bold text-sky-400">₹{advanceAmount.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Gross Bill</p>
+              <p className="text-lg font-bold text-slate-200">₹{((bill.subtotal ?? 0) + (bill.tax ?? 0)).toLocaleString()}</p>
+            </div>
+            <div className="opacity-80">
+              <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Total Discount</p>
+              <p className="text-lg font-bold text-emerald-400">-₹{(bill.discount ?? 0).toLocaleString()}</p>
+            </div>
+            <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+              <p className="text-xs text-sky-400/80 mb-0.5 font-semibold uppercase tracking-tight">Net Payable</p>
+              <p className="text-xl font-black text-white">₹{(bill.totalAmount ?? 0).toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-0.5">Discount</p>
-              <p className="text-lg font-bold text-emerald-400">₹{(bill.discount ?? 0).toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5">Total amount</p>
-              <p className="text-lg font-bold text-slate-200">₹{(bill.totalAmount ?? 0).toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5">Total paid</p>
+              <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Amount Paid</p>
               <p className="text-lg font-bold text-emerald-400">₹{(bill.paidAmount ?? 0).toLocaleString()}</p>
             </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5">Total remaining</p>
-              <p className={`text-lg font-bold ${balanceDue > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
+            <div className="bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+              <p className="text-xs text-amber-500 mb-0.5 font-bold uppercase tracking-tight">Balance Due</p>
+              <p className={`text-xl font-black ${balanceDue > 0 ? 'text-amber-400' : 'text-slate-200'}`}>
                 ₹{balanceDue.toLocaleString()}
-                {balanceDue <= 0 && ' (Fully paid)'}
               </p>
             </div>
           </div>

@@ -320,10 +320,14 @@ export async function PATCH(
           await tx.bookingHistory.create({
             data: {
               bookingId: b.id,
-              action: "UPDATED",
+              action: "BILL_ADJUSTED",
               changedBy: (authResult as any).userId || null,
-              changes: changes,
-              notes: "Bill details updated (Consolidated group update)",
+              changes: {
+                ...changes,
+                totalConsolidatedDiscount:
+                  discount !== undefined ? discount : undefined,
+              },
+              notes: "Bill details adjusted (Consolidated group update)",
             },
           });
           updatedBookings.push(updated);
