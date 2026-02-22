@@ -200,6 +200,107 @@ export async function GET(
   }
 }
 
+// PATCH /api/bills/[id] - Update bill details (billNumber, discount)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const authResult = await requireAuth("RECEPTIONIST")(request);
+    if (authResult instanceof Response) return authResult;
+
+    const data = await request.json();
+    const { billNumber, discount } = data;
+
+    // Find the booking
+    let booking = await prisma.booking.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!booking) {
+      booking = await prisma.booking.findFirst({
+        where: { billNumber: params.id },
+      });
+    }
+
+    if (!booking) {
+      return Response.json(errorResponse("Not found", "Bill not found"), {
+        status: 404,
+      });
+    }
+
+    const updateData: any = {};
+    const changes: any = {};
+
+    if (billNumber !== undefined) {
+      updateData.billNumber = billNumber;
+      changes.billNumber = { from: booking.billNumber, to: billNumber };
+    }
+
+    if (discount !== undefined) {
+      const newDiscount = parseFloat(String(discount)) || 0;
+      updateData.discount = newDiscount;
+
+      // We also need to update totalAmount and balanceAmount
+      // totalAmount = subtotal + tax - discount
+      const subtotal = booking.subtotal || 0;
+      const tax = booking.tax || 0;
+      const paidAmount = booking.paidAmount || 0;
+
+      const newTotalAmount = subtotal + tax - newDiscount;
+      const newBalanceAmount = Math.max(0, newTotalAmount - paidAmount);
+
+      updateData.totalAmount = newTotalAmount;
+      updateData.balanceAmount = newBalanceAmount;
+
+      // Update payment status if needed
+      updateData.paymentStatus =
+        newBalanceAmount <= 0 ? "PAID" : paidAmount > 0 ? "PARTIAL" : "PENDING";
+
+      changes.discount = { from: booking.discount, to: newDiscount };
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return Response.json(
+        errorResponse("Validation error", "No data to update"),
+        { status: 400 },
+      );
+    }
+
+    const updatedBooking = await prisma.booking.update({
+      where: { id: booking.id },
+      data: updateData,
+    });
+
+    // Record history
+    await prisma.bookingHistory.create({
+      data: {
+        bookingId: booking.id,
+        action: "UPDATED",
+        changedBy: (authResult as any).userId || null,
+        changes: changes,
+        notes: "Bill details updated",
+      },
+    });
+
+    return Response.json(
+      successResponse(updatedBooking, "Bill updated successfully"),
+    );
+  } catch (error: any) {
+    console.error("Error updating bill details:", error);
+    if (error.code === "P2002") {
+      return Response.json(
+        errorResponse("Validation error", "Bill number already exists"),
+        { status: 400 },
+      );
+    }
+    return Response.json(
+      errorResponse("Server error", "Failed to update bill details"),
+      { status: 500 },
+    );
+  }
+}
+
 // PUT /api/bills/[id] - Update payment (now updates Booking + Auto-Consolidated Distribution)
 export async function PUT(
   request: NextRequest,
