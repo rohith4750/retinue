@@ -210,6 +210,13 @@ export async function PATCH(
     if (authResult instanceof Response) return authResult;
 
     const data = await request.json();
+    if (!data) {
+      return Response.json(
+        errorResponse("Validation error", "Request body is required"),
+        { status: 400 },
+      );
+    }
+
     const { billNumber, discount } = data;
 
     // Find the booking
@@ -232,60 +239,75 @@ export async function PATCH(
     const updateData: any = {};
     const changes: any = {};
 
-    if (billNumber !== undefined) {
+    if (billNumber !== undefined && billNumber !== booking.billNumber) {
       updateData.billNumber = billNumber;
       changes.billNumber = { from: booking.billNumber, to: billNumber };
     }
 
     if (discount !== undefined) {
-      const newDiscount = parseFloat(String(discount)) || 0;
-      updateData.discount = newDiscount;
+      const newDiscount = parseFloat(String(discount));
+      if (isNaN(newDiscount) || newDiscount < 0) {
+        return Response.json(
+          errorResponse("Validation error", "Invalid discount amount"),
+          { status: 400 },
+        );
+      }
 
-      // We also need to update totalAmount and balanceAmount
-      // totalAmount = subtotal + tax - discount
-      const subtotal = booking.subtotal || 0;
-      const tax = booking.tax || 0;
-      const paidAmount = booking.paidAmount || 0;
+      if (newDiscount !== booking.discount) {
+        updateData.discount = newDiscount;
 
-      const newTotalAmount = subtotal + tax - newDiscount;
-      const newBalanceAmount = Math.max(0, newTotalAmount - paidAmount);
+        // We also need to update totalAmount and balanceAmount
+        // totalAmount = subtotal + tax - discount
+        const subtotal = booking.subtotal || 0;
+        const tax = booking.tax || 0;
+        const paidAmount = booking.paidAmount || 0;
 
-      updateData.totalAmount = newTotalAmount;
-      updateData.balanceAmount = newBalanceAmount;
+        const newTotalAmount = Math.max(0, subtotal + tax - newDiscount);
+        const newBalanceAmount = Math.max(0, newTotalAmount - paidAmount);
 
-      // Update payment status if needed
-      updateData.paymentStatus =
-        newBalanceAmount <= 0 ? "PAID" : paidAmount > 0 ? "PARTIAL" : "PENDING";
+        updateData.totalAmount = newTotalAmount;
+        updateData.balanceAmount = newBalanceAmount;
 
-      changes.discount = { from: booking.discount, to: newDiscount };
+        // Update payment status if needed
+        updateData.paymentStatus =
+          newBalanceAmount <= 0
+            ? "PAID"
+            : paidAmount > 0
+              ? "PARTIAL"
+              : "PENDING";
+
+        changes.discount = { from: booking.discount, to: newDiscount };
+        changes.totalAmount = { from: booking.totalAmount, to: newTotalAmount };
+      }
     }
 
     if (Object.keys(updateData).length === 0) {
-      return Response.json(
-        errorResponse("Validation error", "No data to update"),
-        { status: 400 },
-      );
+      return Response.json(successResponse(booking, "No changes detected"), {
+        status: 200,
+      });
     }
 
-    const updatedBooking = await prisma.booking.update({
-      where: { id: booking.id },
-      data: updateData,
+    const result = await prisma.$transaction(async (tx: any) => {
+      const updated = await tx.booking.update({
+        where: { id: booking.id },
+        data: updateData,
+      });
+
+      // Record history
+      await tx.bookingHistory.create({
+        data: {
+          bookingId: booking.id,
+          action: "UPDATED",
+          changedBy: (authResult as any).userId || null,
+          changes: changes,
+          notes: "Bill details updated",
+        },
+      });
+
+      return updated;
     });
 
-    // Record history
-    await prisma.bookingHistory.create({
-      data: {
-        bookingId: booking.id,
-        action: "UPDATED",
-        changedBy: (authResult as any).userId || null,
-        changes: changes,
-        notes: "Bill details updated",
-      },
-    });
-
-    return Response.json(
-      successResponse(updatedBooking, "Bill updated successfully"),
-    );
+    return Response.json(successResponse(result, "Bill updated successfully"));
   } catch (error: any) {
     console.error("Error updating bill details:", error);
     if (error.code === "P2002") {
@@ -295,7 +317,10 @@ export async function PATCH(
       );
     }
     return Response.json(
-      errorResponse("Server error", "Failed to update bill details"),
+      errorResponse(
+        "INTERNAL_ERROR",
+        "Failed to update bill: " + (error.message || "Unknown error"),
+      ),
       { status: 500 },
     );
   }
