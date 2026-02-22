@@ -6,9 +6,11 @@ import { amountInWords } from '@/lib/amount-in-words'
 Font.register({
   family: 'Poppins',
   fonts: [
-    { src: '/fonts/Poppins-Regular.ttf' },
+    { src: '/fonts/Poppins-Regular.ttf', fontWeight: 400 },
     { src: '/fonts/Poppins-Medium.ttf', fontWeight: 500 },
-    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 700 }, // React-pdf uses numeric or string weights
+    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 700 },
+    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 'bold' },
+    { src: '/fonts/Poppins-Regular.ttf', fontWeight: 'normal' },
   ]
 })
 
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
   hotelNameHeader: {
     color: '#111827',
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: 700,
     marginBottom: 0,
     lineHeight: 1,
   },
@@ -85,7 +87,7 @@ const styles = StyleSheet.create({
   },
   taxInvoiceTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: 700,
     color: '#111827',
     marginBottom: 4,
     textTransform: 'uppercase', // Premium look
@@ -102,7 +104,7 @@ const styles = StyleSheet.create({
   },
   billToTitle: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: 700,
     color: '#111827',
     marginBottom: 6,
   },
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
   },
   paymentSummaryValue: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: 700,
     color: '#111827',
   },
   // Amount in words
@@ -207,7 +209,6 @@ const styles = StyleSheet.create({
   amountWordsText: {
     fontSize: 10,
     color: '#374151',
-    fontStyle: 'italic',
   },
   // Terms
   termsSection: {
