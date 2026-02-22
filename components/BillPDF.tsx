@@ -444,6 +444,18 @@ export function BillPDF({ bill }: BillPDFProps) {
               <Text style={styles.paymentSummaryLabel}>Sub Total</Text>
               <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
+            {(bill.tax > 0 || (bill.totalAmount - bill.subtotal + (bill.discount || 0)) > 0) && (
+              <View style={styles.paymentSummaryRow}>
+                <Text style={styles.paymentSummaryLabel}>GST (18%)</Text>
+                <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.tax || Math.max(0, bill.totalAmount - bill.subtotal + (bill.discount || 0))).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              </View>
+            )}
+            {bill.discount > 0 && (
+              <View style={styles.paymentSummaryRow}>
+                <Text style={styles.paymentSummaryLabel}>Discount</Text>
+                <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>- {`\u20B9`} {(bill.discount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              </View>
+            )}
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Total</Text>
               <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>

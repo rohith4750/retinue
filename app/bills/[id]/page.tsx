@@ -24,6 +24,8 @@ export default function BillPage() {
   const [editPaymentTx, setEditPaymentTx] = useState<{ historyId: string; amount: number } | null>(null)
   const [editPaymentAmount, setEditPaymentAmount] = useState('')
   const [editPaymentReason, setEditPaymentReason] = useState('')
+  const [showEditBillModal, setShowEditBillModal] = useState(false)
+  const [editBillData, setEditBillData] = useState({ billNumber: '', discount: 0 })
 
   const { data: bill, isLoading } = useQuery({
     queryKey: ['bill', billId],
@@ -70,6 +72,17 @@ export default function BillPage() {
       setEditPaymentReason('')
     },
     onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Failed to edit payment'),
+  })
+
+  const editBillMutation = useMutation({
+    mutationFn: (data: { billNumber?: string; discount?: number }) =>
+      api.patch(`/bills/${billId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bill', billId] })
+      toast.success('Bill updated successfully')
+      setShowEditBillModal(false)
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err?.message || 'Failed to update bill'),
   })
 
   if (isLoading) {
@@ -224,11 +237,27 @@ export default function BillPage() {
 
         {/* Summary: Advance, Total, Paid, Remaining */}
         <div className="mb-6 rounded-2xl border border-white/10 bg-slate-800/60 p-6">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Amount summary</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Amount summary</h2>
+            <button
+              onClick={() => {
+                setEditBillData({ billNumber: bill.billNumber || '', discount: bill.discount || 0 })
+                setShowEditBillModal(true)
+              }}
+              className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium transition-colors"
+            >
+              <FaEdit className="w-3 h-3" />
+              Edit details
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
-              <p className="text-xs text-slate-500 mb-0.5">Advance amount</p>
+              <p className="text-xs text-slate-500 mb-0.5">Advance</p>
               <p className="text-lg font-bold text-sky-400">₹{advanceAmount.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-0.5">Discount</p>
+              <p className="text-lg font-bold text-emerald-400">₹{(bill.discount ?? 0).toLocaleString()}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-0.5">Total amount</p>
@@ -663,6 +692,57 @@ export default function BillPage() {
                   className="px-5 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
                   {editPaymentMutation.isPending ? 'Updating...' : 'Update payment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Edit Bill Modal */}
+        {showEditBillModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => !editBillMutation.isPending && setShowEditBillModal(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-slate-100">Edit bill details</h3>
+                <p className="text-sm text-slate-400 mt-1">Update the bill number or apply a discount.</p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1.5">Bill Number</label>
+                  <input
+                    type="text"
+                    value={editBillData.billNumber}
+                    onChange={(e) => setEditBillData({ ...editBillData, billNumber: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1.5">Discount (₹)</label>
+                  <div className="relative">
+                    <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                    <input
+                      type="number"
+                      min="0"
+                      value={editBillData.discount}
+                      onChange={(e) => setEditBillData({ ...editBillData, discount: parseFloat(e.target.value) || 0 })}
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 pt-0 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEditBillModal(false)}
+                  disabled={editBillMutation.isPending}
+                  className="px-4 py-2.5 rounded-xl bg-slate-600 text-slate-200 text-sm font-medium hover:bg-slate-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => editBillMutation.mutate(editBillData)}
+                  disabled={editBillMutation.isPending}
+                  className="px-5 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50"
+                >
+                  {editBillMutation.isPending ? 'Saving...' : 'Save changes'}
                 </button>
               </div>
             </div>
