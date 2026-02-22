@@ -151,12 +151,113 @@ export async function GET(
       // Aggregated history? Or just primary? Let's keep primary + maybe merge important ones?
       // For now, keep primary history to avoid UI confusion, or maybe list all payments?
       // Let's attach all payments from all bookings for the payment history view
-      history: relatedBookings
-        .flatMap((b) => b.history || [])
-        .sort(
-          (a: any, b: any) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-        ),
+      // Merge history from all related bookings
+      // We group by action and a 5-second timestamp window to show consolidated view
+      history: (() => {
+        const allHistory = relatedBookings.flatMap((b) => b.history || []);
+        const groups = new Map<string, any[]>();
+
+        allHistory.forEach((h: any) => {
+          // Key for grouping: action + 5-second window timestamp
+          const ts = new Date(h.timestamp).getTime();
+          const windowTs = Math.floor(ts / 5000) * 5000;
+
+          const isConsolidatedAction =
+            h.notes?.includes("Consolidated") ||
+            h.action === "PAYMENT_RECEIVED" ||
+            h.action === "BILL_ADJUSTED" ||
+            h.action === "CREATED";
+
+          const groupingNote = isConsolidatedAction
+            ? "CONSOLIDATED"
+            : h.notes || "";
+          const key = `${h.action}-${windowTs}-${groupingNote}`;
+
+          if (!groups.has(key)) {
+            groups.set(key, []);
+          }
+          groups.get(key)!.push(h);
+        });
+
+        return Array.from(groups.values())
+          .map((group) => {
+            if (group.length === 1) return group[0];
+
+            const merged = { ...group[0] };
+            const isPaymentAction = [
+              "PAYMENT_RECEIVED",
+              "PAYMENT_CORRECTED",
+              "PAYMENT_EDITED",
+              "CREATED",
+              "BILL_ADJUSTED",
+            ].includes(merged.action);
+
+            if (isPaymentAction) {
+              const totalAmountRaw = group.reduce((sum, h) => {
+                const changes = h.changes as any;
+                let amt = 0;
+                if (changes?.paymentReceived)
+                  amt = Number(changes.paymentReceived);
+                else if (
+                  changes?.paidAmount?.to != null &&
+                  changes?.paidAmount?.from != null
+                )
+                  amt =
+                    Number(changes.paidAmount.to) -
+                    Number(changes.paidAmount.from);
+                else if (merged.action === "CREATED" && changes?.paidAmount)
+                  amt = Number(changes.paidAmount);
+                else if (
+                  merged.action === "BILL_ADJUSTED" &&
+                  (changes?.discount?.to != null || changes?.discount != null)
+                ) {
+                  amt = Number(changes?.discount?.to ?? changes?.discount);
+                }
+                return sum + (amt || 0);
+              }, 0);
+
+              const totalAmount = Math.round(totalAmountRaw * 100) / 100;
+
+              if (merged.changes) {
+                merged.changes = {
+                  ...merged.changes,
+                  paymentReceived:
+                    merged.action === "PAYMENT_RECEIVED"
+                      ? totalAmount
+                      : (merged.changes as any).paymentReceived,
+                  paidAmount:
+                    merged.action === "CREATED"
+                      ? totalAmount
+                      : (merged.changes as any).paidAmount,
+                  discount:
+                    merged.action === "BILL_ADJUSTED"
+                      ? {
+                          from: group.reduce(
+                            (s, h) =>
+                              s +
+                              (Number((h.changes as any)?.discount?.from) || 0),
+                            0,
+                          ),
+                          to: totalAmount,
+                        }
+                      : (merged.changes as any).discount,
+                };
+
+                if (merged.action === "PAYMENT_RECEIVED") {
+                  merged.notes = `Consolidated payment: ₹${totalAmount.toLocaleString()} (${(merged.changes as any).paymentMode || "CASH"})`;
+                } else if (merged.action === "BILL_ADJUSTED") {
+                  merged.notes = `Consolidated bill adjustment: Discount set to ₹${totalAmount.toLocaleString()}`;
+                }
+              }
+            }
+
+            return merged;
+          })
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+          );
+      })(),
 
       bookedByUser,
       booking: {
@@ -260,49 +361,53 @@ export async function PATCH(
     // 3. Prepare updates
     const results = await prisma.$transaction(async (tx: any) => {
       const updatedBookings = [];
+      let remainingDiscount =
+        discount !== undefined
+          ? Math.round(parseFloat(String(discount)) * 100) / 100
+          : undefined;
 
-      for (const b of allInGroup) {
+      for (let i = 0; i < allInGroup.length; i++) {
+        const b = allInGroup[i];
         const updateData: any = {};
         const changes: any = {};
 
-        // A. Handle Bill Number (Shared across group)
         if (billNumber !== undefined && billNumber !== b.billNumber) {
           updateData.billNumber = billNumber;
           changes.billNumber = { from: b.billNumber, to: billNumber };
         }
 
-        // B. Handle Discount (Distributed across group)
-        // Logic: If user provides a total 'discount', we distribute it.
-        // Simplest: Apply full discount to the "primary" (earliest) and 0 to others,
-        // OR divide it equally. Let's divide equally among those with totalAmount > 0.
-        if (discount !== undefined) {
-          const totalNewDiscount = parseFloat(String(discount));
-          if (isNaN(totalNewDiscount) || totalNewDiscount < 0) {
-            throw new Error("Invalid discount amount");
-          }
+        if (remainingDiscount !== undefined) {
+          const discountPerRoom =
+            i === allInGroup.length - 1
+              ? remainingDiscount
+              : Math.round(
+                  (parseFloat(String(discount)) / allInGroup.length) * 100,
+                ) / 100;
 
-          // Distribute: Each room takes its share
-          const discountPerRoom = totalNewDiscount / allInGroup.length;
+          remainingDiscount =
+            Math.round((remainingDiscount - discountPerRoom) * 100) / 100;
 
-          if (discountPerRoom !== b.discount) {
+          if (Math.abs(discountPerRoom - (b.discount || 0)) > 0.005) {
             updateData.discount = discountPerRoom;
 
             const subtotal = b.subtotal || 0;
-            const tax = b.tax || 0;
-            const paidAmount = b.paidAmount || 0;
-
-            const newTotalAmount = Math.max(
-              0,
-              subtotal + tax - discountPerRoom,
-            );
-            const newBalanceAmount = Math.max(0, newTotalAmount - paidAmount);
+            const newSubtotal =
+              Math.round((subtotal - discountPerRoom) * 100) / 100;
+            const newTax = b.applyGst
+              ? Math.round(newSubtotal * 0.18 * 100) / 100
+              : 0;
+            const newTotalAmount =
+              Math.round((newSubtotal + newTax) * 100) / 100;
+            const newBalanceAmount =
+              Math.round((newTotalAmount - b.paidAmount) * 100) / 100;
 
             updateData.totalAmount = newTotalAmount;
-            updateData.balanceAmount = newBalanceAmount;
+            updateData.balanceAmount = Math.max(0, newBalanceAmount);
+            updateData.tax = newTax;
             updateData.paymentStatus =
               newBalanceAmount <= 0.01
                 ? "PAID"
-                : paidAmount > 0
+                : b.paidAmount > 0
                   ? "PARTIAL"
                   : "PENDING";
 
@@ -322,12 +427,8 @@ export async function PATCH(
               bookingId: b.id,
               action: "BILL_ADJUSTED",
               changedBy: (authResult as any).userId || null,
-              changes: {
-                ...changes,
-                totalConsolidatedDiscount:
-                  discount !== undefined ? discount : undefined,
-              },
-              notes: "Bill details adjusted (Consolidated group update)",
+              changes: changes,
+              notes: "Consolidated bill adjustment",
             },
           });
           updatedBookings.push(updated);
@@ -643,27 +744,36 @@ export async function PUT(
     // Priority: Bookings with balance > 0
     await prisma.$transaction(
       async (tx: any) => {
-        let remainingPayment = paymentReceived;
+        let remainingPayment = Math.round(paymentReceived * 100) / 100;
 
-        for (const b of allBookings) {
-          if (remainingPayment <= 0) break;
+        for (let i = 0; i < allBookings.length; i++) {
+          const b = allBookings[i];
+          if (remainingPayment <= 0.005) break;
 
-          const balance = b.totalAmount - b.paidAmount;
-          if (balance <= 0.01) continue; // Already paid
+          const balance =
+            Math.round((b.totalAmount - b.paidAmount) * 100) / 100;
+          if (balance <= 0.005) continue; // Already paid
 
           // How much can we pay for this booking?
-          const amountToPay = Math.min(balance, remainingPayment);
+          // If it's the last booking with a balance, or we have enough, take what we need.
+          // We use 2-decimal rounding to prevent floating point issues like 1833.333
+          const amountToPayRaw =
+            i === allBookings.length - 1
+              ? remainingPayment
+              : Math.min(balance, remainingPayment);
 
-          const oldPaid = b.paidAmount;
-          const newPaid = oldPaid + amountToPay;
-          const newBalance = b.totalAmount - newPaid;
+          const amountToPay = Math.round(amountToPayRaw * 100) / 100;
+
+          const oldPaid = Math.round(b.paidAmount * 100) / 100;
+          const newPaid = Math.round((oldPaid + amountToPay) * 100) / 100;
+          const newBalance = Math.round((b.totalAmount - newPaid) * 100) / 100;
           const newStatus = newBalance <= 0.01 ? "PAID" : "PARTIAL";
 
           await tx.booking.update({
             where: { id: b.id },
             data: {
               paidAmount: newPaid,
-              balanceAmount: newBalance,
+              balanceAmount: Math.max(0, newBalance),
               paymentStatus: newStatus,
             },
           });
@@ -679,11 +789,12 @@ export async function PUT(
                 paymentMode: mode,
                 paymentStatus: { from: b.paymentStatus, to: newStatus },
               },
-              notes: `Consolidated payment part: ₹${amountToPay.toLocaleString()} (${mode})`,
+              notes: `Consolidated payment part (${mode})`,
             },
           });
 
-          remainingPayment -= amountToPay;
+          remainingPayment =
+            Math.round((remainingPayment - amountToPay) * 100) / 100;
         }
       },
       { maxWait: 10000, timeout: 30000 },
