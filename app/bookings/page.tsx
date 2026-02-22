@@ -514,6 +514,13 @@ export default function BookingsPage() {
                             </td>
                             <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex flex-wrap gap-1.5 justify-end">
+                                <Link
+                                  href={`/bookings/${booking.id}?edit=1`}
+                                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                                  title="Edit Booking"
+                                >
+                                  <FaEdit className="w-3.5 h-3.5" />
+                                </Link>
                                 <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
                                 {booking.status === 'CONFIRMED' && (
                                   <>
@@ -696,6 +703,13 @@ export default function BookingsPage() {
                                 {booking.status === 'CHECKED_IN' && (
                                   <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="px-2 py-1 text-[10px] bg-sky-600 hover:bg-sky-500 rounded text-white">Check Out</button>
                                 )}
+                                <Link
+                                  href={`/bookings/${booking.id}?edit=1`}
+                                  className="p-1 px-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                                  title="Edit Booking"
+                                >
+                                  <FaEdit className="w-3 h-3" />
+                                </Link>
                                 <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-[10px] bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
                               </div>
                             </div>
@@ -781,21 +795,21 @@ export default function BookingsPage() {
 
                       {/* Actions */}
                       <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                        {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                          <Link
+                            href={`/bookings/${booking.id}?edit=1`}
+                            className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors shrink-0"
+                            title="Edit Booking"
+                          >
+                            <FaEdit className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
                         <a
                           href={`/bookings/${booking.id}`}
-                          className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-slate-300 bg-slate-700/60 hover:bg-slate-600/60 rounded-lg transition-colors"
+                          className="flex-1 py-2 text-center text-[11px] font-medium text-slate-300 bg-slate-700/60 hover:bg-slate-600/60 rounded-lg transition-colors"
                         >
                           View
                         </a>
-                        {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
-                          <a
-                            href={`/bookings/${booking.id}?edit=1`}
-                            className="flex-1 min-w-[60px] py-2 text-center text-[11px] font-medium text-slate-200 bg-sky-600/50 hover:bg-sky-500/50 rounded-lg transition-colors flex items-center justify-center gap-1"
-                          >
-                            <FaEdit className="w-3 h-3 shrink-0" />
-                            Edit
-                          </a>
-                        )}
                         {booking.status === 'CONFIRMED' && (
                           <>
                             <button

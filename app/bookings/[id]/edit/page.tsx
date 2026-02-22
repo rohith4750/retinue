@@ -13,7 +13,7 @@ export default function EditBookingRedirectPage() {
   const id = params.id as string
 
   useEffect(() => {
-    if (id) router.replace(`/bookings/${id}`)
+    if (id) router.replace(`/bookings/${id}?edit=1`)
   }, [id, router])
 
   return null
