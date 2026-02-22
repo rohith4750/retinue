@@ -219,14 +219,16 @@ export async function PATCH(
 
     const { billNumber, discount } = data;
 
-    // Find the booking
+    // 1. Find the target booking
     let booking = await prisma.booking.findUnique({
       where: { id: params.id },
+      include: { guest: true },
     });
 
     if (!booking) {
       booking = await prisma.booking.findFirst({
         where: { billNumber: params.id },
+        include: { guest: true },
       });
     }
 
@@ -236,90 +238,109 @@ export async function PATCH(
       });
     }
 
-    const updateData: any = {};
-    const changes: any = {};
-
-    if (billNumber !== undefined && billNumber !== booking.billNumber) {
-      updateData.billNumber = billNumber;
-      changes.billNumber = { from: booking.billNumber, to: billNumber };
-    }
-
-    if (discount !== undefined) {
-      const newDiscount = parseFloat(String(discount));
-      if (isNaN(newDiscount) || newDiscount < 0) {
-        return Response.json(
-          errorResponse("Validation error", "Invalid discount amount"),
-          { status: 400 },
-        );
-      }
-
-      if (newDiscount !== booking.discount) {
-        updateData.discount = newDiscount;
-
-        // We also need to update totalAmount and balanceAmount
-        // totalAmount = subtotal + tax - discount
-        const subtotal = booking.subtotal || 0;
-        const tax = booking.tax || 0;
-        const paidAmount = booking.paidAmount || 0;
-
-        const newTotalAmount = Math.max(0, subtotal + tax - newDiscount);
-        const newBalanceAmount = Math.max(0, newTotalAmount - paidAmount);
-
-        updateData.totalAmount = newTotalAmount;
-        updateData.balanceAmount = newBalanceAmount;
-
-        // Update payment status if needed
-        updateData.paymentStatus =
-          newBalanceAmount <= 0
-            ? "PAID"
-            : paidAmount > 0
-              ? "PARTIAL"
-              : "PENDING";
-
-        changes.discount = { from: booking.discount, to: newDiscount };
-        changes.totalAmount = { from: booking.totalAmount, to: newTotalAmount };
-      }
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return Response.json(successResponse(booking, "No changes detected"), {
-        status: 200,
-      });
-    }
-
-    const result = await prisma.$transaction(async (tx: any) => {
-      const updated = await tx.booking.update({
-        where: { id: booking.id },
-        data: updateData,
-      });
-
-      // Record history
-      await tx.bookingHistory.create({
-        data: {
-          bookingId: booking.id,
-          action: "UPDATED",
-          changedBy: (authResult as any).userId || null,
-          changes: changes,
-          notes: "Bill details updated",
+    // 2. Find ALL related bookings in the group (same consolidation logic as GET)
+    const siblings = await prisma.booking.findMany({
+      where: {
+        guest: { phone: booking.guest.phone },
+        id: { not: booking.id },
+        status: { notIn: ["CANCELLED"] },
+        checkIn: {
+          gte: new Date(
+            new Date(booking.checkIn).getTime() - 60 * 24 * 60 * 60 * 1000,
+          ),
+          lte: new Date(
+            new Date(booking.checkIn).getTime() + 60 * 24 * 60 * 60 * 1000,
+          ),
         },
-      });
-
-      return updated;
+      },
     });
 
-    return Response.json(successResponse(result, "Bill updated successfully"));
+    const allInGroup = [booking, ...siblings];
+
+    // 3. Prepare updates
+    const results = await prisma.$transaction(async (tx: any) => {
+      const updatedBookings = [];
+
+      for (const b of allInGroup) {
+        const updateData: any = {};
+        const changes: any = {};
+
+        // A. Handle Bill Number (Shared across group)
+        if (billNumber !== undefined && billNumber !== b.billNumber) {
+          updateData.billNumber = billNumber;
+          changes.billNumber = { from: b.billNumber, to: billNumber };
+        }
+
+        // B. Handle Discount (Distributed across group)
+        // Logic: If user provides a total 'discount', we distribute it.
+        // Simplest: Apply full discount to the "primary" (earliest) and 0 to others,
+        // OR divide it equally. Let's divide equally among those with totalAmount > 0.
+        if (discount !== undefined) {
+          const totalNewDiscount = parseFloat(String(discount));
+          if (isNaN(totalNewDiscount) || totalNewDiscount < 0) {
+            throw new Error("Invalid discount amount");
+          }
+
+          // Distribute: Each room takes its share
+          const discountPerRoom = totalNewDiscount / allInGroup.length;
+
+          if (discountPerRoom !== b.discount) {
+            updateData.discount = discountPerRoom;
+
+            const subtotal = b.subtotal || 0;
+            const tax = b.tax || 0;
+            const paidAmount = b.paidAmount || 0;
+
+            const newTotalAmount = Math.max(
+              0,
+              subtotal + tax - discountPerRoom,
+            );
+            const newBalanceAmount = Math.max(0, newTotalAmount - paidAmount);
+
+            updateData.totalAmount = newTotalAmount;
+            updateData.balanceAmount = newBalanceAmount;
+            updateData.paymentStatus =
+              newBalanceAmount <= 0.01
+                ? "PAID"
+                : paidAmount > 0
+                  ? "PARTIAL"
+                  : "PENDING";
+
+            changes.discount = { from: b.discount, to: discountPerRoom };
+            changes.totalAmount = { from: b.totalAmount, to: newTotalAmount };
+          }
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          const updated = await tx.booking.update({
+            where: { id: b.id },
+            data: updateData,
+          });
+
+          await tx.bookingHistory.create({
+            data: {
+              bookingId: b.id,
+              action: "UPDATED",
+              changedBy: (authResult as any).userId || null,
+              changes: changes,
+              notes: "Bill details updated (Consolidated group update)",
+            },
+          });
+          updatedBookings.push(updated);
+        }
+      }
+      return updatedBookings;
+    });
+
+    return Response.json(
+      successResponse(results, "Bill group updated successfully"),
+    );
   } catch (error: any) {
-    console.error("Error updating bill details:", error);
-    if (error.code === "P2002") {
-      return Response.json(
-        errorResponse("Validation error", "Bill number already exists"),
-        { status: 400 },
-      );
-    }
+    console.error("Error updating bill group:", error);
     return Response.json(
       errorResponse(
         "INTERNAL_ERROR",
-        "Failed to update bill: " + (error.message || "Unknown error"),
+        "Failed to update bill group: " + (error.message || "Unknown error"),
       ),
       { status: 500 },
     );

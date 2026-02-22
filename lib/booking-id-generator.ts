@@ -148,7 +148,7 @@ export async function generateBillNumber(tx?: any): Promise<string> {
   let attempts = 0;
   while (attempts < 15) {
     const candidate = `${BILL_PREFIX}${nextNumber.toString().padStart(BILL_PAD_LENGTH, "0")}`;
-    const existing = await client.booking.findUnique({
+    const existing = await client.booking.findFirst({
       where: { billNumber: candidate },
       select: { id: true },
     });

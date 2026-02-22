@@ -153,7 +153,7 @@ model Booking {
   bookingReference String?      @unique // Short code for "view my booking" (e.g. ABC12XY); used by public site
   groupBookingReference String? // Same ref shared by batch (multi-room); lookup returns all in group
   // Billing fields (merged from Bill table)
-  billNumber      String?       @unique
+  billNumber      String?
   subtotal        Float?
   tax             Float         @default(0)
   discount        Float         @default(0)

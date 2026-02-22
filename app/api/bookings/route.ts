@@ -282,9 +282,13 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // For multi-room bookings, they share a common group reference
-        const groupBookingReference =
-          roomIds.length > 1 ? await generateBookingReference(tx) : null;
+        // For multi-room bookings, they share a common group reference and bill number
+        const [groupBookingReference, billNumber] = await Promise.all([
+          roomIds.length > 1
+            ? generateBookingReference(tx)
+            : Promise.resolve(null),
+          generateBillNumber(tx),
+        ]);
 
         const bookings: any[] = [];
         const discountPerRoom =
@@ -348,7 +352,6 @@ export async function POST(request: NextRequest) {
           const advancePerRoom =
             (parseFloat(String(data.advanceAmount)) || 0) / roomIds.length;
           const balanceForRoom = effectiveTotal - advancePerRoom;
-          const billNumber = await generateBillNumber(tx);
 
           const booking = await tx.booking.create({
             data: {
