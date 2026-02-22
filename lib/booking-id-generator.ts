@@ -16,53 +16,48 @@ const ID_LENGTH = 4; // Number of digits after prefix
 export async function generateBookingId(tx?: any): Promise<string> {
   const client = tx || prisma;
 
-  // Get all bookings with the RETINU prefix to find the highest number
-  const bookingsWithPrefix = await client.booking.findMany({
+  // Get the highest existing ID to start with
+  // Ordering by ID descending is more reliable than createdAt for sequences
+  const lastBooking = await client.booking.findFirst({
     where: {
       id: {
         startsWith: BOOKING_ID_PREFIX,
       },
     },
     select: { id: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: { id: "desc" },
   });
 
   let nextNumber = 1;
 
-  if (bookingsWithPrefix.length > 0) {
-    // Extract numbers from all matching booking IDs and find the maximum
-    const numbers: number[] = bookingsWithPrefix
-      .map((booking: { id: string }) => {
-        const numberPart = booking.id.replace(BOOKING_ID_PREFIX, "");
-        return parseInt(numberPart, 10);
-      })
-      .filter((num: number) => !isNaN(num));
-
-    if (numbers.length > 0) {
-      const maxNumber = Math.max(...numbers);
-      nextNumber = maxNumber + 1;
+  if (lastBooking) {
+    const numberPart = lastBooking.id.replace(BOOKING_ID_PREFIX, "");
+    const lastNum = parseInt(numberPart, 10);
+    if (!isNaN(lastNum)) {
+      nextNumber = lastNum + 1;
     }
   }
 
-  // Format number with leading zeros
-  const paddedNumber = nextNumber.toString().padStart(ID_LENGTH, "0");
+  // Double-check uniqueness with retry loop (handles race conditions and same-transaction batching)
+  let attempts = 0;
+  while (attempts < 10) {
+    const paddedNumber = nextNumber.toString().padStart(ID_LENGTH, "0");
+    const newId = `${BOOKING_ID_PREFIX}${paddedNumber}`;
 
-  const newId = `${BOOKING_ID_PREFIX}${paddedNumber}`;
+    const existing = await client.booking.findUnique({
+      where: { id: newId },
+      select: { id: true },
+    });
 
-  // Double-check uniqueness (in case of race condition)
-  const existing = await client.booking.findUnique({
-    where: { id: newId },
-    select: { id: true },
-  });
+    if (!existing) return newId;
 
-  if (existing) {
-    // If ID exists, increment and try again
+    // If ID exists (possibly from an uncommitted part of same transaction), increment and try again
     nextNumber++;
-    const retryPaddedNumber = nextNumber.toString().padStart(ID_LENGTH, "0");
-    return `${BOOKING_ID_PREFIX}${retryPaddedNumber}`;
+    attempts++;
   }
 
-  return newId;
+  // Final fallback if many collisions (unlikely)
+  return `${BOOKING_ID_PREFIX}${Date.now().toString().slice(-ID_LENGTH)}`;
 }
 
 /**
@@ -74,7 +69,7 @@ export function isValidBookingId(id: string): boolean {
   }
 
   const numberPart = id.replace(BOOKING_ID_PREFIX, "");
-  return /^\d+$/.test(numberPart) && numberPart.length <= ID_LENGTH;
+  return /^\d+$/.test(numberPart) && numberPart.length >= ID_LENGTH;
 }
 
 /** Alphanumeric chars for short reference (exclude 0/O, 1/I/L for readability) */
@@ -88,7 +83,7 @@ const REF_LENGTH = 8;
 export async function generateBookingReference(tx?: any): Promise<string> {
   const client = tx || prisma;
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 15;
   while (attempts < maxAttempts) {
     let ref = "";
     for (let i = 0; i < REF_LENGTH; i++) {
@@ -117,7 +112,7 @@ export async function generateBillNumber(tx?: any): Promise<string> {
   const client = tx || prisma;
   const BILL_PREFIX = "RETINUE-";
 
-  // Get all bookings with the RETINUE- prefix in billNumber
+  // Get the highest bill number - order by billNumber itself is more reliable than createdAt
   const lastBill = await client.booking.findFirst({
     where: {
       billNumber: {
@@ -125,7 +120,7 @@ export async function generateBillNumber(tx?: any): Promise<string> {
       },
     },
     orderBy: {
-      createdAt: "desc",
+      billNumber: "desc",
     },
     select: { billNumber: true },
   });
@@ -142,7 +137,7 @@ export async function generateBillNumber(tx?: any): Promise<string> {
 
   // Double check uniqueness
   let attempts = 0;
-  while (attempts < 5) {
+  while (attempts < 10) {
     const candidate = `${BILL_PREFIX}${nextNumber}`;
     const existing = await client.booking.findUnique({
       where: { billNumber: candidate },
@@ -155,5 +150,5 @@ export async function generateBillNumber(tx?: any): Promise<string> {
     attempts++;
   }
 
-  return `${BILL_PREFIX}${nextNumber}`;
+  return `${BILL_PREFIX}${Date.now().toString().slice(-4)}`;
 }

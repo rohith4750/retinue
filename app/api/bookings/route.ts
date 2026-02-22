@@ -533,9 +533,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("Error creating booking:", error);
-    return Response.json(
-      errorResponse("INTERNAL_ERROR", "An unexpected error occurred"),
-      { status: 500 },
-    );
+
+    // Check for specific Prisma errors
+    let detail = error.message || "An unexpected error occurred";
+    if (error.code === "P2002") {
+      detail = "A booking with this ID or reference already exists.";
+    }
+
+    return Response.json(errorResponse("INTERNAL_ERROR", detail), {
+      status: 500,
+    });
   }
 }

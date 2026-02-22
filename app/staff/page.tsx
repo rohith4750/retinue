@@ -314,16 +314,15 @@ export default function StaffPage() {
                   />
                 </div>
 
-                {/* Phone */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Phone *</label>
                   <input
                     type="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                     className="form-input"
-                    placeholder="Phone number"
+                    placeholder="10-digit mobile number"
                   />
                 </div>
 
@@ -334,11 +333,10 @@ export default function StaffPage() {
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, staffType: 'SALARY' })}
-                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                        formData.staffType === 'SALARY'
+                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${formData.staffType === 'SALARY'
                           ? 'bg-emerald-600 text-white'
                           : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                      }`}
+                        }`}
                     >
                       <FaMoneyBillWave className="w-4 h-4" />
                       Salary Based (Monthly)
@@ -346,11 +344,10 @@ export default function StaffPage() {
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, staffType: 'DAILY' })}
-                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                        formData.staffType === 'DAILY'
+                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${formData.staffType === 'DAILY'
                           ? 'bg-amber-600 text-white'
                           : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                      }`}
+                        }`}
                     >
                       <FaCalendarDay className="w-4 h-4" />
                       Daily Wage
@@ -651,20 +648,18 @@ export default function StaffPage() {
                     {member.role}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      member.staffType === 'DAILY'
+                    <span className={`text-xs px-2 py-1 rounded-full ${member.staffType === 'DAILY'
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                         : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    }`}>
+                      }`}>
                       {member.staffType === 'DAILY' ? 'Daily Wage' : 'Salary'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full border ${
-                      member.businessUnit === 'CONVENTION'
+                    <span className={`text-xs px-2 py-1 rounded-full border ${member.businessUnit === 'CONVENTION'
                         ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
                         : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                    }`}>
+                      }`}>
                       {member.businessUnit === 'CONVENTION' ? 'Convention' : 'Hotel'}
                     </span>
                   </td>
@@ -693,11 +688,10 @@ export default function StaffPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      member.status === 'ACTIVE'
+                    <span className={`text-xs px-2 py-1 rounded-full ${member.status === 'ACTIVE'
                         ? 'bg-emerald-500/20 text-emerald-400'
                         : 'bg-slate-500/20 text-slate-400'
-                    }`}>
+                      }`}>
                       {member.status}
                     </span>
                   </td>

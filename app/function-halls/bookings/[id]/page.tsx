@@ -75,6 +75,13 @@ export default function EditFunctionHallBookingPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+
+    if (name === 'customerPhone') {
+      const cleanValue = value.replace(/\D/g, '').slice(0, 10)
+      setFormData(prev => ({ ...prev, [name]: cleanValue }))
+      return
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -140,7 +147,7 @@ export default function EditFunctionHallBookingPage() {
                 <FaUser className="text-sky-400" />
                 Customer Details
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Customer Name *</label>
@@ -197,7 +204,7 @@ export default function EditFunctionHallBookingPage() {
                 <FaCalendarAlt className="text-sky-400" />
                 Event Details
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Event Type *</label>
@@ -280,7 +287,7 @@ export default function EditFunctionHallBookingPage() {
                 <FaRupeeSign className="text-emerald-400" />
                 Payment Details
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Hall Amount *</label>
@@ -320,7 +327,7 @@ export default function EditFunctionHallBookingPage() {
             {/* Summary */}
             <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-6 border border-white/5">
               <h2 className="text-lg font-semibold text-white mb-4">Summary</h2>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Hall Charges</span>

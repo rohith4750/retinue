@@ -72,7 +72,7 @@ function NewFunctionHallBookingContent() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validation
     if (!formData.hallId) {
       toast.error('Please select a function hall')
@@ -92,6 +92,13 @@ function NewFunctionHallBookingContent() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+
+    if (name === 'customerPhone') {
+      const cleanValue = value.replace(/\D/g, '').slice(0, 10)
+      setFormData(prev => ({ ...prev, [name]: cleanValue }))
+      return
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -134,7 +141,7 @@ function NewFunctionHallBookingContent() {
                 <FaCalendarAlt className="text-sky-400" />
                 Event Details
               </h2>
-              
+
               <div className="space-y-4">
                 {/* Event Date */}
                 <div>
@@ -284,7 +291,7 @@ function NewFunctionHallBookingContent() {
                 <FaUser className="text-sky-400" />
                 Customer Details
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Customer Name *</label>
@@ -341,7 +348,7 @@ function NewFunctionHallBookingContent() {
                 <FaRupeeSign className="text-sky-400" />
                 Payment Details
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Total Amount *</label>

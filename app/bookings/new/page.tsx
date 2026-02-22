@@ -374,10 +374,13 @@ function NewBookingContent() {
                   label="Phone Number *"
                   type="tel"
                   value={formData.guestPhone}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('guestPhone', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    updateField('guestPhone', value)
+                  }}
                   onBlur={() => handleBlur('guestPhone')}
                   error={getError('guestPhone')}
-                  placeholder="10 digits"
+                  placeholder="10-digit mobile number"
                 />
                 <FormSelect
                   label="Guest Type *"

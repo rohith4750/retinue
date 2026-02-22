@@ -172,7 +172,18 @@ export function EditBookingModal({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <FormInput label="Guest Name *" type="text" value={formData.guestName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('guestName', e.target.value)} onBlur={() => handleBlur('guestName')} error={getError('guestName')} placeholder="Full name" />
-              <FormInput label="Phone Number *" type="tel" value={formData.guestPhone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('guestPhone', e.target.value)} onBlur={() => handleBlur('guestPhone')} error={getError('guestPhone')} placeholder="10 digits" />
+              <FormInput
+                label="Phone Number *"
+                type="tel"
+                value={formData.guestPhone}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                  updateField('guestPhone', value)
+                }}
+                onBlur={() => handleBlur('guestPhone')}
+                error={getError('guestPhone')}
+                placeholder="10-digit mobile number"
+              />
               <FormSelect label="Guest Type *" value={formData.guestType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('guestType', e.target.value)} options={[{ value: 'WALK_IN', label: 'Walk-in' }, { value: 'CORPORATE', label: 'Corporate' }, { value: 'OTA', label: 'OTA' }, { value: 'GOVERNMENT', label: 'Government' }, { value: 'REGULAR', label: 'Regular Guest' }, { value: 'AGENT', label: 'Travel Agent' }, { value: 'FAMILY', label: 'Family/Friends' }]} />
               <FormSelect label="ID Proof Type *" value={formData.guestIdProofType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { updateField('guestIdProofType', e.target.value); if (formData.guestIdProof) validateIdProof(e.target.value, formData.guestIdProof) }} options={[{ value: 'AADHAR', label: 'Aadhaar Card' }, { value: 'PAN_CARD', label: 'PAN Card' }, { value: 'PASSPORT', label: 'Passport' }, { value: 'DRIVING_LICENSE', label: 'Driving License' }, { value: 'VOTER_ID', label: 'Voter ID' }, { value: 'OTHER', label: 'Other' }]} />
               <div>
