@@ -282,22 +282,18 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        const bookings: any[] = [];
+        // For multi-room bookings, they share a common group reference
+        const groupBookingReference =
+          roomIds.length > 1 ? await generateBookingReference(tx) : null;
 
-        // One booking per distinct room (roomIds already deduplicated above)
+        const bookings: any[] = [];
         const discountPerRoom =
           (parseFloat(String(validatedData.discount)) || 0) / roomIds.length;
 
         for (const roomId of roomIds) {
-          // Check room availability
-          const room = await tx.room.findUnique({
-            where: { id: roomId },
-          });
-
-          if (!room) {
-            throw new RoomUnavailableError(roomId, "Room not found");
-          }
-
+          // ... (room checks)
+          const room = await tx.room.findUnique({ where: { id: roomId } });
+          if (!room) throw new RoomUnavailableError(roomId, "Room not found");
           if (room.status === "MAINTENANCE") {
             throw new RoomUnavailableError(
               roomId,
@@ -305,26 +301,25 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          // Check for date conflicts
           const conflictCheck = await checkDateConflicts(
             roomId,
             checkInDate,
             checkOutDate,
+            undefined,
+            tx,
           );
-
           if (conflictCheck.hasConflict) {
             throw new DateConflictError(
-              `Room ${room.roomNumber} is already booked from ${conflictCheck.conflictingBooking?.checkIn} to ${conflictCheck.conflictingBooking?.checkOut}`,
+              `Room ${room.roomNumber} is already booked`,
             );
           }
 
-          // Create a default FULL_DAY slot
           const checkInDateOnly = new Date(checkInDate);
           checkInDateOnly.setHours(0, 0, 0, 0);
 
           const slot = await tx.roomSlot.create({
             data: {
-              roomId: roomId,
+              roomId,
               date: checkInDateOnly,
               slotType: "FULL_DAY",
               price: room.basePrice,
@@ -332,7 +327,6 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          // Calculate price for this room
           const priceCalculation = calculateBookingPrice(
             room.basePrice,
             checkInDate,
@@ -346,27 +340,20 @@ export async function POST(request: NextRequest) {
             ? priceCalculation.totalAmount
             : priceCalculation.subtotal;
 
-          // Generate custom booking ID and short reference for "view my booking"
           const [bookingId, bookingReference] = await Promise.all([
             generateBookingId(tx),
             generateBookingReference(tx),
           ]);
 
-          // Calculate advance and balance for this booking
           const advancePerRoom =
             (parseFloat(String(data.advanceAmount)) || 0) / roomIds.length;
-          const gstPerRoom =
-            (parseFloat(String(data.gstAmount)) || 0) / roomIds.length;
           const balanceForRoom = effectiveTotal - advancePerRoom;
-
-          // Generate bill number (Sequential RETINUE-XXX)
           const billNumber = await generateBillNumber(tx);
 
-          // Create booking with billing info (merged Bill fields)
           const booking = await tx.booking.create({
             data: {
               id: bookingId,
-              roomId: roomId,
+              roomId,
               slotId: slot.id,
               guestId: guest.id,
               checkIn: checkInDate,
@@ -376,12 +363,12 @@ export async function POST(request: NextRequest) {
               totalAmount: effectiveTotal,
               advanceAmount: advancePerRoom,
               balanceAmount: Math.max(0, balanceForRoom),
-              gstAmount: gstPerRoom,
+              gstAmount: effectiveTax,
               applyGst,
               status: "CONFIRMED",
-              source: "STAFF", // Management site (hoteltheretinue.in)
+              source: "STAFF",
               bookingReference,
-              // Billing fields (merged from Bill)
+              groupBookingReference, // Shared among batch
               billNumber,
               subtotal: priceCalculation.subtotal,
               tax: effectiveTax,
@@ -394,11 +381,7 @@ export async function POST(request: NextRequest) {
                     ? "PARTIAL"
                     : "PENDING",
             },
-            include: {
-              room: true,
-              slot: true,
-              guest: true,
-            },
+            include: { room: true, guest: true },
           });
 
           // Update room status only if check-in is today or in the past

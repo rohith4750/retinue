@@ -49,15 +49,23 @@ export async function generateBookingId(tx?: any): Promise<string> {
       select: { id: true },
     });
 
-    if (!existing) return newId;
+    if (!existing) {
+      console.log(`[ID-GEN] Generated unique ID: ${newId}`);
+      return newId;
+    }
 
+    console.warn(`[ID-GEN] ID collision for ${newId}, retrying...`);
     // If ID exists (possibly from an uncommitted part of same transaction), increment and try again
     nextNumber++;
     attempts++;
   }
 
   // Final fallback if many collisions (unlikely)
-  return `${BOOKING_ID_PREFIX}${Date.now().toString().slice(-ID_LENGTH)}`;
+  const fallback = `${BOOKING_ID_PREFIX}${Date.now().toString().slice(-ID_LENGTH)}`;
+  console.error(
+    `[ID-GEN] ID generation exhausted retries, using fallback: ${fallback}`,
+  );
+  return fallback;
 }
 
 /**
@@ -111,8 +119,9 @@ export async function generateBookingReference(tx?: any): Promise<string> {
 export async function generateBillNumber(tx?: any): Promise<string> {
   const client = tx || prisma;
   const BILL_PREFIX = "RETINUE-";
+  const BILL_PAD_LENGTH = 5; // e.g., RETINUE-00100
 
-  // Get the highest bill number - order by billNumber itself is more reliable than createdAt
+  // Get the highest bill number - order by billNumber itself
   const lastBill = await client.booking.findFirst({
     where: {
       billNumber: {
@@ -137,18 +146,28 @@ export async function generateBillNumber(tx?: any): Promise<string> {
 
   // Double check uniqueness
   let attempts = 0;
-  while (attempts < 10) {
-    const candidate = `${BILL_PREFIX}${nextNumber}`;
+  while (attempts < 15) {
+    const candidate = `${BILL_PREFIX}${nextNumber.toString().padStart(BILL_PAD_LENGTH, "0")}`;
     const existing = await client.booking.findUnique({
       where: { billNumber: candidate },
       select: { id: true },
     });
 
-    if (!existing) return candidate;
+    if (!existing) {
+      console.log(`[ID-GEN] Generated unique Bill: ${candidate}`);
+      return candidate;
+    }
 
+    console.warn(
+      `[ID-GEN] Bill Number collision for ${candidate}, retrying...`,
+    );
     nextNumber++;
     attempts++;
   }
 
-  return `${BILL_PREFIX}${Date.now().toString().slice(-4)}`;
+  const fallback = `${BILL_PREFIX}F${Date.now().toString().slice(-4)}`;
+  console.error(
+    `[ID-GEN] Bill generation exhausted retries, using fallback: ${fallback}`,
+  );
+  return fallback;
 }
