@@ -1,17 +1,9 @@
 import type { Metadata } from 'next'
-import { Poppins } from 'next/font/google'
 import './globals.css'
 import { ReactQueryProvider } from '@/lib/react-query'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AuthenticatedLayout } from '@/components/AuthenticatedLayout'
 import { ThemeProvider } from '@/components/ThemeProvider'
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-poppins',
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'Hotel The Retinue & Butchiraju Conventions - Management',
@@ -30,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={poppins.variable} data-theme="dark" suppressHydrationWarning>
-      <body className={`${poppins.className} antialiased`}>
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <body className="antialiased">
         <ErrorBoundary>
           <ReactQueryProvider>
             <ThemeProvider>

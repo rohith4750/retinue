@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
     const pendingPayments = await prisma.booking.aggregate({
       where: {
         paymentStatus: { in: ["PENDING", "PARTIAL"] },
+        status: { not: "CANCELLED" },
       },
       _sum: {
         balanceAmount: true,

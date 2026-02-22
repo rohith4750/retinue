@@ -1,6 +1,16 @@
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
+
+// Register Poppins font for better symbol support and premium look
+Font.register({
+  family: 'Poppins',
+  fonts: [
+    { src: '/fonts/Poppins-Regular.ttf' },
+    { src: '/fonts/Poppins-Medium.ttf', fontWeight: 500 },
+    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 700 }, // React-pdf uses numeric or string weights
+  ]
+})
 
 // Tax Invoice design: dark red bar, dark grey header, red table headers, two-tone footer
 const DARK_RED = '#8B2500'
@@ -10,7 +20,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 0,
     fontSize: 10,
-    fontFamily: 'Helvetica',
+    fontFamily: 'Poppins',
     backgroundColor: '#ffffff',
   },
   // Top contact bar - full width, white with bottom border
@@ -404,7 +414,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             <Text style={[styles.itemTableTotalText, styles.col4]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col5]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col7]} hyphenationCallback={(e) => []}>₹ {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            <Text style={[styles.itemTableTotalText, styles.col7]} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
           </View>
         </View>
 
@@ -420,7 +430,7 @@ export function BillPDF({ bill }: BillPDFProps) {
               const sTotal = isFallback ? bill.subtotal : item.subtotal
               return (
                 <Text key={i} style={styles.descText} hyphenationCallback={(e) => []}>
-                  • {rType} - {rNum}: ₹{(sTotal || 0).toLocaleString('en-IN')}/-
+                  • {rType} - {rNum}: {`\u20B9`}{(sTotal || 0).toLocaleString('en-IN')}/-
                 </Text>
               )
             })}
@@ -431,19 +441,19 @@ export function BillPDF({ bill }: BillPDFProps) {
           <View style={styles.rightCol}>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Sub Total</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Total</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Received</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Balance</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>₹ {(bill.balanceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.balanceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
           </View>
         </View>
