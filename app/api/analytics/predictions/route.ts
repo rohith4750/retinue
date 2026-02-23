@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
+import { excludeTestingGuestsFilter, excludeTestingHallGuestsFilter } from '@/lib/booking-utils'
 
 // GET /api/analytics/predictions - Get predictive analytics
 export async function GET(request: NextRequest) {
@@ -23,14 +24,16 @@ export async function GET(request: NextRequest) {
       // Hotel bookings and revenue
       const hotelBookings = await prisma.booking.count({
         where: {
-          createdAt: { gte: monthStart, lte: monthEnd }
+          createdAt: { gte: monthStart, lte: monthEnd },
+          ...excludeTestingGuestsFilter
         }
       })
 
       // Bill merged into Booking
       const hotelRevenue = await prisma.booking.aggregate({
         where: {
-          createdAt: { gte: monthStart, lte: monthEnd }
+          createdAt: { gte: monthStart, lte: monthEnd },
+          ...excludeTestingGuestsFilter
         },
         _sum: { paidAmount: true }
       })
@@ -42,13 +45,15 @@ export async function GET(request: NextRequest) {
         // @ts-ignore
         hallBookings = await prisma.functionHallBooking.count({
           where: {
-            createdAt: { gte: monthStart, lte: monthEnd }
+            createdAt: { gte: monthStart, lte: monthEnd },
+            ...excludeTestingHallGuestsFilter
           }
         })
         // @ts-ignore
         const hallRevenueData = await prisma.functionHallBooking.aggregate({
           where: {
-            createdAt: { gte: monthStart, lte: monthEnd }
+            createdAt: { gte: monthStart, lte: monthEnd },
+            ...excludeTestingHallGuestsFilter
           },
           _sum: { advanceAmount: true }
         })
@@ -89,7 +94,7 @@ export async function GET(request: NextRequest) {
     const calculateTrend = (data: number[]) => {
       const n = data.length
       if (n < 2) return { slope: 0, intercept: data[0] || 0 }
-      
+
       let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0
       for (let i = 0; i < n; i++) {
         sumX += i
@@ -97,10 +102,10 @@ export async function GET(request: NextRequest) {
         sumXY += i * data[i]
         sumX2 += i * i
       }
-      
+
       const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
       const intercept = (sumY - slope * sumX) / n
-      
+
       return { slope: isNaN(slope) ? 0 : slope, intercept: isNaN(intercept) ? 0 : intercept }
     }
 
@@ -134,26 +139,26 @@ export async function GET(request: NextRequest) {
     for (let i = 1; i <= 6; i++) {
       const futureMonth = new Date(today.getFullYear(), today.getMonth() + i, 1)
       const monthName = futureMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-      
+
       // Use weighted combination of trend and moving average
       const trendWeight = 0.4
       const maWeight = 0.6
-      
-      const predictedHotelRevenue = Math.max(0, 
+
+      const predictedHotelRevenue = Math.max(0,
         trendWeight * (hotelRevenueTrend.slope * (n + i - 1) + hotelRevenueTrend.intercept) +
         maWeight * calculateMA(hotelRevenueSeries, 3) * (1 + (hotelRevenueTrend.slope > 0 ? 0.05 : -0.02) * i)
       )
-      
+
       const predictedHallRevenue = Math.max(0,
         trendWeight * (hallRevenueTrend.slope * (n + i - 1) + hallRevenueTrend.intercept) +
         maWeight * calculateMA(hallRevenueSeries, 3) * (1 + (hallRevenueTrend.slope > 0 ? 0.05 : -0.02) * i)
       )
-      
+
       const predictedHotelBookings = Math.max(0, Math.round(
         trendWeight * (hotelBookingTrend.slope * (n + i - 1) + hotelBookingTrend.intercept) +
         maWeight * calculateMA(hotelBookingSeries, 3)
       ))
-      
+
       const predictedExpenses = Math.max(0,
         trendWeight * (expenseTrend.slope * (n + i - 1) + expenseTrend.intercept) +
         maWeight * calculateMA(expenseSeries, 3)
@@ -176,10 +181,10 @@ export async function GET(request: NextRequest) {
     const lastYearSameMonth = historicalData[0] || { totalRevenue: 0, hotelBookings: 0, profit: 0 }
     const lastMonth = historicalData[historicalData.length - 2] || { totalRevenue: 0, hotelBookings: 0, profit: 0 }
 
-    const yoyGrowth = lastYearSameMonth.totalRevenue > 0 
+    const yoyGrowth = lastYearSameMonth.totalRevenue > 0
       ? ((currentMonthData.totalRevenue - lastYearSameMonth.totalRevenue) / lastYearSameMonth.totalRevenue * 100)
       : 0
-    
+
     const momGrowth = lastMonth.totalRevenue > 0
       ? ((currentMonthData.totalRevenue - lastMonth.totalRevenue) / lastMonth.totalRevenue * 100)
       : 0
@@ -187,7 +192,7 @@ export async function GET(request: NextRequest) {
     // Calculate seasonality (simple approach - compare months)
     const seasonalityInsights: any[] = []
     const monthlyAverages: Record<number, { revenue: number[], bookings: number[] }> = {}
-    
+
     historicalData.forEach((data, index) => {
       const monthNum = (today.getMonth() - (monthsOfHistory - 1 - index) + 12) % 12
       if (!monthlyAverages[monthNum]) {
@@ -222,40 +227,40 @@ export async function GET(request: NextRequest) {
     const avgMonthlyRevenue = totalHistoricalRevenue / historicalData.length
     const totalHistoricalProfit = historicalData.reduce((sum, d) => sum + d.profit, 0)
     const avgMonthlyProfit = totalHistoricalProfit / historicalData.length
-    
+
     // Revenue by business unit
     const hotelRevenueTotal = historicalData.reduce((sum, d) => sum + d.hotelRevenue, 0)
     const hallRevenueTotal = historicalData.reduce((sum, d) => sum + d.hallRevenue, 0)
-    
+
     // Occupancy rate trend (simple estimation)
     const totalRooms = await prisma.room.count()
-    const avgOccupancyRate = totalRooms > 0 
+    const avgOccupancyRate = totalRooms > 0
       ? Math.min(100, (avgMonthlyRevenue / (totalRooms * 30 * 2500)) * 100) // Assuming avg room rate of 2500
       : 0
 
     // Generate business insights
     const insights: string[] = []
-    
+
     if (totalRevenueTrend.slope > 0) {
       insights.push(`📈 Revenue is trending upward by approximately ₹${Math.round(totalRevenueTrend.slope).toLocaleString()} per month`)
     } else if (totalRevenueTrend.slope < 0) {
       insights.push(`📉 Revenue is declining by approximately ₹${Math.abs(Math.round(totalRevenueTrend.slope)).toLocaleString()} per month`)
     }
-    
+
     if (yoyGrowth > 10) {
       insights.push(`🚀 Strong year-over-year growth of ${yoyGrowth.toFixed(1)}%`)
     } else if (yoyGrowth < -10) {
       insights.push(`⚠️ Year-over-year decline of ${Math.abs(yoyGrowth).toFixed(1)}% - needs attention`)
     }
-    
+
     if (hotelRevenueTotal > hallRevenueTotal * 2) {
       insights.push(`🏨 Hotel operations contribute ${((hotelRevenueTotal / (hotelRevenueTotal + hallRevenueTotal)) * 100).toFixed(0)}% of total revenue`)
     }
-    
+
     if (peakMonths.length > 0) {
       insights.push(`📅 Peak business months: ${peakMonths.join(', ')}`)
     }
-    
+
     if (avgMonthlyProfit > 0) {
       insights.push(`💰 Average monthly profit: ₹${Math.round(avgMonthlyProfit).toLocaleString()}`)
     } else {
@@ -264,7 +269,7 @@ export async function GET(request: NextRequest) {
 
     // Risk assessment
     const riskFactors: { factor: string; level: 'low' | 'medium' | 'high'; description: string }[] = []
-    
+
     if (momGrowth < -20) {
       riskFactors.push({
         factor: 'Revenue Decline',
@@ -278,7 +283,7 @@ export async function GET(request: NextRequest) {
         description: 'Moderate revenue decrease from last month'
       })
     }
-    
+
     const expenseRatio = currentMonthData.expenses / (currentMonthData.totalRevenue || 1)
     if (expenseRatio > 0.8) {
       riskFactors.push({
@@ -296,7 +301,7 @@ export async function GET(request: NextRequest) {
 
     // Opportunities
     const opportunities: { opportunity: string; impact: 'low' | 'medium' | 'high'; suggestion: string }[] = []
-    
+
     if (hallRevenueTotal < hotelRevenueTotal * 0.3) {
       opportunities.push({
         opportunity: 'Convention Center Growth',
@@ -304,7 +309,7 @@ export async function GET(request: NextRequest) {
         suggestion: 'Function hall revenue has potential for growth through targeted marketing'
       })
     }
-    
+
     if (avgOccupancyRate < 60) {
       opportunities.push({
         opportunity: 'Occupancy Improvement',

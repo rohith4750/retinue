@@ -31,14 +31,14 @@ export function Sidebar() {
     { href: '/bookings', icon: FaCalendarAlt, label: 'Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bookings/online', icon: FaCalendarAlt, label: 'Online Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/bills', icon: FaReceipt, label: 'Bills', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
-    { href: '/bookings/history', icon: FaHistory, label: 'History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/bookings/history', icon: FaHistory, label: 'Rooms History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
   ]
 
   // Convention center menu items
   const conventionMenuItems = [
     { href: '/function-halls', icon: FaBuilding, label: 'Halls', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/function-halls/bookings', icon: FaCalendarAlt, label: 'Hall Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
-    { href: '/function-halls/bookings/history', icon: FaHistory, label: 'History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/function-halls/bookings/history', icon: FaHistory, label: 'Hall History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
   ]
 
   // Analytics & Reports menu items
@@ -166,7 +166,7 @@ export function Sidebar() {
             {filteredConventionItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-3 mb-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Conventions</span>
+                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Conventions Operations</span>
                 </div>
                 <div className="space-y-1">
                   {filteredConventionItems.map((item) => {
