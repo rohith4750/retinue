@@ -252,8 +252,7 @@ export function ConventionBillPDF({ booking }: ConventionBillPDFProps) {
                             />
                         </View>
                         <View>
-                            <Text style={styles.hotelNameHeader}>BUCHI RAJU</Text>
-                            <Text style={[styles.hotelNameHeader, { fontSize: 16 }]}>CONVENTIONS</Text>
+                            <Text style={[styles.hotelNameHeader, { fontSize: 18 }]}>BUCHI RAJU CONVENTIONS</Text>
                         </View>
                     </View>
                     <View style={styles.headerRight}>
