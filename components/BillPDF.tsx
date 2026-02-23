@@ -221,15 +221,16 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     lineHeight: 1.4,
   },
-  // Authorized signatory
+  // Authorized signatory - Aligned to right to save space and prevent 2nd page
   signatorySection: {
     marginHorizontal: 24,
     marginBottom: 24,
+    alignItems: 'flex-end',
   },
   signatoryFor: {
     fontSize: 9,
     color: '#374151',
-    marginBottom: 24,
+    marginBottom: 12, // Reduced margin
   },
   signatoryLabel: {
     fontSize: 9,
@@ -237,8 +238,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   signatureImage: {
-    width: 120,
-    height: 40,
+    width: 100, // Slightly smaller
+    height: 35,
     marginBottom: 4,
   },
   // Footer strip - two tone (at bottom of content)
@@ -475,26 +476,31 @@ export function BillPDF({ bill }: BillPDFProps) {
           </View>
         </View>
 
-        {/* Invoice amount in words */}
-        <View style={styles.amountWordsSection}>
-          <Text style={styles.sectionTitle}>Invoice Amount In Words</Text>
-          <Text style={styles.amountWordsText}>{amountInWords(grandTotal || 0)}</Text>
-        </View>
+        {/* Amount in words & Terms on left, Signatory on right - combined row to save space */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginHorizontal: 24, marginBottom: 20 }}>
+          <View style={{ width: '55%' }}>
+            {/* Invoice amount in words */}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Invoice Amount In Words</Text>
+              <Text style={styles.amountWordsText}>{amountInWords(grandTotal || 0)}</Text>
+            </View>
 
-        {/* Terms */}
-        <View style={styles.termsSection}>
-          <Text style={styles.sectionTitle}>Terms And Conditions</Text>
-          <Text style={styles.termsText}>Thanks for doing business with us!</Text>
-        </View>
+            {/* Terms */}
+            <View>
+              <Text style={styles.sectionTitle}>Terms And Conditions</Text>
+              <Text style={styles.termsText}>Thanks for doing business with us!</Text>
+            </View>
+          </View>
 
-        {/* Authorized signatory */}
-        <View style={styles.signatorySection}>
-          <Text style={styles.signatoryFor}>For Hotel The Retinue</Text>
-          <Image
-            src="/images/signature.png"
-            style={styles.signatureImage}
-          />
-          <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
+          {/* Authorized signatory */}
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.signatoryFor}>For Hotel The Retinue</Text>
+            <Image
+              src="/images/signature.png"
+              style={styles.signatureImage}
+            />
+            <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
+          </View>
         </View>
 
         {/* Footer strip - red + grey */}
