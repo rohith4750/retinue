@@ -4,12 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { FaPlus, FaHistory, FaCalendarAlt, FaUser, FaPhone, FaBuilding, FaChevronLeft, FaChevronRight, FaTrash, FaCheck, FaTimes, FaBolt, FaEdit, FaFileInvoiceDollar, FaRupeeSign, FaPrint } from 'react-icons/fa'
+import { FaPlus, FaHistory, FaCalendarAlt, FaUser, FaPhone, FaBuilding, FaChevronLeft, FaChevronRight, FaTrash, FaCheck, FaTimes, FaBolt, FaEdit, FaFileInvoiceDollar, FaRupeeSign, FaPrint, FaDownload } from 'react-icons/fa'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import Link from 'next/link'
+import { pdf } from '@react-pdf/renderer'
+import { ConventionBillPDF } from '@/components/ConventionBillPDF'
 
 export default function FunctionHallBookingsPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -112,9 +114,9 @@ export default function FunctionHallBookingsPage() {
 
   // Record payment mutation
   const recordPaymentMutation = useMutationWithInvalidation({
-    mutationFn: ({ id, amount }: { id: string; amount: number }) => 
-      api.put(`/function-hall-bookings/${id}`, { 
-        addPayment: amount 
+    mutationFn: ({ id, amount }: { id: string; amount: number }) =>
+      api.put(`/function-hall-bookings/${id}`, {
+        addPayment: amount
       }),
     endpoint: '/function-hall-bookings',
     onSuccess: async () => {
@@ -173,13 +175,13 @@ export default function FunctionHallBookingsPage() {
 
   const handleRecordPayment = () => {
     if (!billModal.booking || !paymentAmount) return
-    
+
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount <= 0) {
       toast.error('Please enter a valid payment amount')
       return
     }
-    
+
     if (amount > billModal.booking.balanceAmount) {
       toast.error('Payment amount cannot exceed balance')
       return
@@ -188,75 +190,44 @@ export default function FunctionHallBookingsPage() {
     recordPaymentMutation.mutate({ id: billModal.booking.id, amount })
   }
 
-  const printBill = (booking: any) => {
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) return
+  const handleDownloadPDF = async (booking: any) => {
+    try {
+      const blob = await pdf(<ConventionBillPDF booking={booking} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Bill-${booking.customerName}-${new Date(booking.eventDate).toLocaleDateString()}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success('PDF downloaded successfully')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF')
+    }
+  }
 
-    const grandTotal = booking.grandTotal || booking.totalAmount
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Bill - ${booking.customerName}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-          .header h1 { margin: 0; color: #333; }
-          .header p { margin: 5px 0; color: #666; }
-          .section { margin: 20px 0; }
-          .section-title { font-weight: bold; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
-          .row { display: flex; justify-content: space-between; padding: 5px 0; }
-          .row.total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 1.2em; }
-          .row.balance { color: #d97706; }
-          @media print { body { padding: 20px; } }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Function Hall Booking Bill</h1>
-          <p>Convention Center</p>
-        </div>
-        
-        <div class="section">
-          <div class="section-title">Customer Details</div>
-          <div class="row"><span>Name:</span><span>${booking.customerName}</span></div>
-          <div class="row"><span>Phone:</span><span>${booking.customerPhone}</span></div>
-          ${booking.customerEmail ? `<div class="row"><span>Email:</span><span>${booking.customerEmail}</span></div>` : ''}
-        </div>
-
-        <div class="section">
-          <div class="section-title">Event Details</div>
-          <div class="row"><span>Hall:</span><span>${booking.hall?.name || 'N/A'}</span></div>
-          <div class="row"><span>Event Type:</span><span>${booking.eventType}</span></div>
-          <div class="row"><span>Date:</span><span>${new Date(booking.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
-          <div class="row"><span>Time:</span><span>${booking.startTime} - ${booking.endTime}</span></div>
-          <div class="row"><span>Expected Guests:</span><span>${booking.expectedGuests}</span></div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Charges</div>
-          <div class="row"><span>Hall Charges:</span><span>₹${booking.totalAmount?.toLocaleString()}</span></div>
-          ${booking.electricityCharges ? `<div class="row"><span>Electricity (${booking.unitsConsumed?.toFixed(1)} units):</span><span>₹${booking.electricityCharges?.toLocaleString()}</span></div>` : ''}
-          ${booking.maintenanceCharges ? `<div class="row"><span>Maintenance:</span><span>₹${booking.maintenanceCharges?.toLocaleString()}</span></div>` : ''}
-          ${booking.otherCharges ? `<div class="row"><span>Other Charges${booking.otherChargesNote ? ` (${booking.otherChargesNote})` : ''}:</span><span>₹${booking.otherCharges?.toLocaleString()}</span></div>` : ''}
-          <div class="row total"><span>Grand Total:</span><span>₹${grandTotal?.toLocaleString()}</span></div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Payment Status</div>
-          <div class="row"><span>Amount Paid:</span><span>₹${booking.advanceAmount?.toLocaleString()}</span></div>
-          <div class="row balance"><span>Balance Due:</span><span>₹${booking.balanceAmount?.toLocaleString()}</span></div>
-        </div>
-
-        <div style="margin-top: 40px; text-align: center; color: #666; font-size: 0.9em;">
-          <p>Generated on: ${new Date().toLocaleString('en-IN')}</p>
-        </div>
-      </body>
-      </html>
-    `
-    printWindow.document.write(html)
-    printWindow.document.close()
-    printWindow.print()
+  const handlePrint = async (booking: any) => {
+    try {
+      const blob = await pdf(<ConventionBillPDF booking={booking} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const printWindow = window.open(url)
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print()
+        }
+      } else {
+        const link = document.createElement('a')
+        link.href = url
+        link.target = '_blank'
+        link.click()
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch (error) {
+      console.error('Error printing PDF:', error)
+      toast.error('Failed to prepare print document')
+    }
   }
 
 
@@ -344,7 +315,7 @@ export default function FunctionHallBookingsPage() {
                 <FaTimes className="w-4 h-4" />
               </button>
             </div>
-            
+
             <form onSubmit={handleMeterSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Meter Readings */}
@@ -527,7 +498,7 @@ export default function FunctionHallBookingsPage() {
                       ₹{(booking.grandTotal || booking.totalAmount).toLocaleString()}
                     </div>
                     <div className="text-xs text-slate-400 mb-2">
-                      Advance: ₹{booking.advanceAmount.toLocaleString()} | 
+                      Advance: ₹{booking.advanceAmount.toLocaleString()} |
                       Balance: <span className="text-amber-400">₹{booking.balanceAmount.toLocaleString()}</span>
                     </div>
                     {/* Electricity info */}
@@ -703,15 +674,24 @@ export default function FunctionHallBookingsPage() {
                 <FaFileInvoiceDollar className="text-emerald-400" />
                 Booking Bill
               </h2>
-              <button
-                onClick={() => printBill(billModal.booking)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                title="Print Bill"
-              >
-                <FaPrint className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleDownloadPDF(billModal.booking)}
+                  className="p-2 text-sky-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  title="Download PDF"
+                >
+                  <FaDownload className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handlePrint(billModal.booking)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  title="Print Bill"
+                >
+                  <FaPrint className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            
+
             {/* Customer & Event Info */}
             <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
               <div className="grid grid-cols-2 gap-2 text-sm">
@@ -734,7 +714,7 @@ export default function FunctionHallBookingsPage() {
                 <div className="col-span-2">
                   <span className="text-slate-400">Date:</span>
                   <span className="text-white ml-2">
-                    {new Date(billModal.booking.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} 
+                    {new Date(billModal.booking.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     ({billModal.booking.startTime} - {billModal.booking.endTime})
                   </span>
                 </div>

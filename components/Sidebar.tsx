@@ -38,6 +38,7 @@ export function Sidebar() {
   const conventionMenuItems = [
     { href: '/function-halls', icon: FaBuilding, label: 'Halls', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
     { href: '/function-halls/bookings', icon: FaCalendarAlt, label: 'Hall Bookings', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
+    { href: '/function-halls/bookings/history', icon: FaHistory, label: 'History', roles: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] },
   ]
 
   // Analytics & Reports menu items
