@@ -14,9 +14,15 @@ export const metadata: Metadata = {
   themeColor: '#0284c7',
   manifest: '/manifest.json',
   icons: {
-    icon: '/logo-retinue.png',
-    shortcut: '/logo-retinue.png',
-    apple: '/logo-retinue.png',
+    icon: [
+      { url: '/logo-retinue.png' },
+      { url: '/logo-retinue.png', sizes: '32x32', type: 'image/png' },
+    ],
+    shortcut: ['/logo-retinue.png'],
+    apple: [
+      { url: '/logo-retinue.png' },
+      { url: '/logo-retinue.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
 }
