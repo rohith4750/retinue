@@ -15,13 +15,13 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/logo-retinue.png' },
-      { url: '/logo-retinue.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/favicon.png' },
+      { url: '/images/favicon.png', sizes: '32x32', type: 'image/png' },
     ],
-    shortcut: ['/logo-retinue.png'],
+    shortcut: ['/images/favicon.png'],
     apple: [
-      { url: '/logo-retinue.png' },
-      { url: '/logo-retinue.png', sizes: '180x180', type: 'image/png' },
+      { url: '/images/favicon.png' },
+      { url: '/images/favicon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
