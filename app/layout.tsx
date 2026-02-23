@@ -6,13 +6,18 @@ import { AuthenticatedLayout } from '@/components/AuthenticatedLayout'
 import { ThemeProvider } from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
-  title: 'Hotel The Retinue & Butchiraju Conventions - Management',
+  title: 'Hotel The Retinue & Butchiraju Conventions',
   description: 'Hotel The Retinue & Butchiraju Conventions - Hotel & Convention Management System',
   applicationName: 'Hotel The Retinue & Butchiraju Conventions',
   authors: [{ name: 'Hotel The Retinue & Butchiraju Conventions' }],
   keywords: ['hotel', 'management', 'booking', 'hospitality', 'rooms'],
   themeColor: '#0284c7',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/logo-retinue.png',
+    shortcut: '/logo-retinue.png',
+    apple: '/logo-retinue.png',
+  },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
 }
 
