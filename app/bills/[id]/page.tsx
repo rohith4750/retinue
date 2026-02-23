@@ -106,7 +106,13 @@ export default function BillPage() {
   const guest = booking.guest
   const room = booking.room
   const advanceAmount = bill.advanceAmount ?? 0
-  const balanceDue = Math.max(0, (bill.totalAmount || 0) - (bill.paidAmount || 0))
+  const subtotal = bill.subtotal ?? 0
+  const tax = bill.tax ?? 0
+  const discount = bill.discount ?? 0
+  const paidAmount = bill.paidAmount ?? 0
+
+  const netPayable = subtotal + tax - discount
+  const balanceDue = Math.max(0, netPayable - paidAmount)
   const isPending = balanceDue > 0
 
   // Build payment transactions from booking onwards (meaningful timeline)
@@ -280,19 +286,19 @@ export default function BillPage() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Gross Bill</p>
-              <p className="text-lg font-bold text-slate-200">₹{((bill.subtotal ?? 0) + (bill.tax ?? 0)).toLocaleString()}</p>
+              <p className="text-lg font-bold text-slate-200">₹{(subtotal + tax).toLocaleString()}</p>
             </div>
             <div className="opacity-80">
               <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Total Discount</p>
-              <p className="text-lg font-bold text-emerald-400">-₹{(bill.discount ?? 0).toLocaleString()}</p>
+              <p className="text-lg font-bold text-emerald-400">-₹{discount.toLocaleString()}</p>
             </div>
             <div className="bg-white/5 p-2 rounded-lg border border-white/5">
               <p className="text-xs text-sky-400/80 mb-0.5 font-semibold uppercase tracking-tight">Net Payable</p>
-              <p className="text-xl font-black text-white">₹{(bill.totalAmount ?? 0).toLocaleString()}</p>
+              <p className="text-xl font-black text-white">₹{netPayable.toLocaleString()}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Amount Paid</p>
-              <p className="text-lg font-bold text-emerald-400">₹{(bill.paidAmount ?? 0).toLocaleString()}</p>
+              <p className="text-lg font-bold text-emerald-400">₹{paidAmount.toLocaleString()}</p>
             </div>
             <div className="bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
               <p className="text-xs text-amber-500 mb-0.5 font-bold uppercase tracking-tight">Balance Due</p>
@@ -400,7 +406,7 @@ export default function BillPage() {
                       <input
                         type="number"
                         min="0"
-                        max={bill.totalAmount ?? 0}
+                        max={netPayable}
                         step="0.01"
                         value={correctPaidInput}
                         onChange={(e) => setCorrectPaidInput(e.target.value)}
@@ -422,7 +428,7 @@ export default function BillPage() {
                   <button
                     onClick={() => {
                       const amount = parseFloat(correctPaidInput)
-                      if (isNaN(amount) || amount < 0 || amount > (bill.totalAmount ?? 0)) {
+                      if (isNaN(amount) || amount < 0 || amount > netPayable) {
                         toast.error('Enter an amount between 0 and total amount')
                         return
                       }
@@ -543,7 +549,7 @@ export default function BillPage() {
                     )}
                     <tr className="bg-slate-800/40">
                       <td className="py-3 font-semibold text-slate-100">Total</td>
-                      <td className="py-3 text-right font-semibold text-slate-100">₹{totalAmount.toLocaleString()}</td>
+                      <td className="py-3 text-right font-semibold text-slate-100">₹{netPayable.toLocaleString()}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -558,7 +564,7 @@ export default function BillPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400">Paid</p>
-              <p className="text-lg font-semibold text-emerald-400">₹{(bill.paidAmount ?? 0).toLocaleString()}</p>
+              <p className="text-lg font-semibold text-emerald-400">₹{paidAmount.toLocaleString()}</p>
             </div>
             <div>
               <p className="text-xs text-slate-400">Balance due</p>

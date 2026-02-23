@@ -219,14 +219,14 @@ export default function BookingsPage() {
       new Date(booking.checkIn).toLocaleDateString(),
       new Date(booking.checkOut).toLocaleDateString(),
       booking.status,
-      `₹${booking.totalAmount.toLocaleString()}`,
+      booking.totalAmount.toFixed(2),
     ])
 
     const csvRows: string[] = rows.map((row: string[]) =>
       row.map((cell: string) => `"${cell}"`).join(',')
     )
 
-    const csvContent = [
+    const csvContent = '\uFEFF' + [
       headers.join(','),
       ...csvRows,
     ].join('\n')

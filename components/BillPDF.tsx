@@ -333,6 +333,10 @@ export function BillPDF({ bill }: BillPDFProps) {
   const pricePerDay = (bill.subtotal || 0) / days
   const itemName = `${room.roomType} Room ${room.roomNumber}`
 
+  // Robust manual calculation for display accuracy
+  const grandTotal = (bill.subtotal || 0) + (bill.tax || 0) - (bill.discount || 0)
+  const balance = grandTotal - (bill.paidAmount || 0)
+
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
@@ -415,7 +419,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             <Text style={[styles.itemTableTotalText, styles.col4]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col5]} hyphenationCallback={(e) => []}></Text>
             <Text style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col7]} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            <Text style={[styles.itemTableTotalText, styles.col7]} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
           </View>
         </View>
 
@@ -458,7 +462,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             )}
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Total</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Received</Text>
@@ -466,7 +470,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             </View>
             <View style={styles.paymentSummaryRow}>
               <Text style={styles.paymentSummaryLabel}>Balance</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.balanceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
             </View>
           </View>
         </View>
@@ -474,7 +478,7 @@ export function BillPDF({ bill }: BillPDFProps) {
         {/* Invoice amount in words */}
         <View style={styles.amountWordsSection}>
           <Text style={styles.sectionTitle}>Invoice Amount In Words</Text>
-          <Text style={styles.amountWordsText}>{amountInWords(bill.totalAmount || 0)}</Text>
+          <Text style={styles.amountWordsText}>{amountInWords(grandTotal || 0)}</Text>
         </View>
 
         {/* Terms */}
