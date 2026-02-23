@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import {
+  excludeTestingGuestsFilter,
+  isTestingGuest,
+} from "@/lib/booking-utils";
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
 type UserRole = "SUPER_ADMIN" | "ADMIN" | "RECEPTIONIST" | "STAFF";
@@ -156,15 +160,29 @@ export async function GET(request: NextRequest) {
 
     const [confirmedCount, checkedInCount, checkedOutCount, revenueAgg] =
       await Promise.all([
-        prisma.booking.count({ where: { ...statsWhere, status: "CONFIRMED" } }),
         prisma.booking.count({
-          where: { ...statsWhere, status: "CHECKED_IN" },
+          where: {
+            ...statsWhere,
+            status: "CONFIRMED",
+            ...excludeTestingGuestsFilter,
+          },
         }),
         prisma.booking.count({
-          where: { ...statsWhere, status: "CHECKED_OUT" },
+          where: {
+            ...statsWhere,
+            status: "CHECKED_IN",
+            ...excludeTestingGuestsFilter,
+          },
+        }),
+        prisma.booking.count({
+          where: {
+            ...statsWhere,
+            status: "CHECKED_OUT",
+            ...excludeTestingGuestsFilter,
+          },
         }),
         prisma.booking.aggregate({
-          where: statsWhere,
+          where: { ...statsWhere, ...excludeTestingGuestsFilter },
           _sum: { totalAmount: true },
         }),
       ]);
@@ -473,30 +491,35 @@ export async function POST(request: NextRequest) {
       username?: string;
       role: RoomBookedSourceRole;
     };
-    await notifyInternalRoomBooked({
-      guestName: result.guest.name,
-      guestPhone: result.guest.phone,
-      roomNumber: first.room.roomNumber,
-      roomType: first.room.roomType,
-      checkIn: first.checkIn,
-      checkOut: first.checkOut,
-      bookingReference: first.bookingReference ?? first.id,
-      totalAmount: result.bookings.reduce(
-        (s: number, b: any) => s + b.totalAmount,
-        0,
-      ),
-      source: "STAFF",
-      createdByUsername: authUser.username,
-      createdByRole: authUser.role,
-      isBatch: result.bookings.length > 1,
-      rooms:
-        result.bookings.length > 1
-          ? result.bookings.map((b: any) => ({
-              roomNumber: b.room.roomNumber,
-              roomType: b.room.roomType,
-            }))
-          : undefined,
-    });
+
+    const isTest = isTestingGuest(result.guest.name);
+
+    if (!isTest) {
+      await notifyInternalRoomBooked({
+        guestName: result.guest.name,
+        guestPhone: result.guest.phone,
+        roomNumber: first.room.roomNumber,
+        roomType: first.room.roomType,
+        checkIn: first.checkIn,
+        checkOut: first.checkOut,
+        bookingReference: first.bookingReference ?? first.id,
+        totalAmount: result.bookings.reduce(
+          (s: number, b: any) => s + b.totalAmount,
+          0,
+        ),
+        source: "STAFF",
+        createdByUsername: authUser.username,
+        createdByRole: authUser.role,
+        isBatch: result.bookings.length > 1,
+        rooms:
+          result.bookings.length > 1
+            ? result.bookings.map((b: any) => ({
+                roomNumber: b.room.roomNumber,
+                roomType: b.room.roomType,
+              }))
+            : undefined,
+      });
+    }
 
     // Return response based on number of rooms
     if (result.bookings.length === 1) {

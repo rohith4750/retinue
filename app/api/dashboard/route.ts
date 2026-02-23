@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import {
+  excludeTestingGuestsFilter,
+  excludeTestingHallGuestsFilter,
+} from "@/lib/booking-utils";
 
 // GET /api/dashboard - Get dashboard statistics
 export async function GET(request: NextRequest) {
@@ -39,7 +43,11 @@ export async function GET(request: NextRequest) {
     const overlappingToday = await prisma.booking.findMany({
       where: {
         status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN"] },
-        AND: [{ checkIn: { lt: tomorrow } }, { checkOut: { gt: today } }],
+        AND: [
+          { checkIn: { lt: tomorrow } },
+          { checkOut: { gt: today } },
+          excludeTestingGuestsFilter,
+        ],
       },
       select: { roomId: true, checkOut: true },
     });
@@ -61,6 +69,7 @@ export async function GET(request: NextRequest) {
           lt: tomorrow,
         },
         status: { notIn: ["CHECKED_OUT", "CANCELLED"] },
+        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -70,6 +79,7 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: startOfMonth,
         },
+        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -80,6 +90,7 @@ export async function GET(request: NextRequest) {
           gte: startOfLastMonth,
           lte: endOfLastMonth,
         },
+        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -90,6 +101,7 @@ export async function GET(request: NextRequest) {
           gte: today,
           lt: tomorrow,
         },
+        ...excludeTestingGuestsFilter,
       },
       _sum: {
         paidAmount: true,
@@ -102,6 +114,7 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: startOfMonth,
         },
+        ...excludeTestingGuestsFilter,
       },
       _sum: {
         paidAmount: true,
@@ -116,6 +129,7 @@ export async function GET(request: NextRequest) {
           gte: startOfLastMonth,
           lte: endOfLastMonth,
         },
+        ...excludeTestingGuestsFilter,
       },
       _sum: {
         paidAmount: true,
@@ -127,6 +141,7 @@ export async function GET(request: NextRequest) {
       where: {
         paymentStatus: { in: ["PENDING", "PARTIAL"] },
         status: { not: "CANCELLED" },
+        ...excludeTestingGuestsFilter,
       },
       _sum: {
         balanceAmount: true,
@@ -147,7 +162,10 @@ export async function GET(request: NextRequest) {
 
     // Customer / Guest type analytics (from bookings via guest)
     const bookingsWithGuest = await prisma.booking.findMany({
-      where: { status: { not: "CANCELLED" } },
+      where: {
+        status: { not: "CANCELLED" },
+        ...excludeTestingGuestsFilter,
+      },
       select: {
         totalAmount: true,
         paidAmount: true,
@@ -186,7 +204,10 @@ export async function GET(request: NextRequest) {
 
     // Bookings by room type (all time + this month)
     const bookingsWithRoom = await prisma.booking.findMany({
-      where: { status: { not: "CANCELLED" } },
+      where: {
+        status: { not: "CANCELLED" },
+        ...excludeTestingGuestsFilter,
+      },
       select: {
         totalAmount: true,
         createdAt: true,
@@ -253,6 +274,7 @@ export async function GET(request: NextRequest) {
           createdAt: {
             gte: startOfMonth,
           },
+          ...excludeTestingHallGuestsFilter,
         },
       });
       // @ts-ignore
@@ -262,6 +284,7 @@ export async function GET(request: NextRequest) {
             gte: startOfMonth,
           },
           status: { in: ["CONFIRMED", "COMPLETED"] },
+          ...excludeTestingHallGuestsFilter,
         },
         _sum: {
           advanceAmount: true,
@@ -275,6 +298,7 @@ export async function GET(request: NextRequest) {
         where: {
           eventDate: { gte: today, lt: tomorrow },
           status: { notIn: ["CANCELLED"] },
+          ...excludeTestingHallGuestsFilter,
         },
       });
 
@@ -286,6 +310,7 @@ export async function GET(request: NextRequest) {
         where: {
           eventDate: { gte: today, lt: nextWeekForHalls },
           status: { in: ["PENDING", "CONFIRMED"] },
+          ...excludeTestingHallGuestsFilter,
         },
       });
 
@@ -293,7 +318,10 @@ export async function GET(request: NextRequest) {
       // @ts-ignore
       const hallStatusRows = await prisma.functionHallBooking.groupBy({
         by: ["status"],
-        where: { createdAt: { gte: startOfMonth } },
+        where: {
+          createdAt: { gte: startOfMonth },
+          ...excludeTestingHallGuestsFilter,
+        },
         _count: true,
       });
       hallStatusThisMonth = hallStatusRows.reduce((acc: any, r: any) => {
@@ -317,6 +345,11 @@ export async function GET(request: NextRequest) {
         .sort((a: any, b: any) => b.count - a.count)
         .slice(0, 6);
 
+      hallEventTypesThisMonth = hallEventTypeRows
+        .map((r: any) => ({ eventType: r.eventType, count: r._count }))
+        .sort((a: any, b: any) => b.count - a.count)
+        .slice(0, 6);
+
       // Top halls by booked value this month - sort/slice in JS (groupBy orderBy requires by-fields)
       // @ts-ignore
       const topHallGroupsRaw = await prisma.functionHallBooking.groupBy({
@@ -324,6 +357,7 @@ export async function GET(request: NextRequest) {
         where: {
           createdAt: { gte: startOfMonth },
           status: { notIn: ["CANCELLED"] },
+          ...excludeTestingHallGuestsFilter,
         },
         _count: true,
         _sum: { totalAmount: true },
@@ -353,6 +387,7 @@ export async function GET(request: NextRequest) {
       // @ts-ignore - Prisma types may not include FunctionHallBooking relations
       recentHallBookings = await (prisma.functionHallBooking as any).findMany({
         take: 3,
+        where: excludeTestingHallGuestsFilter,
         orderBy: { createdAt: "desc" },
         include: {
           hall: true,
@@ -373,6 +408,12 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: {
           gte: startOfMonth,
+        },
+        name: {
+          not: {
+            contains: "testing",
+          },
+          mode: "insensitive",
         },
       },
     });
@@ -458,6 +499,7 @@ export async function GET(request: NextRequest) {
     // Recent bookings (billing info now in Booking itself)
     const recentBookings = await prisma.booking.findMany({
       take: 5,
+      where: excludeTestingGuestsFilter,
       orderBy: { bookingDate: "desc" },
       include: {
         room: true,
@@ -475,6 +517,7 @@ export async function GET(request: NextRequest) {
           lt: nextWeek,
         },
         status: "CONFIRMED",
+        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -486,6 +529,7 @@ export async function GET(request: NextRequest) {
           lt: tomorrow,
         },
         status: "CHECKED_IN",
+        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -495,6 +539,7 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: { gte: startOfMonth },
         status: { not: "CANCELLED" },
+        ...excludeTestingGuestsFilter,
       },
       _count: true,
     });
@@ -504,11 +549,16 @@ export async function GET(request: NextRequest) {
       where: {
         status: "CHECKED_IN",
         checkOut: { lt: now },
+        ...excludeTestingGuestsFilter,
       },
     });
     // @ts-ignore - Prisma types may be outdated (flexibleCheckout)
     const flexibleCheckoutActive = await (prisma.booking as any).count({
-      where: { status: "CHECKED_IN", flexibleCheckout: true },
+      where: {
+        status: "CHECKED_IN",
+        flexibleCheckout: true,
+        ...excludeTestingGuestsFilter,
+      },
     });
     // maintenanceRooms already computed at top (used for available/booked today)
 
@@ -517,6 +567,7 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: { gte: startOfMonth },
         status: { not: "CANCELLED" },
+        ...excludeTestingGuestsFilter,
       },
       select: {
         checkIn: true,
@@ -551,6 +602,7 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: { gte: startOfMonth },
         status: { not: "CANCELLED" },
+        ...excludeTestingGuestsFilter,
       },
       _sum: { paidAmount: true },
     });

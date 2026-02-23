@@ -1,7 +1,13 @@
-import { prisma } from '@/lib/prisma'
-import { sendRoomBookedAlert, sendBookingStepAlert, type RoomBookedAlertDetails, type BookingStepAlertDetails } from '@/lib/email'
+import { prisma } from "@/lib/prisma";
+import { isTestingGuest } from "./booking-utils";
+import {
+  sendRoomBookedAlert,
+  sendBookingStepAlert,
+  type RoomBookedAlertDetails,
+  type BookingStepAlertDetails,
+} from "@/lib/email";
 
-const BOOKING_ALERT_EMAILS_ENV = 'BOOKING_ALERT_EMAILS'
+const BOOKING_ALERT_EMAILS_ENV = "BOOKING_ALERT_EMAILS";
 
 /**
  * Get all internal user IDs that should receive in-app alerts.
@@ -9,10 +15,10 @@ const BOOKING_ALERT_EMAILS_ENV = 'BOOKING_ALERT_EMAILS'
  */
 async function getInternalAlertUserIds(): Promise<string[]> {
   const users = await prisma.user.findMany({
-    where: { role: { in: ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'] } },
+    where: { role: { in: ["SUPER_ADMIN", "ADMIN", "RECEPTIONIST"] } },
     select: { id: true },
-  })
-  return users.map((u) => u.id)
+  });
+  return users.map((u) => u.id);
 }
 
 /**
@@ -23,18 +29,21 @@ export async function getInternalAlertEmails(): Promise<string[]> {
   const users = await prisma.user.findMany({
     where: { email: { not: null } },
     select: { email: true },
-  })
+  });
   const fromDb = users
     .map((u) => u.email)
-    .filter((e): e is string => typeof e === 'string' && e.includes('@'))
+    .filter((e): e is string => typeof e === "string" && e.includes("@"));
 
-  const fromEnv = process.env[BOOKING_ALERT_EMAILS_ENV]
+  const fromEnv = process.env[BOOKING_ALERT_EMAILS_ENV];
   const envEmails = fromEnv
-    ? fromEnv.split(',').map((e) => e.trim().toLowerCase()).filter((e) => e.includes('@'))
-    : []
+    ? fromEnv
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.includes("@"))
+    : [];
 
-  const combined = new Set([...fromDb, ...envEmails])
-  return Array.from(combined)
+  const combined = new Set([...fromDb, ...envEmails]);
+  return Array.from(combined);
 }
 
 /**
@@ -45,9 +54,9 @@ async function createInAppNotifications(
   title: string,
   message: string,
   type: string,
-  link?: string
+  link?: string,
 ) {
-  if (userIds.length === 0) return
+  if (userIds.length === 0) return;
 
   await prisma.notification.createMany({
     data: userIds.map((userId) => ({
@@ -57,42 +66,47 @@ async function createInAppNotifications(
       type,
       link,
     })),
-  })
+  });
 }
 
 /**
  * Notify all internal users (staff) that a room was booked.
  * Call this after creating a booking (public or staff).
  */
-export async function notifyInternalRoomBooked(details: RoomBookedAlertDetails): Promise<void> {
+export async function notifyInternalRoomBooked(
+  details: RoomBookedAlertDetails,
+): Promise<void> {
+  if (isTestingGuest(details.guestName)) {
+    return;
+  }
   try {
     // 1. Send Emails
-    const toEmails = await getInternalAlertEmails()
+    const toEmails = await getInternalAlertEmails();
     if (toEmails.length > 0) {
-      // Don't await email to prevent blocking (fire and forget handled by email lib usually, but here we await. 
+      // Don't await email to prevent blocking (fire and forget handled by email lib usually, but here we await.
       // We can remove await if we want speed, but error logging is good).
-      await sendRoomBookedAlert(toEmails, details) // This functions logs its own errors
+      await sendRoomBookedAlert(toEmails, details); // This functions logs its own errors
     }
 
     // 2. Create In-App Notifications
-    const userIds = await getInternalAlertUserIds()
+    const userIds = await getInternalAlertUserIds();
     if (userIds.length > 0) {
       const title = details.isBatch
         ? `New Booking: ${details.rooms?.length} Rooms`
-        : `New Booking: Room ${details.roomNumber}`
-      
-      const message = `${details.guestName} booked ${details.isBatch ? `${details.rooms?.length} rooms` : `Room ${details.roomNumber}`} for ${new Date(details.checkIn).toLocaleDateString('en-IN')}.`
-      
+        : `New Booking: Room ${details.roomNumber}`;
+
+      const message = `${details.guestName} booked ${details.isBatch ? `${details.rooms?.length} rooms` : `Room ${details.roomNumber}`} for ${new Date(details.checkIn).toLocaleDateString("en-IN")}.`;
+
       await createInAppNotifications(
         userIds,
         title,
         message,
-        'BOOKING',
-        `/bookings?search=${details.bookingReference}`
-      )
+        "BOOKING",
+        `/bookings?search=${details.bookingReference}`,
+      );
     }
   } catch (err) {
-    console.error('Failed to send room booked alert to internal users:', err)
+    console.error("Failed to send room booked alert to internal users:", err);
   }
 }
 
@@ -100,42 +114,63 @@ export async function notifyInternalRoomBooked(details: RoomBookedAlertDetails):
  * Notify all internal users of a booking step (checked in, checked out, cancelled, updated).
  * Call this after any status change or update.
  */
-export async function notifyInternalBookingStep(details: BookingStepAlertDetails): Promise<void> {
+export async function notifyInternalBookingStep(
+  details: BookingStepAlertDetails,
+): Promise<void> {
+  if (isTestingGuest(details.guestName)) {
+    return;
+  }
   try {
-    const { step, guestName, roomNumber, bookingReference } = details
-    
+    const { step, guestName, roomNumber, bookingReference } = details;
+
     // 1. Send Emails
-    const toEmails = await getInternalAlertEmails()
+    const toEmails = await getInternalAlertEmails();
     if (toEmails.length > 0) {
-      await sendBookingStepAlert(toEmails, details)
+      await sendBookingStepAlert(toEmails, details);
     }
 
     // 2. Create In-App Notifications
-    const userIds = await getInternalAlertUserIds()
+    const userIds = await getInternalAlertUserIds();
     if (userIds.length > 0) {
-        let title = ''
-        let type = 'INFO'
-        
-        switch (step) {
-            case 'CHECKED_IN': title = 'Guest Checked In'; type = 'SUCCESS'; break;
-            case 'CHECKED_OUT': title = 'Guest Checked Out'; type = 'INFO'; break;
-            case 'CANCELLED': title = 'Booking Cancelled'; type = 'WARNING'; break;
-            case 'CONFIRMED': title = 'Booking Confirmed'; type = 'SUCCESS'; break;
-            case 'UPDATED': title = 'Booking Updated'; type = 'INFO'; break;
-            default: title = 'Booking Update';
-        }
+      let title = "";
+      let type = "INFO";
 
-        const message = `${title}: ${guestName} (Room ${roomNumber})`
+      switch (step) {
+        case "CHECKED_IN":
+          title = "Guest Checked In";
+          type = "SUCCESS";
+          break;
+        case "CHECKED_OUT":
+          title = "Guest Checked Out";
+          type = "INFO";
+          break;
+        case "CANCELLED":
+          title = "Booking Cancelled";
+          type = "WARNING";
+          break;
+        case "CONFIRMED":
+          title = "Booking Confirmed";
+          type = "SUCCESS";
+          break;
+        case "UPDATED":
+          title = "Booking Updated";
+          type = "INFO";
+          break;
+        default:
+          title = "Booking Update";
+      }
 
-        await createInAppNotifications(
-            userIds,
-            title,
-            message,
-            type,
-            `/bookings?search=${bookingReference}`
-        )
+      const message = `${title}: ${guestName} (Room ${roomNumber})`;
+
+      await createInAppNotifications(
+        userIds,
+        title,
+        message,
+        type,
+        `/bookings?search=${bookingReference}`,
+      );
     }
   } catch (err) {
-    console.error('Failed to send booking step alert to internal users:', err)
+    console.error("Failed to send booking step alert to internal users:", err);
   }
 }
