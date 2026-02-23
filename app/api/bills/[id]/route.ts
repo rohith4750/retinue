@@ -144,6 +144,7 @@ export async function GET(
       paidAmount: consolidated.paidAmount,
       balanceAmount: consolidated.balanceAmount,
       advanceAmount: consolidated.advanceAmount,
+      applyGst: booking.applyGst,
       paymentStatus: paymentStatus,
 
       createdAt: booking.createdAt,
@@ -232,14 +233,14 @@ export async function GET(
                   discount:
                     merged.action === "BILL_ADJUSTED"
                       ? {
-                          from: group.reduce(
-                            (s, h) =>
-                              s +
-                              (Number((h.changes as any)?.discount?.from) || 0),
-                            0,
-                          ),
-                          to: totalAmount,
-                        }
+                        from: group.reduce(
+                          (s, h) =>
+                            s +
+                            (Number((h.changes as any)?.discount?.from) || 0),
+                          0,
+                        ),
+                        to: totalAmount,
+                      }
                       : (merged.changes as any).discount,
                 };
 
@@ -279,7 +280,7 @@ export async function GET(
           days:
             Math.ceil(
               (new Date(b.checkOut).getTime() - new Date(b.checkIn).getTime()) /
-                (1000 * 60 * 60 * 24),
+              (1000 * 60 * 60 * 24),
             ) || 1,
           totalAmount: b.totalAmount,
           subtotal: b.subtotal,
@@ -381,8 +382,8 @@ export async function PATCH(
             i === allInGroup.length - 1
               ? remainingDiscount
               : Math.round(
-                  (parseFloat(String(discount)) / allInGroup.length) * 100,
-                ) / 100;
+                (parseFloat(String(discount)) / allInGroup.length) * 100,
+              ) / 100;
 
           remainingDiscount =
             Math.round((remainingDiscount - discountPerRoom) * 100) / 100;
@@ -676,6 +677,18 @@ export async function PUT(
           balanceAmount: Math.max(
             0,
             ownerBooking.totalAmount -
+            Math.max(
+              0,
+              Math.min(
+                ownerBooking.totalAmount,
+                ownerBooking.paidAmount - previousAmount + newAmt,
+              ),
+            ),
+          ),
+          paymentStatus:
+            Math.max(
+              0,
+              ownerBooking.totalAmount -
               Math.max(
                 0,
                 Math.min(
@@ -683,18 +696,6 @@ export async function PUT(
                   ownerBooking.paidAmount - previousAmount + newAmt,
                 ),
               ),
-          ),
-          paymentStatus:
-            Math.max(
-              0,
-              ownerBooking.totalAmount -
-                Math.max(
-                  0,
-                  Math.min(
-                    ownerBooking.totalAmount,
-                    ownerBooking.paidAmount - previousAmount + newAmt,
-                  ),
-                ),
             ) <= 0
               ? "PAID"
               : "PARTIAL", // simplified

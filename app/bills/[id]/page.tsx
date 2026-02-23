@@ -493,7 +493,7 @@ export default function BillPage() {
             const discount = bill.discount ?? 0
             const totalAmount = bill.totalAmount ?? 0
             const storedTax = bill.tax ?? 0
-            const displayTax = storedTax > 0 ? storedTax : Math.max(0, totalAmount - subtotal)
+            const displayTax = bill.tax ?? 0
 
             // Check for consolidated items
             const items = bill.booking.items || [bill.booking]
