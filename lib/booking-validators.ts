@@ -182,9 +182,13 @@ export function calculateBookingPrice(
   const days = Math.max(1, Math.ceil(stayHours / 24));
   const baseAmount = basePrice * days;
   const discountAmount = Math.min(discount, baseAmount * 0.5); // Max 50% discount
-  const subtotal = baseAmount - discountAmount;
-  const tax = subtotal * 0.18; // 18% GST
-  const totalAmount = subtotal + tax;
+
+  // NEW LOGIC: subtotal is the base amount BEFORE discount
+  // This matches UI components that calculate netPayable = (subtotal + tax - discount)
+  const subtotal = baseAmount;
+  const taxableAmount = baseAmount - discountAmount;
+  const tax = taxableAmount * 0.18; // 18% GST
+  const totalAmount = taxableAmount + tax;
 
   return {
     days,

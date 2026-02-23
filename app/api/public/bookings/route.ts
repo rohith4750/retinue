@@ -153,10 +153,11 @@ export async function POST(request: NextRequest) {
         );
 
         const applyGst = data.applyGst !== false;
+        const discountedSubtotal = priceCalculation.subtotal - priceCalculation.discountAmount;
         const effectiveTax = applyGst ? priceCalculation.tax : 0;
         const effectiveTotal = applyGst
           ? priceCalculation.totalAmount
-          : priceCalculation.subtotal;
+          : discountedSubtotal;
         const advancePerRoom = parseFloat(String(data.advanceAmount)) || 0;
         const balanceForRoom = effectiveTotal - advancePerRoom;
         const gstPerRoom = applyGst ? priceCalculation.tax : 0;

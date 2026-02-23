@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const paymentStatusParam = searchParams.get("paymentStatus");
     const paymentStatus =
       paymentStatusParam &&
-      ["PENDING", "PAID", "PARTIAL"].includes(paymentStatusParam)
+        ["PENDING", "PAID", "PARTIAL"].includes(paymentStatusParam)
         ? paymentStatusParam
         : undefined;
 
@@ -368,10 +368,11 @@ export async function POST(request: NextRequest) {
           );
 
           const applyGst = data.applyGst === true;
+          const discountedSubtotal = priceCalculation.subtotal - priceCalculation.discountAmount;
           const effectiveTax = applyGst ? priceCalculation.tax : 0;
           const effectiveTotal = applyGst
             ? priceCalculation.totalAmount
-            : priceCalculation.subtotal;
+            : discountedSubtotal;
 
           const [bookingId, bookingReference] = await Promise.all([
             generateBookingId(tx),
@@ -514,9 +515,9 @@ export async function POST(request: NextRequest) {
         rooms:
           result.bookings.length > 1
             ? result.bookings.map((b: any) => ({
-                roomNumber: b.room.roomNumber,
-                roomType: b.room.roomType,
-              }))
+              roomNumber: b.room.roomNumber,
+              roomType: b.room.roomType,
+            }))
             : undefined,
       });
     }
