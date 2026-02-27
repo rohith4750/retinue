@@ -1,10 +1,10 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { FaBell, FaPlus, FaCalendarAlt, FaHome, FaUsers, FaBox, FaChartLine, FaHistory, FaUserShield, FaBuilding, FaUser, FaMoneyBillWave } from 'react-icons/fa'
 import Link from 'next/link'
 import { NotificationBell } from './dashboard/NotificationBell'
 import { useState, useEffect } from 'react'
+import { getPageInfo, getQuickAction } from '@/lib/navigation-config'
 
 interface ToolbarProps {
   title?: string
@@ -30,57 +30,12 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
     return () => clearInterval(interval)
   }, [])
 
-  // Get page title and icon based on pathname
-  const getPageInfo = () => {
-    if (pathname?.startsWith('/dashboard')) return { title: 'Dashboard', icon: FaChartLine }
-    if (pathname?.startsWith('/rooms')) return { title: 'Rooms', icon: FaHome }
-    if (pathname?.startsWith('/function-halls/bookings/new')) return { title: 'New Hall Booking', icon: FaPlus }
-    if (pathname?.startsWith('/function-halls/bookings')) return { title: 'Hall Bookings', icon: FaCalendarAlt }
-    if (pathname?.startsWith('/function-halls')) return { title: 'Function Hall', icon: FaBuilding }
-    if (pathname?.startsWith('/bookings/new')) return { title: 'New Booking', icon: FaPlus }
-    if (pathname?.startsWith('/bookings/history')) return { title: 'Booking History', icon: FaHistory }
-    if (pathname?.startsWith('/bookings')) return { title: 'Bookings', icon: FaCalendarAlt }
-    if (pathname?.startsWith('/staff')) return { title: 'Staff Management', icon: FaUsers }
-    if (pathname?.startsWith('/inventory')) return { title: 'Stock & Assets', icon: FaBox }
-    if (pathname?.startsWith('/auth/users')) return { title: 'User Management', icon: FaUserShield }
-    if (pathname?.startsWith('/expenses')) return { title: 'Revenue & Expenses', icon: FaMoneyBillWave }
-    if (pathname?.startsWith('/workforce')) return { title: 'Workforce & Salary', icon: FaUsers }
-    if (pathname?.startsWith('/assets')) return { title: 'Asset Locator', icon: FaBox }
-    if (pathname?.startsWith('/profile')) return { title: 'My Profile', icon: FaUser }
-    if (pathname?.startsWith('/bills')) return { title: 'Bill Details', icon: FaCalendarAlt }
-    return { title: 'Hotel The Retinue & Butchiraju Conventions', icon: FaChartLine }
-  }
-
-  const pageInfo = getPageInfo()
+  const pageInfo = getPageInfo(pathname)
   const PageIcon = pageInfo.icon
   const displayTitle = title || pageInfo.title
 
-  // Quick action buttons based on current page
-  const getQuickActions = () => {
-    if (pathname?.startsWith('/bookings') && !pathname?.includes('/new')) {
-      return (
-        <Link
-          href="/bookings/new"
-          className="flex items-center space-x-2 px-3 py-1.5 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
-        >
-          <FaPlus className="w-3 h-3" />
-          <span className="hidden sm:inline">New Booking</span>
-        </Link>
-      )
-    }
-    if (pathname?.startsWith('/rooms')) {
-      return (
-        <Link
-          href="/bookings/new"
-          className="flex items-center space-x-2 px-3 py-1.5 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
-        >
-          <FaPlus className="w-3 h-3" />
-          <span className="hidden sm:inline">Book Room</span>
-        </Link>
-      )
-    }
-    return null
-  }
+  const quickAction = getQuickAction(pathname)
+  const QuickActionIcon = quickAction?.icon
 
   return (
     <header className="app-header fixed top-0 right-0 left-0 lg:left-72 2xl:left-80 z-20 backdrop-blur-xl border-b">
@@ -103,7 +58,15 @@ export function Toolbar({ title, showSearch = false, actions }: ToolbarProps) {
           </div>
 
           {/* Quick actions */}
-          {actions || getQuickActions()}
+          {actions || (quickAction && (
+            <Link
+              href={quickAction.href}
+              className="flex items-center space-x-2 px-3 py-1.5 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+            >
+              {QuickActionIcon && <QuickActionIcon className="w-3 h-3" />}
+              <span className="hidden sm:inline">{quickAction.label}</span>
+            </Link>
+          ))}
 
           {/* Notifications */}
           <NotificationBell />
