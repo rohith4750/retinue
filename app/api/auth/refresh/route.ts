@@ -51,6 +51,15 @@ export async function POST(request: NextRequest) {
       username: user.username,
     })
 
+    // Update access token cookie
+    cookieStore.set('accessToken', newTokenPair.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60, // 1 hour
+      path: '/',
+    })
+
     // Update refresh token cookie
     cookieStore.set('refreshToken', newTokenPair.refreshToken, {
       httpOnly: true,
@@ -61,12 +70,7 @@ export async function POST(request: NextRequest) {
     })
 
     return Response.json(
-      successResponse(
-        {
-          accessToken: newTokenPair.accessToken,
-        },
-        'Token refreshed successfully'
-      )
+      successResponse({}, 'Token refreshed successfully')
     )
   } catch (error: any) {
     console.error('Refresh token error:', error)

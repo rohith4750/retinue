@@ -36,7 +36,9 @@ export type SessionUser = { id: string; userId: string; role: UserRole; username
 
 export async function getSessionUser(request: NextRequest): Promise<SessionUser | null> {
   const authHeader = request.headers.get('authorization')
-  const token = extractTokenFromHeader(authHeader)
+  const headerToken = extractTokenFromHeader(authHeader)
+  const cookieToken = request.cookies.get('accessToken')?.value
+  const token = headerToken || cookieToken
   
   if (!token) return null
 

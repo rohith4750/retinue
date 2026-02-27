@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { getToken, getStoredUser } from '@/lib/auth-storage'
+import { getStoredUser } from '@/lib/auth-storage'
 import { 
   FaFileExcel, FaDownload, FaHotel, FaBuilding, FaChartBar, 
   FaCalendarAlt, FaSpinner, FaClipboardList, FaMoneyBillWave,
@@ -34,7 +34,6 @@ export default function ReportsPage() {
   const downloadReport = async (type: 'hotel' | 'convention' | 'all') => {
     setLoading(type)
     try {
-      const token = getToken()
       const params = new URLSearchParams({
         type,
         startDate: dateRange.startDate,
@@ -42,9 +41,6 @@ export default function ReportsPage() {
       })
 
       const response = await fetch(`/api/reports?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         credentials: 'include'
       })
 

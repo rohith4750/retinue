@@ -51,16 +51,15 @@ function LoginContent() {
     setLoading(true)
 
     try {
-      // Use api client but handle response manually since we need the token before setting auth
+      // Cookie-only auth: server sets httpOnly access/refresh cookies.
       const data = await api.post('/auth/login', { email, password, rememberMe })
 
-      const accessToken = data?.accessToken
       const user = data?.user
-      if (!accessToken || !user) {
+      if (!user) {
         throw new Error('Invalid login response')
       }
 
-      setAuth(accessToken, user, rememberMe)
+      setAuth(user, rememberMe)
       toast.success('Login successful!')
       router.push('/dashboard')
     } catch (err: any) {

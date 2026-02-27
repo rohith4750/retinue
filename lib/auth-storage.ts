@@ -4,7 +4,6 @@
  * localStorage.isLogin, userRole, permissions → for route guard and UI
  */
 
-const AUTH_TOKEN_KEY = 'authToken'
 const IS_LOGIN_KEY = 'isLogin'
 const USER_ROLE_KEY = 'userRole'
 const PERMISSIONS_KEY = 'permissions'
@@ -37,22 +36,18 @@ function getPermissionsForRole(role: string): string[] {
 
 /**
  * Set auth after successful login.
- * Token in sessionStorage; flags and user in localStorage.
+ * Cookie-only auth: no access token is stored in JS-readable storage.
  */
-export function setAuth(accessToken: string, user: AuthUser, rememberMe?: boolean): void {
+export function setAuth(user: AuthUser, rememberMe?: boolean): void {
   if (typeof window === 'undefined') return
-  sessionStorage.setItem(AUTH_TOKEN_KEY, accessToken)
-  if (rememberMe) {
-    localStorage.setItem('accessToken', accessToken)
-  } else {
-    localStorage.removeItem('accessToken')
-  }
   localStorage.setItem(IS_LOGIN_KEY, 'true')
   localStorage.setItem(USER_ROLE_KEY, user.role)
   localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(getPermissionsForRole(user.role)))
   localStorage.setItem(USER_KEY, JSON.stringify(user))
   if (rememberMe) {
     localStorage.setItem(REMEMBER_ME_KEY, 'true')
+  } else {
+    localStorage.removeItem(REMEMBER_ME_KEY)
   }
 }
 
@@ -61,7 +56,6 @@ export function setAuth(accessToken: string, user: AuthUser, rememberMe?: boolea
  */
 export function clearAuth(): void {
   if (typeof window === 'undefined') return
-  sessionStorage.removeItem(AUTH_TOKEN_KEY)
   localStorage.removeItem(IS_LOGIN_KEY)
   localStorage.removeItem(USER_ROLE_KEY)
   localStorage.removeItem(PERMISSIONS_KEY)
@@ -78,8 +72,7 @@ export function clearAuth(): void {
  * Get JWT from sessionStorage (for API client).
  */
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return sessionStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem('accessToken')
+  return null
 }
 
 /**
@@ -120,9 +113,6 @@ export function getStoredUser(): AuthUser | null {
  * If "remember me" was enabled, keep a persistent copy in localStorage too.
  */
 export function setAccessToken(accessToken: string): void {
-  if (typeof window === 'undefined') return
-  sessionStorage.setItem(AUTH_TOKEN_KEY, accessToken)
-  if (localStorage.getItem(REMEMBER_ME_KEY) === 'true') {
-    localStorage.setItem('accessToken', accessToken)
-  }
+  // Cookie-only auth mode: access token is managed by httpOnly cookies on server.
+  void accessToken
 }

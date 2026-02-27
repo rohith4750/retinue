@@ -21,6 +21,19 @@ export function Sidebar() {
   const handleLogout = () => {
     setIsMobileOpen(false)
     clearSessionTimeout()
+
+    const csrfToken = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('csrfToken='))
+      ?.split('=')[1]
+    if (csrfToken) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'x-csrf-token': decodeURIComponent(csrfToken) },
+      }).catch(() => undefined)
+    }
+
     clearAuth()
 
     // Prefer hard navigation so logout always works even if router state is stale.

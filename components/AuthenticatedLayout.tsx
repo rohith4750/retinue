@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { Footer } from './Footer'
 import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
-import { getToken, isLoggedIn, clearAuth, setAccessToken } from '@/lib/auth-storage'
+import { isLoggedIn, clearAuth } from '@/lib/auth-storage'
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode
@@ -37,14 +37,12 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     clearAuthAndRedirect('timeout')
   }, [clearAuthAndRedirect])
 
-  const validateToken = useCallback(async (accessToken: string): Promise<boolean> => {
+  const validateToken = useCallback(async (): Promise<boolean> => {
     try {
       const response = await fetch('/api/auth/validate', {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
       })
       if (response.status === 401) return false
       return response.ok
@@ -54,7 +52,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     }
   }, [])
 
-  const tryRefreshToken = useCallback(async (): Promise<string | null> => {
+  const tryRefreshToken = useCallback(async (): Promise<boolean> => {
     try {
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
@@ -64,16 +62,10 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
         },
       })
 
-      if (!response.ok) return null
-      const data = await response.json().catch(() => null)
-      const refreshedToken = data?.data?.accessToken
-      if (!refreshedToken) return null
-
-      setAccessToken(refreshedToken)
-      return refreshedToken
+      return response.ok
     } catch (error) {
       console.error('Token refresh error:', error)
-      return null
+      return false
     }
   }, [])
 
@@ -98,29 +90,17 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       validationInProgress.current = true
 
       try {
-        let token = getToken()
-
-        // Missing access token can happen after reload/tab restore; recover from refresh cookie first.
-        if (!token) {
-          token = await tryRefreshToken()
-          if (!token) {
-            clearAuthAndRedirect('session_expired')
-            setIsLoading(false)
-            return
-          }
-        }
-
-        let isValid = await validateToken(token)
+        let isValid = await validateToken()
 
         // Access token may be expired; try refresh once before logout.
         if (!isValid) {
-          const refreshedToken = await tryRefreshToken()
-          if (!refreshedToken) {
+          const refreshed = await tryRefreshToken()
+          if (!refreshed) {
             clearAuthAndRedirect('session_expired')
             setIsLoading(false)
             return
           }
-          isValid = await validateToken(refreshedToken)
+          isValid = await validateToken()
         }
 
         if (!isValid) {
