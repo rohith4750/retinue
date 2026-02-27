@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { Footer } from './Footer'
 import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
-import { getToken, isLoggedIn, clearAuth } from '@/lib/auth-storage'
+import { getToken, isLoggedIn, clearAuth, setAccessToken } from '@/lib/auth-storage'
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode
@@ -54,53 +54,102 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     }
   }, [])
 
+  const tryRefreshToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) return null
+      const data = await response.json().catch(() => null)
+      const refreshedToken = data?.data?.accessToken
+      if (!refreshedToken) return null
+
+      setAccessToken(refreshedToken)
+      return refreshedToken
+    } catch (error) {
+      console.error('Token refresh error:', error)
+      return null
+    }
+  }, [])
+
   useEffect(() => {
     if (validationInProgress.current) return
 
-    if (isPublicPath) {
-      setIsLoading(false)
-      clearSessionTimeout()
-      sessionInitialized.current = false
-      return
-    }
+    const runAuthCheck = async () => {
+      if (isPublicPath) {
+        setIsLoading(false)
+        clearSessionTimeout()
+        sessionInitialized.current = false
+        return
+      }
 
-    const token = getToken()
-    const loggedIn = isLoggedIn()
-
-    if (!loggedIn || !token) {
-      if (loggedIn && !token) clearAuth()
-      router.push('/login')
-      setIsLoading(false)
-      return
-    }
-
-    validationInProgress.current = true
-    validateToken(token).then((isValid) => {
-      validationInProgress.current = false
-
-      if (!isValid) {
-        clearAuthAndRedirect('session_expired')
+      const loggedIn = isLoggedIn()
+      if (!loggedIn) {
+        router.push('/login')
         setIsLoading(false)
         return
       }
 
-      setIsAuthenticated(true)
-      setIsLoading(false)
-      setTimeout(() => {
-        initSessionTimeout(handleSessionTimeout)
-        sessionInitialized.current = true
-      }, 500)
-    }).catch((error) => {
-      validationInProgress.current = false
-      console.error('Token validation error (network/DB), allowing access:', error)
-      setIsAuthenticated(true)
-      setIsLoading(false)
-      setTimeout(() => {
-        initSessionTimeout(handleSessionTimeout)
-        sessionInitialized.current = true
-      }, 500)
-    })
-  }, [router, isPublicPath, handleSessionTimeout, validateToken, clearAuthAndRedirect])
+      validationInProgress.current = true
+
+      try {
+        let token = getToken()
+
+        // Missing access token can happen after reload/tab restore; recover from refresh cookie first.
+        if (!token) {
+          token = await tryRefreshToken()
+          if (!token) {
+            clearAuthAndRedirect('session_expired')
+            setIsLoading(false)
+            return
+          }
+        }
+
+        let isValid = await validateToken(token)
+
+        // Access token may be expired; try refresh once before logout.
+        if (!isValid) {
+          const refreshedToken = await tryRefreshToken()
+          if (!refreshedToken) {
+            clearAuthAndRedirect('session_expired')
+            setIsLoading(false)
+            return
+          }
+          isValid = await validateToken(refreshedToken)
+        }
+
+        if (!isValid) {
+          clearAuthAndRedirect('session_expired')
+          setIsLoading(false)
+          return
+        }
+
+        setIsAuthenticated(true)
+        setIsLoading(false)
+        setTimeout(() => {
+          initSessionTimeout(handleSessionTimeout)
+          sessionInitialized.current = true
+        }, 500)
+      } catch (error) {
+        console.error('Token validation error (network/DB), allowing access:', error)
+        setIsAuthenticated(true)
+        setIsLoading(false)
+        setTimeout(() => {
+          initSessionTimeout(handleSessionTimeout)
+          sessionInitialized.current = true
+        }, 500)
+      } finally {
+        validationInProgress.current = false
+      }
+    }
+
+    runAuthCheck()
+  }, [router, isPublicPath, handleSessionTimeout, validateToken, clearAuthAndRedirect, tryRefreshToken])
 
   // Setup session listeners when authenticated
   useEffect(() => {
@@ -139,7 +188,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
       <Sidebar />
 
       {/* Main content area */}
-      <div className="flex-1 lg:ml-80 flex flex-col min-h-screen">
+      <div className="flex-1 lg:ml-72 2xl:ml-80 flex flex-col min-h-screen">
         {/* Toolbar - Fixed */}
         <Toolbar />
 

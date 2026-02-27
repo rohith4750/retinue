@@ -42,6 +42,11 @@ function getPermissionsForRole(role: string): string[] {
 export function setAuth(accessToken: string, user: AuthUser, rememberMe?: boolean): void {
   if (typeof window === 'undefined') return
   sessionStorage.setItem(AUTH_TOKEN_KEY, accessToken)
+  if (rememberMe) {
+    localStorage.setItem('accessToken', accessToken)
+  } else {
+    localStorage.removeItem('accessToken')
+  }
   localStorage.setItem(IS_LOGIN_KEY, 'true')
   localStorage.setItem(USER_ROLE_KEY, user.role)
   localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(getPermissionsForRole(user.role)))
@@ -74,7 +79,7 @@ export function clearAuth(): void {
  */
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null
-  return sessionStorage.getItem(AUTH_TOKEN_KEY)
+  return sessionStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem('accessToken')
 }
 
 /**
@@ -107,5 +112,17 @@ export function getStoredUser(): AuthUser | null {
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
+  }
+}
+
+/**
+ * Update access token after refresh.
+ * If "remember me" was enabled, keep a persistent copy in localStorage too.
+ */
+export function setAccessToken(accessToken: string): void {
+  if (typeof window === 'undefined') return
+  sessionStorage.setItem(AUTH_TOKEN_KEY, accessToken)
+  if (localStorage.getItem(REMEMBER_ME_KEY) === 'true') {
+    localStorage.setItem('accessToken', accessToken)
   }
 }

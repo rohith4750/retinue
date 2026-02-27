@@ -1,5 +1,5 @@
 import { API_BASE, API_TIMEOUT, ERROR_CODES } from "./constants";
-import { getToken, clearAuth } from "./auth-storage";
+import { getToken, clearAuth, setAccessToken } from "./auth-storage";
 
 /**
  * Redirect to login with optional reason (session_expired / timeout).
@@ -17,15 +17,15 @@ export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const accessToken = getToken();
-
-  const headers: HeadersInit = {
+  const buildHeaders = (token?: string | null): HeadersInit => ({
     "Content-Type": "application/json",
-    ...(accessToken && {
-      Authorization: `Bearer ${accessToken}`,
+    ...(token && {
+      Authorization: `Bearer ${token}`,
     }),
     ...options.headers,
-  };
+  });
+
+  const accessToken = getToken();
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
@@ -33,20 +33,51 @@ export async function apiRequest<T = any>(
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
-      headers,
+      headers: buildHeaders(accessToken),
       credentials: "include",
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
-    // 401: clear auth and redirect to login with reason (backend rejected token)
+    // 401: try refresh once, then retry original request.
     if (response.status === 401) {
       // Don't redirect if this is a login attempt - let the caller handle the 401
       if (endpoint.includes("/auth/login")) {
         const data = await response.json().catch(() => ({}));
         const errorMessage = data.message || data.error || "Unauthorized";
         throw new Error(errorMessage);
+      }
+
+      // Avoid refresh recursion for refresh endpoint itself.
+      if (!endpoint.includes("/auth/refresh")) {
+        const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        });
+
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json().catch(() => ({}));
+          const refreshedToken = refreshData?.data?.accessToken;
+
+          if (refreshedToken) {
+            setAccessToken(refreshedToken);
+
+            const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
+              ...options,
+              headers: buildHeaders(refreshedToken),
+              credentials: "include",
+              signal: controller.signal,
+            });
+
+            if (retryResponse.ok) {
+              const retryData = await retryResponse.json();
+              return retryData.data;
+            }
+          }
+        }
       }
 
       clearAuth();

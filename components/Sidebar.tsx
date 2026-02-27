@@ -102,7 +102,7 @@ export function Sidebar() {
 
       {/* Sidebar - Glassmorphism & Gradient Border */}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 lg:w-80 backdrop-blur-3xl bg-slate-950/80 border-r border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-40 transition-transform duration-300 overflow-y-auto sidebar-scrollbar ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        className={`fixed left-0 top-0 h-full w-[17.5rem] lg:w-72 2xl:w-80 backdrop-blur-3xl bg-slate-950/80 border-r border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-40 transition-transform duration-300 overflow-y-auto sidebar-scrollbar ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
       >
         {/* Subtle top gradient */}
@@ -118,12 +118,12 @@ export function Sidebar() {
               href="/dashboard"
               className="flex items-start gap-3 no-underline relative"
             >
-              <div className="w-10 h-10 lg:w-12 lg:h-12 shrink-0 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-10 h-10 xl:w-11 xl:h-11 shrink-0 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 group-hover:scale-110 transition-transform duration-300">
                 <FaHotel className="w-5 h-5 text-white" />
               </div>
               <div className="min-w-0 flex-1 pt-0.5">
-                <p className="text-sm lg:text-xl font-bold text-white leading-tight tracking-wide">THE RETINUE</p>
-                <p className="text-[10px] lg:text-xs text-slate-400 leading-tight mt-1 font-medium">
+                <p className="text-sm xl:text-base font-bold text-white leading-tight tracking-wide">THE RETINUE</p>
+                <p className="text-[10px] xl:text-xs text-slate-400 leading-tight mt-1 font-medium">
                   Hotel & <span className="text-sky-400">Conventions</span>
                 </p>
               </div>
@@ -136,7 +136,7 @@ export function Sidebar() {
             {filteredHotelItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-3 mb-2">
-                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Hotel Operations</span>
+                  <span className="text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">Hotel Operations</span>
                 </div>
                 <div className="space-y-1">
                   {filteredHotelItems.map((item) => {
@@ -147,12 +147,12 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm lg:text-lg font-medium transition-all duration-300 group ${active
+                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm xl:text-[15px] font-medium transition-all duration-300 group ${active
                           ? 'bg-gradient-to-r from-sky-500/20 to-indigo-500/10 text-sky-400 border border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.15)]'
                           : 'text-slate-400 hover:bg-white/5 hover:text-white hover:pl-4'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 lg:w-6 lg:h-6 flex-shrink-0 transition-colors ${active ? 'text-sky-400' : 'text-slate-500 group-hover:text-sky-400'}`} />
+                        <Icon className={`w-4 h-4 xl:w-[18px] xl:h-[18px] flex-shrink-0 transition-colors ${active ? 'text-sky-400' : 'text-slate-500 group-hover:text-sky-400'}`} />
                         <span>{item.label}</span>
                         {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.8)]" />}
                       </Link>
@@ -166,7 +166,7 @@ export function Sidebar() {
             {filteredConventionItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-3 mb-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Conventions Operations</span>
+                  <span className="text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">Conventions Operations</span>
                 </div>
                 <div className="space-y-1">
                   {filteredConventionItems.map((item) => {
@@ -177,12 +177,12 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm lg:text-lg font-medium transition-all duration-300 group ${active
+                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm xl:text-[15px] font-medium transition-all duration-300 group ${active
                           ? 'bg-gradient-to-r from-purple-500/20 to-fuchsia-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
                           : 'text-slate-400 hover:bg-white/5 hover:text-white hover:pl-4'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 lg:w-6 lg:h-6 flex-shrink-0 transition-colors ${active ? 'text-purple-400' : 'text-slate-500 group-hover:text-purple-400'}`} />
+                        <Icon className={`w-4 h-4 xl:w-[18px] xl:h-[18px] flex-shrink-0 transition-colors ${active ? 'text-purple-400' : 'text-slate-500 group-hover:text-purple-400'}`} />
                         <span>{item.label}</span>
                         {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_10px_rgba(192,132,252,0.8)]" />}
                       </Link>
@@ -196,7 +196,7 @@ export function Sidebar() {
             {filteredAnalyticsItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-3 mb-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Analytics</span>
+                  <span className="text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">Analytics</span>
                 </div>
                 <div className="space-y-1">
                   {filteredAnalyticsItems.map((item) => {
@@ -207,12 +207,12 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm lg:text-lg font-medium transition-all duration-300 group ${active
+                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm xl:text-[15px] font-medium transition-all duration-300 group ${active
                           ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_20px_rgba(52,211,153,0.15)]'
                           : 'text-slate-400 hover:bg-white/5 hover:text-white hover:pl-4'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 lg:w-6 lg:h-6 flex-shrink-0 transition-colors ${active ? 'text-emerald-400' : 'text-slate-500 group-hover:text-emerald-400'}`} />
+                        <Icon className={`w-4 h-4 xl:w-[18px] xl:h-[18px] flex-shrink-0 transition-colors ${active ? 'text-emerald-400' : 'text-slate-500 group-hover:text-emerald-400'}`} />
                         <span>{item.label}</span>
                         {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />}
                       </Link>
@@ -226,7 +226,7 @@ export function Sidebar() {
             {filteredFinanceItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-3 mb-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Finance</span>
+                  <span className="text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">Finance</span>
                 </div>
                 <div className="space-y-1">
                   {filteredFinanceItems.map((item) => {
@@ -237,12 +237,12 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm lg:text-lg font-medium transition-all duration-300 group ${active
+                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm xl:text-[15px] font-medium transition-all duration-300 group ${active
                           ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.15)]'
                           : 'text-slate-400 hover:bg-white/5 hover:text-white hover:pl-4'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 lg:w-6 lg:h-6 flex-shrink-0 transition-colors ${active ? 'text-amber-400' : 'text-slate-500 group-hover:text-amber-400'}`} />
+                        <Icon className={`w-4 h-4 xl:w-[18px] xl:h-[18px] flex-shrink-0 transition-colors ${active ? 'text-amber-400' : 'text-slate-500 group-hover:text-amber-400'}`} />
                         <span>{item.label}</span>
                         {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)]" />}
                       </Link>
@@ -256,7 +256,7 @@ export function Sidebar() {
             {filteredOperationsItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-3 mb-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Operations</span>
+                  <span className="text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">Operations</span>
                 </div>
                 <div className="space-y-1">
                   {filteredOperationsItems.map((item) => {
@@ -267,12 +267,12 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm lg:text-lg font-medium transition-all duration-300 group ${active
+                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm xl:text-[15px] font-medium transition-all duration-300 group ${active
                           ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_20px_rgba(96,165,250,0.15)]'
                           : 'text-slate-400 hover:bg-white/5 hover:text-white hover:pl-4'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 lg:w-6 lg:h-6 flex-shrink-0 transition-colors ${active ? 'text-blue-400' : 'text-slate-500 group-hover:text-blue-400'}`} />
+                        <Icon className={`w-4 h-4 xl:w-[18px] xl:h-[18px] flex-shrink-0 transition-colors ${active ? 'text-blue-400' : 'text-slate-500 group-hover:text-blue-400'}`} />
                         <span>{item.label}</span>
                         {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.8)]" />}
                       </Link>
@@ -286,7 +286,7 @@ export function Sidebar() {
             {filteredSettingsItems.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 px-3 mb-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Settings</span>
+                  <span className="text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">Settings</span>
                 </div>
                 <div className="space-y-1">
                   {filteredSettingsItems.map((item) => {
@@ -297,12 +297,12 @@ export function Sidebar() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsMobileOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm lg:text-lg font-medium transition-all duration-300 group ${active
+                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm xl:text-[15px] font-medium transition-all duration-300 group ${active
                           ? 'bg-gradient-to-r from-slate-500/20 to-gray-500/10 text-slate-200 border border-slate-500/30'
                           : 'text-slate-400 hover:bg-white/5 hover:text-white hover:pl-4'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 lg:w-6 lg:h-6 flex-shrink-0 transition-colors ${active ? 'text-slate-200' : 'text-slate-500 group-hover:text-slate-200'}`} />
+                        <Icon className={`w-4 h-4 xl:w-[18px] xl:h-[18px] flex-shrink-0 transition-colors ${active ? 'text-slate-200' : 'text-slate-500 group-hover:text-slate-200'}`} />
                         <span>{item.label}</span>
                         {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-slate-400 shadow-[0_0_10px_rgba(148,163,184,0.8)]" />}
                       </Link>
@@ -324,16 +324,16 @@ export function Sidebar() {
                 }`}
             >
               <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform">
-                <span className="text-sm lg:text-base font-bold text-white">{user.username.charAt(0).toUpperCase()}</span>
+                <span className="text-sm xl:text-base font-bold text-white">{user.username.charAt(0).toUpperCase()}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm lg:text-base font-semibold text-white truncate group-hover:text-sky-400 transition-colors">{user.username}</p>
+                <p className="text-sm xl:text-base font-semibold text-white truncate group-hover:text-sky-400 transition-colors">{user.username}</p>
                 <p className="text-[10px] text-slate-400 truncate">{user.role.replace('_', ' ')}</p>
               </div>
             </Link>
             <button
               onClick={handleLogout}
-              className="w-full bg-slate-900/50 hover:bg-red-950/30 hover:text-red-400 backdrop-blur-sm px-3 py-2.5 rounded-xl text-xs lg:text-base font-semibold text-slate-400 transition-all duration-200 border border-white/5 hover:border-red-500/20 flex items-center justify-center space-x-2 group"
+              className="w-full bg-slate-900/50 hover:bg-red-950/30 hover:text-red-400 backdrop-blur-sm px-3 py-2.5 rounded-xl text-xs xl:text-sm font-semibold text-slate-400 transition-all duration-200 border border-white/5 hover:border-red-500/20 flex items-center justify-center space-x-2 group"
             >
               <FaSignOutAlt className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
               <span>Sign Out</span>
