@@ -38,18 +38,23 @@ export async function GET(request: NextRequest) {
       where: { status: "MAINTENANCE" },
     });
 
-    // Booked/available TODAY: same logic as GET /api/rooms/available
-    // Check-out day = available: occupancy ends at start of check-out day
-    const overlappingToday = await prisma.booking.findMany({
+    // Booked/available TODAY: occupancy ends at check-out time.
+    // However, if the guest is still CHECKED_IN, they occupy the room even if past their scheduled check-out time.
+    const activeBookings = await prisma.booking.findMany({
       where: {
         status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN"] },
-        AND: [
-          { checkIn: { lt: tomorrow } },
-          { checkOut: { gt: today } },
-          excludeTestingGuestsFilter,
-        ],
+        ...excludeTestingGuestsFilter,
       },
-      select: { roomId: true, checkOut: true },
+      select: { roomId: true, checkIn: true, checkOut: true, status: true },
+    });
+
+    const overlappingToday = activeBookings.filter((b) => {
+      const bCheckIn = new Date(b.checkIn);
+      const bCheckOut = new Date(b.checkOut);
+      // For CHECKED_IN, effective checkout is at least 'now'
+      const effectiveCheckOut =
+        b.status === "CHECKED_IN" && bCheckOut < now ? now : bCheckOut;
+      return bCheckIn < tomorrow && effectiveCheckOut > today;
     });
 
     // Any booking overlapping today is considered "Booked" for the day,
