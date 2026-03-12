@@ -166,12 +166,6 @@ export function PaymentReceiptPDF({ bill, transaction }: PaymentReceiptPDFProps)
                             <PDFText style={styles.label} hyphenationCallback={() => []}>Transaction Date</PDFText>
                             <PDFText style={styles.value} hyphenationCallback={() => []}>{transaction.date || 'N/A'}</PDFText>
                         </View>
-                        {transaction.notes && (
-                            <View style={styles.row}>
-                                <PDFText style={styles.label} hyphenationCallback={() => []}>Notes</PDFText>
-                                <PDFText style={[styles.value, { maxWidth: '70%', textAlign: 'right' }]} hyphenationCallback={() => []}>{transaction.notes}</PDFText>
-                            </View>
-                        )}
                     </View>
                 </View>
 
