@@ -1,18 +1,9 @@
-import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
+import { Document as PDFDocument, Page, Text as PDFText, View, StyleSheet, Image as PDFImage, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
+import { registerFonts } from '@/lib/pdf-fonts'
 
-// Register Poppins font for better symbol support and premium look
-Font.register({
-  family: 'Poppins',
-  fonts: [
-    { src: '/fonts/Poppins-Regular.ttf', fontWeight: 400 },
-    { src: '/fonts/Poppins-Medium.ttf', fontWeight: 500 },
-    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 700 },
-    { src: '/fonts/Poppins-Bold.ttf', fontWeight: 'bold' },
-    { src: '/fonts/Poppins-Regular.ttf', fontWeight: 'normal' },
-  ]
-})
+registerFonts()
 
 // Tax Invoice design: dark red bar, dark grey header, red table headers, two-tone footer
 const DARK_RED = '#8B2500'
@@ -342,50 +333,50 @@ export function BillPDF({ bill }: BillPDFProps) {
     new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
   return (
-    <Document>
+    <PDFDocument>
       <Page size="A4" style={styles.page}>
         {/* Top contact bar - dark red */}
         <View style={styles.contactBar}>
-          <Text style={styles.contactBarText} hyphenationCallback={(e) => []}>📞 {HOTEL_INFO.phone}</Text>
-          <Text style={styles.contactBarText} hyphenationCallback={(e) => []}>{HOTEL_INFO.email}</Text>
-          <Text style={styles.contactBarText}>📍 {HOTEL_INFO.shortAddress}</Text>
+          <PDFText style={styles.contactBarText} hyphenationCallback={() => []}>📞 {HOTEL_INFO.phone}</PDFText>
+          <PDFText style={styles.contactBarText} hyphenationCallback={() => []}>{HOTEL_INFO.email}</PDFText>
+          <PDFText style={styles.contactBarText}>📍 {HOTEL_INFO.shortAddress}</PDFText>
         </View>
 
         {/* Header row: white block + Tax Invoice title */}
         <View style={styles.headerBlock}>
           <View style={styles.headerLeft}>
             <View style={styles.logoArea}>
-              <Image
+              <PDFImage
                 src="/images/hotel-logo.png"
                 style={styles.logoImage}
               />
             </View>
-            <Text style={styles.hotelNameHeader}>Hotel The Retinue</Text>
+            <PDFText style={styles.hotelNameHeader}>Hotel The Retinue</PDFText>
           </View>
           <View style={styles.headerRight}>
-            <Text style={styles.taxInvoiceTitle}>Tax Invoice</Text>
-            <Text style={styles.invoiceMeta} hyphenationCallback={(e) => []}>Invoice No.: {bill.billNumber}</Text>
-            <Text style={styles.invoiceMeta} hyphenationCallback={(e) => []}>Date: {formatDate(booking.checkOut)}</Text>
+            <PDFText style={styles.taxInvoiceTitle}>Tax Invoice</PDFText>
+            <PDFText style={styles.invoiceMeta} hyphenationCallback={() => []}>Invoice No.: {bill.billNumber}</PDFText>
+            <PDFText style={styles.invoiceMeta} hyphenationCallback={() => []}>Date: {formatDate(booking.checkOut)}</PDFText>
           </View>
         </View>
 
         {/* Bill To */}
         <View style={styles.billToSection}>
-          <Text style={styles.billToTitle}>Bill To</Text>
-          <Text style={styles.billToText}>{guest.name}</Text>
-          {guest.address && <Text style={styles.billToText}>{guest.address}</Text>}
+          <PDFText style={styles.billToTitle}>Bill To</PDFText>
+          <PDFText style={styles.billToText}>{guest.name}</PDFText>
+          {guest.address && <PDFText style={styles.billToText}>{guest.address}</PDFText>}
         </View>
 
         {/* Item details table - white header */}
         <View style={styles.itemTable}>
           <View style={styles.itemTableHeader}>
-            <Text style={[styles.itemTableHeaderText, styles.col1]}>S.No</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col2]}>Particulars</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col3]}>Check In</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col4]}>Check Out</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col5]}>Days</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col6]}>Tariff</Text>
-            <Text style={[styles.itemTableHeaderText, styles.col7]}>Amount</Text>
+            <PDFText style={[styles.itemTableHeaderText, styles.col1]}>S.No</PDFText>
+            <PDFText style={[styles.itemTableHeaderText, styles.col2]}>Particulars</PDFText>
+            <PDFText style={[styles.itemTableHeaderText, styles.col3]}>Check In</PDFText>
+            <PDFText style={[styles.itemTableHeaderText, styles.col4]}>Check Out</PDFText>
+            <PDFText style={[styles.itemTableHeaderText, styles.col5]}>Days</PDFText>
+            <PDFText style={[styles.itemTableHeaderText, styles.col6]}>Tariff</PDFText>
+            <PDFText style={[styles.itemTableHeaderText, styles.col7]}>Amount</PDFText>
           </View>
 
           {/* Render items (for consolidated bills) or single fallback */}
@@ -402,32 +393,32 @@ export function BillPDF({ bill }: BillPDFProps) {
 
             return (
               <View key={index} style={styles.itemTableRow}>
-                <Text style={[styles.col1, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{index + 1}</Text>
-                <Text style={[styles.col2, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{currentRoom.roomType} Room {currentRoom.roomNumber}</Text>
-                <Text style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(currentCheckIn)}</Text>
-                <Text style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{formatShortDate(currentCheckOut)}</Text>
-                <Text style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{currentDays}</Text>
-                <Text style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(currentTariff || 0).toFixed(2)}</Text>
-                <Text style={[styles.col7, { fontSize: 9 }]} hyphenationCallback={(e) => []}>{(currentSubtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                <PDFText style={[styles.col1, { fontSize: 9 }]} hyphenationCallback={() => []}>{index + 1}</PDFText>
+                <PDFText style={[styles.col2, { fontSize: 9 }]} hyphenationCallback={() => []}>{currentRoom.roomType} Room {currentRoom.roomNumber}</PDFText>
+                <PDFText style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={() => []}>{formatShortDate(currentCheckIn)}</PDFText>
+                <PDFText style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={() => []}>{formatShortDate(currentCheckOut)}</PDFText>
+                <PDFText style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={() => []}>{currentDays}</PDFText>
+                <PDFText style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={() => []}>{(currentTariff || 0).toFixed(2)}</PDFText>
+                <PDFText style={[styles.col7, { fontSize: 9 }]} hyphenationCallback={() => []}>{(currentSubtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
               </View>
             )
           })}
 
           <View style={styles.itemTableTotalRow}>
-            <Text style={[styles.itemTableTotalText, styles.col1]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col2]} hyphenationCallback={(e) => []}>Total</Text>
-            <Text style={[styles.itemTableTotalText, styles.col3]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col4]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col5]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={(e) => []}></Text>
-            <Text style={[styles.itemTableTotalText, styles.col7]} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            <PDFText style={[styles.itemTableTotalText, styles.col1]} hyphenationCallback={() => []}></PDFText>
+            <PDFText style={[styles.itemTableTotalText, styles.col2]} hyphenationCallback={() => []}>Total</PDFText>
+            <PDFText style={[styles.itemTableTotalText, styles.col3]} hyphenationCallback={() => []}></PDFText>
+            <PDFText style={[styles.itemTableTotalText, styles.col4]} hyphenationCallback={() => []}></PDFText>
+            <PDFText style={[styles.itemTableTotalText, styles.col5]} hyphenationCallback={() => []}></PDFText>
+            <PDFText style={[styles.itemTableTotalText, styles.col6]} hyphenationCallback={() => []}></PDFText>
+            <PDFText style={[styles.itemTableTotalText, styles.col7]} hyphenationCallback={() => []}>{`\u20B9`} {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
           </View>
         </View>
 
         {/* Two columns: Description (left) + Payment summary (right) */}
         <View style={styles.twoCol}>
           <View style={styles.leftCol}>
-            <Text style={styles.sectionTitle}>Description</Text>
+            <PDFText style={styles.sectionTitle}>Description</PDFText>
             {/* List rooms briefly in description */}
             {(bill.booking.items || [bill.booking]).map((item: any, i: number) => {
               const isFallback = !item.roomNumber
@@ -435,43 +426,43 @@ export function BillPDF({ bill }: BillPDFProps) {
               const rType = isFallback ? booking.room.roomType : item.roomType
               const sTotal = isFallback ? bill.subtotal : item.subtotal
               return (
-                <Text key={i} style={styles.descText} hyphenationCallback={(e) => []}>
+                <PDFText key={i} style={styles.descText} hyphenationCallback={() => []}>
                   • {rType} - {rNum}: {`\u20B9`}{(sTotal || 0).toLocaleString('en-IN')}/-
-                </Text>
+                </PDFText>
               )
             })}
-            <Text style={[styles.descText, { marginTop: 4 }]} hyphenationCallback={(e) => []}>
+            <PDFText style={[styles.descText, { marginTop: 4 }]} hyphenationCallback={() => []}>
               Consolidated Invoice for {bill.booking.items ? bill.booking.items.length : 1} Room(s).
-            </Text>
+            </PDFText>
           </View>
           <View style={styles.rightCol}>
             <View style={styles.paymentSummaryRow}>
-              <Text style={styles.paymentSummaryLabel}>Sub Total</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <PDFText style={styles.paymentSummaryLabel}>Sub Total</PDFText>
+              <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
             </View>
             {bill.tax > 0 && (
               <View style={styles.paymentSummaryRow}>
-                <Text style={styles.paymentSummaryLabel}>GST (18%)</Text>
-                <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                <PDFText style={styles.paymentSummaryLabel}>GST (18%)</PDFText>
+                <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(bill.tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
               </View>
             )}
             {bill.discount > 0 && (
               <View style={styles.paymentSummaryRow}>
-                <Text style={styles.paymentSummaryLabel}>Discount</Text>
-                <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>- {`\u20B9`} {(bill.discount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                <PDFText style={styles.paymentSummaryLabel}>Discount</PDFText>
+                <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>- {`\u20B9`} {(bill.discount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
               </View>
             )}
             <View style={styles.paymentSummaryRow}>
-              <Text style={styles.paymentSummaryLabel}>Total</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <PDFText style={styles.paymentSummaryLabel}>Total</PDFText>
+              <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
             </View>
             <View style={styles.paymentSummaryRow}>
-              <Text style={styles.paymentSummaryLabel}>Received</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(bill.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <PDFText style={styles.paymentSummaryLabel}>Received</PDFText>
+              <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(bill.paidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
             </View>
             <View style={styles.paymentSummaryRow}>
-              <Text style={styles.paymentSummaryLabel}>Balance</Text>
-              <Text style={styles.paymentSummaryValue} hyphenationCallback={(e) => []}>{`\u20B9`} {(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              <PDFText style={styles.paymentSummaryLabel}>Balance</PDFText>
+              <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
             </View>
           </View>
         </View>
@@ -481,25 +472,25 @@ export function BillPDF({ bill }: BillPDFProps) {
           <View style={{ width: '55%' }}>
             {/* Invoice amount in words */}
             <View style={{ marginBottom: 12 }}>
-              <Text style={styles.sectionTitle}>Invoice Amount In Words</Text>
-              <Text style={styles.amountWordsText}>{amountInWords(grandTotal || 0)}</Text>
+              <PDFText style={styles.sectionTitle}>Invoice Amount In Words</PDFText>
+              <PDFText style={styles.amountWordsText}>{amountInWords(grandTotal || 0)}</PDFText>
             </View>
 
             {/* Terms */}
             <View>
-              <Text style={styles.sectionTitle}>Terms And Conditions</Text>
-              <Text style={styles.termsText}>Thanks for doing business with us!</Text>
+              <PDFText style={styles.sectionTitle}>Terms And Conditions</PDFText>
+              <PDFText style={styles.termsText}>Thanks for doing business with us!</PDFText>
             </View>
           </View>
 
           {/* Authorized signatory */}
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.signatoryFor}>For Hotel The Retinue</Text>
-            <Image
+            <PDFText style={styles.signatoryFor}>For Hotel The Retinue</PDFText>
+            <PDFImage
               src="/images/signature.png"
               style={styles.signatureImage}
             />
-            <Text style={styles.signatoryLabel}>Authorized Signatory</Text>
+            <PDFText style={styles.signatoryLabel}>Authorized Signatory</PDFText>
           </View>
         </View>
 
@@ -509,6 +500,6 @@ export function BillPDF({ bill }: BillPDFProps) {
           <View style={styles.footerStripGrey} />
         </View>
       </Page>
-    </Document>
+    </PDFDocument>
   )
 }

@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { pdf } from '@react-pdf/renderer'
 import { BillPDF } from '@/components/BillPDF'
+import { PaymentReceiptPDF } from '@/components/PaymentReceiptPDF'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 
 export default function BillPage() {
@@ -216,23 +217,56 @@ export default function BillPage() {
     try {
       const blob = await pdf(<BillPDF bill={bill} />).toBlob()
       const url = URL.createObjectURL(blob)
-      // Open in new window for reliable printing across browsers
-      const printWindow = window.open(url)
+      const printWindow = window.open(url, '_blank')
       if (printWindow) {
         printWindow.onload = () => {
           printWindow.print()
         }
       } else {
-        // Fallback if popup blocked
-        const link = document.createElement('a')
-        link.href = url
-        link.target = '_blank'
-        link.click()
+        toast.error('Please allow popups to print')
       }
-      setTimeout(() => URL.revokeObjectURL(url), 60000) // Cleanup after 1 min
+      
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
     } catch (error) {
       console.error('Error printing PDF:', error)
       toast.error('Failed to prepare print document')
+    }
+  }
+  const handleDownloadReceipt = async (tx: TxRow) => {
+    try {
+      const blob = await pdf(<PaymentReceiptPDF bill={bill} transaction={tx} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Receipt-${bill.billNumber}-${tx.label.replace(/\s+/g, '-')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success('Receipt downloaded')
+    } catch (error) {
+      console.error('Error generating receipt:', error)
+      toast.error('Failed to generate receipt')
+    }
+  }
+
+  const handlePrintReceipt = async (tx: TxRow) => {
+    try {
+      const blob = await pdf(<PaymentReceiptPDF bill={bill} transaction={tx} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const printWindow = window.open(url, '_blank')
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print()
+        }
+      } else {
+        toast.error('Please allow popups to print')
+      }
+      
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    } catch (error) {
+      console.error('Error printing receipt:', error)
+      toast.error('Failed to prepare receipt for printing')
     }
   }
 
@@ -615,22 +649,45 @@ export default function BillPage() {
                         </td>
                         {booking.status !== 'CANCELLED' && (
                           <td className="py-3 px-4 text-right">
-                            {tx.type === 'PAYMENT' && tx.historyId ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditPaymentTx({ historyId: tx.historyId!, amount: tx.amount })
-                                  setEditPaymentAmount(String(tx.amount))
-                                  setEditPaymentReason('')
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-600 text-slate-200 text-xs font-medium hover:bg-sky-600 hover:text-white transition-colors"
-                              >
-                                <FaEdit className="w-3 h-3" />
-                                Edit
-                              </button>
-                            ) : (
-                              <span className="text-slate-600">–</span>
-                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {(tx.type === 'PAYMENT' || tx.type === 'ADVANCE' || tx.type === 'CORRECTION') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePrintReceipt(tx)}
+                                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                                    title="Print Receipt"
+                                  >
+                                    <FaPrint className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadReceipt(tx)}
+                                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                                    title="Download Receipt"
+                                  >
+                                    <FaDownload className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                              {tx.type === 'PAYMENT' && tx.historyId && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditPaymentTx({ historyId: tx.historyId!, amount: tx.amount })
+                                    setEditPaymentAmount(String(tx.amount))
+                                    setEditPaymentReason('')
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-600 text-slate-200 text-xs font-medium hover:bg-sky-600 hover:text-white transition-colors"
+                                >
+                                  <FaEdit className="w-3 h-3" />
+                                  Edit
+                                </button>
+                              )}
+                              {tx.type === 'EDIT' || tx.type === 'ADJUSTMENT' ? (
+                                <span className="text-slate-600">–</span>
+                              ) : null}
+                            </div>
                           </td>
                         )}
                       </tr>

@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   applicationName: 'Hotel The Retinue & Butchiraju Conventions',
   authors: [{ name: 'Hotel The Retinue & Butchiraju Conventions' }],
   keywords: ['hotel', 'management', 'booking', 'hospitality', 'rooms'],
-  themeColor: '#0284c7',
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -25,6 +24,10 @@ export const metadata: Metadata = {
     ],
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+}
+
+export const viewport = {
+  themeColor: '#0284c7',
 }
 
 export default function RootLayout({
