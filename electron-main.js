@@ -42,6 +42,23 @@ function createWindow() {
   // Point to the live hosted site
   const startUrl = 'https://hoteltheretinue.in';
 
+  // Restore Ctrl+R and Ctrl+Shift+R since default menu is removed
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.control && input.key.toLowerCase() === 'r') {
+      if (input.shift) {
+        mainWindow.webContents.reloadIgnoringCache();
+      } else {
+        mainWindow.webContents.reload();
+      }
+      event.preventDefault();
+    }
+    // Also allow Ctrl+Shift+I for DevTools if in dev mode
+    if (isDev && input.control && input.shift && input.key.toLowerCase() === 'i') {
+      mainWindow.webContents.openDevTools();
+      event.preventDefault();
+    }
+  });
+
   // Handle load failure
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.log('Failed to load:', errorDescription);
