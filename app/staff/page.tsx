@@ -624,140 +624,240 @@ export default function StaffPage() {
 
         {/* Staff Table */}
         <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl border border-white/5 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-800/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Business</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Phone</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Pay</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">This Month</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                {isAdmin && <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {staff?.map((member: any) => (
-                <tr key={member.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-white">
-                    {member.name}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-300">
-                    {member.role}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${member.staffType === 'DAILY'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      }`}>
-                      {member.staffType === 'DAILY' ? 'Daily Wage' : 'Salary'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full border ${member.businessUnit === 'CONVENTION'
-                        ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
-                        : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                      }`}>
-                      {member.businessUnit === 'CONVENTION' ? 'Convention' : 'Hotel'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-400">
-                    {member.phone}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-300">
-                    {member.staffType === 'DAILY' ? (
-                      member.dailyWage ? `₹${member.dailyWage.toLocaleString()}/day` : 'N/A'
-                    ) : (
-                      member.salary ? `₹${member.salary.toLocaleString()}/mo` : 'N/A'
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {isStaffPaidThisMonth(member.id) ? (
-                      <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 w-fit">
-                        <FaMoneyBillWave className="w-3 h-3" />
-                        Paid
-                      </span>
-                    ) : member.status === 'ACTIVE' ? (
-                      <span className="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                        Pending
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-500">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${member.status === 'ACTIVE'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-slate-500/20 text-slate-400'
-                      }`}>
-                      {member.status}
-                    </span>
-                  </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {member.status === 'ACTIVE' && !isStaffPaidThisMonth(member.id) && (
-                          <button
-                            onClick={() => openPaySalary(member)}
-                            className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                            title="Pay Salary"
-                          >
-                            <FaRupeeSign className="w-4 h-4" />
-                          </button>
-                        )}
-                        {member.status === 'ACTIVE' && isStaffPaidThisMonth(member.id) && (
-                          <span className="p-2 text-emerald-500" title="Already paid this month">
-                            <FaMoneyBillWave className="w-4 h-4" />
-                          </span>
-                        )}
-                        <button
-                          onClick={() => handleEdit(member)}
-                          className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <FaEdit className="w-4 h-4" />
-                        </button>
-                        {isSuperAdmin && (
-                          <button
-                            onClick={() => handleDelete(member.id)}
-                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <FaTrash className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-              {(!staff || staff.length === 0) && (
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-800/50">
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} className="text-center py-12 text-slate-400">
-                    <div className="flex flex-col items-center">
-                      <FaUsers className="text-4xl mb-2 text-slate-500" />
-                      <p className="text-lg font-medium text-slate-300">No staff members found</p>
-                      <p className="text-sm text-slate-500 mb-4">Click "Add Staff" to add your first staff member</p>
-                      {isAdmin && (
-                        <button
-                          onClick={() => {
-                            setEditingStaff(null)
-                            resetForm()
-                            setShowForm(true)
-                          }}
-                          className="px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500"
-                        >
-                          Add Staff Member
-                        </button>
-                      )}
-                    </div>
-                  </td>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Business</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Phone</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Pay</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">This Month</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                  {isAdmin && <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>}
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {staff?.map((member: any) => (
+                  <tr key={member.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 text-sm font-medium text-white">
+                      {member.name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-300">
+                      {member.role}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-1 rounded-full ${member.staffType === 'DAILY'
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}>
+                        {member.staffType === 'DAILY' ? 'Daily Wage' : 'Salary'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-1 rounded-full border ${member.businessUnit === 'CONVENTION'
+                          ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+                          : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                        }`}>
+                        {member.businessUnit === 'CONVENTION' ? 'Convention' : 'Hotel'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {member.phone}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-300">
+                      {member.staffType === 'DAILY' ? (
+                        member.dailyWage ? `₹${member.dailyWage.toLocaleString()}/day` : 'N/A'
+                      ) : (
+                        member.salary ? `₹${member.salary.toLocaleString()}/mo` : 'N/A'
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isStaffPaidThisMonth(member.id) ? (
+                        <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 w-fit">
+                          <FaMoneyBillWave className="w-3 h-3" />
+                          Paid
+                        </span>
+                      ) : member.status === 'ACTIVE' ? (
+                        <span className="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          Pending
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-500">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-1 rounded-full ${member.status === 'ACTIVE'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-slate-500/20 text-slate-400'
+                        }`}>
+                        {member.status}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {member.status === 'ACTIVE' && !isStaffPaidThisMonth(member.id) && (
+                            <button
+                              onClick={() => openPaySalary(member)}
+                              className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                              title="Pay Salary"
+                            >
+                              <FaRupeeSign className="w-4 h-4" />
+                            </button>
+                          )}
+                          {member.status === 'ACTIVE' && isStaffPaidThisMonth(member.id) && (
+                            <span className="p-2 text-emerald-500" title="Already paid this month">
+                              <FaMoneyBillWave className="w-4 h-4" />
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleEdit(member)}
+                            className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </button>
+                          {isSuperAdmin && (
+                            <button
+                              onClick={() => handleDelete(member.id)}
+                              className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <FaTrash className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-white/5">
+            {staff?.map((member: any) => (
+              <div key={member.id} className="p-4 bg-slate-800/20">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-white">{member.name}</h3>
+                    <p className="text-xs text-slate-400">{member.role}</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${member.status === 'ACTIVE'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-slate-500/20 text-slate-400'
+                    }`}>
+                    {member.status}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${member.businessUnit === 'CONVENTION'
+                      ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+                      : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                    }`}>
+                    {member.businessUnit === 'CONVENTION' ? 'Convention' : 'Hotel'}
+                  </span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${member.staffType === 'DAILY'
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    }`}>
+                    {member.staffType === 'DAILY' ? 'Daily Wage' : 'Salary Based'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-slate-900/40 p-2 rounded-lg border border-white/5">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Contact</p>
+                    <p className="text-xs text-slate-200 font-medium">{member.phone}</p>
+                  </div>
+                  <div className="bg-slate-900/40 p-2 rounded-lg border border-white/5">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Payment</p>
+                    <p className="text-xs text-slate-200 font-bold">
+                      {member.staffType === 'DAILY' ? (
+                        member.dailyWage ? `₹${member.dailyWage.toLocaleString()}/d` : 'N/A'
+                      ) : (
+                        member.salary ? `₹${member.salary.toLocaleString()}/m` : 'N/A'
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-y border-white/5 mb-4">
+                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Salary Status</span>
+                  {isStaffPaidThisMonth(member.id) ? (
+                    <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 font-bold">
+                      <FaMoneyBillWave className="w-3 h-3" />
+                      PAID FOR {MONTHS.find(m => m.value === (currentDate.getMonth() + 1).toString())?.label.toUpperCase()}
+                    </span>
+                  ) : member.status === 'ACTIVE' ? (
+                    <span className="text-[10px] px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                      PAYMENT PENDING
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">Inactive</span>
+                  )}
+                </div>
+
+                {isAdmin && (
+                  <div className="flex gap-2">
+                    {member.status === 'ACTIVE' && !isStaffPaidThisMonth(member.id) && (
+                      <button
+                        onClick={() => openPaySalary(member)}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/20"
+                      >
+                        <FaRupeeSign className="w-3 h-3" />
+                        <span className="text-xs font-bold uppercase tracking-tight">Pay Salary</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleEdit(member)}
+                      className="p-2 bg-slate-800 text-slate-300 hover:text-sky-400 rounded-lg border border-white/5 transition-colors"
+                      title="Edit"
+                    >
+                      <FaEdit className="w-4 h-4" />
+                    </button>
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => handleDelete(member.id)}
+                        className="p-2 bg-slate-800 text-slate-300 hover:text-red-400 rounded-lg border border-white/5 transition-colors"
+                        title="Delete"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {(!staff || staff.length === 0) && (
+            <div className="text-center py-12 text-slate-400 bg-slate-900/40">
+              <div className="flex flex-col items-center">
+                <FaUsers className="text-4xl mb-2 text-slate-500" />
+                <p className="text-lg font-medium text-slate-300">No staff members found</p>
+                <p className="text-sm text-slate-500 mb-4">Click "Add Staff" to add your first staff member</p>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setEditingStaff(null)
+                      resetForm()
+                      setShowForm(true)
+                    }}
+                    className="px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500"
+                  >
+                    Add Staff Member
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

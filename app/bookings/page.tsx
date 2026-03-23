@@ -451,101 +451,193 @@ export default function BookingsPage() {
 
             {/* List View – compact rows */}
             {viewMode === 'list' && filteredBookings.length > 0 && (
-              <div className="rounded-xl border border-white/5 bg-slate-900/40 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[800px]">
-                    <thead>
-                      <tr className="bg-slate-800/80 border-b border-white/5">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Guest</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Room</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-in</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-out</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredBookings.map((booking: any) => {
-                        const checkInToday = isCheckInToday(booking)
-                        const checkOutToday = isCheckOutToday(booking)
-                        const needsAction = (booking.status === 'CONFIRMED' && checkInToday) || (booking.status === 'CHECKED_IN' && checkOutToday)
-                        return (
-                          <tr
-                            key={booking.id}
-                            onClick={() => router.push(`/bookings/${booking.id}`)}
-                            className={`border-b border-white/5 hover:bg-slate-700/20 cursor-pointer transition-colors ${needsAction ? 'bg-sky-500/5 border-l-2 border-l-sky-500' : ''}`}
-                          >
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                {checkInToday && booking.status === 'CONFIRMED' && (
-                                  <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-emerald-500/25 text-emerald-400" title="Check-in today">In</span>
-                                )}
-                                {checkOutToday && booking.status === 'CHECKED_IN' && (
-                                  <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-500/25 text-amber-400" title="Check-out today">Out</span>
-                                )}
-                                <div>
-                                  <p className="font-medium text-white">{booking.guest?.name}</p>
-                                  <p className="text-xs text-slate-500">{booking.guest?.phone}</p>
+              <>
+                {/* Desktop/Tablet Table View */}
+                <div className="hidden md:block rounded-xl border border-white/5 bg-slate-900/40 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[800px]">
+                      <thead>
+                        <tr className="bg-slate-800/80 border-b border-white/5">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Guest</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Room</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-in</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Check-out</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredBookings.map((booking: any) => {
+                          const checkInToday = isCheckInToday(booking)
+                          const checkOutToday = isCheckOutToday(booking)
+                          const needsAction = (booking.status === 'CONFIRMED' && checkInToday) || (booking.status === 'CHECKED_IN' && checkOutToday)
+                          return (
+                            <tr
+                              key={booking.id}
+                              onClick={() => router.push(`/bookings/${booking.id}`)}
+                              className={`border-b border-white/5 hover:bg-slate-700/20 cursor-pointer transition-colors ${needsAction ? 'bg-sky-500/5 border-l-2 border-l-sky-500' : ''}`}
+                            >
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  {checkInToday && booking.status === 'CONFIRMED' && (
+                                    <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-emerald-500/25 text-emerald-400" title="Check-in today">In</span>
+                                  )}
+                                  {checkOutToday && booking.status === 'CHECKED_IN' && (
+                                    <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-500/25 text-amber-400" title="Check-out today">Out</span>
+                                  )}
+                                  <div>
+                                    <p className="font-medium text-white">{booking.guest?.name}</p>
+                                    <p className="text-xs text-slate-500">{booking.guest?.phone}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-slate-300">
-                              {booking.room?.roomNumber} • {booking.room?.roomType}
-                            </td>
-                            <td className="px-4 py-3 text-slate-400 text-sm">
-                              {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                            </td>
-                            <td className="px-4 py-3 text-slate-400 text-sm">
-                              {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-emerald-400">
-                              ₹{booking.totalAmount?.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
-                                booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
-                                  booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
-                                    booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
-                                      'bg-amber-500/20 text-amber-400'
-                                }`}>
-                                {booking.status.replace('_', ' ')}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex flex-wrap gap-1.5 justify-end">
-                                <Link
-                                  href={`/bookings/${booking.id}?edit=1`}
-                                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
-                                  title="Edit Booking"
-                                >
-                                  <FaEdit className="w-3.5 h-3.5" />
-                                </Link>
-                                <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
-                                {booking.status === 'CONFIRMED' && (
-                                  <>
-                                    <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')} className="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 rounded text-white">Check In</button>
-                                    <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
-                                  </>
-                                )}
-                                {booking.status === 'CHECKED_IN' && (
-                                  <>
-                                    <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="px-2 py-1 text-xs bg-sky-600 hover:bg-sky-500 rounded text-white">Check Out</button>
-                                    <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
-                                  </>
-                                )}
-                                {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
-                                  <button onClick={() => setCancelModal({ show: true, bookingId: booking.id })} className="px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 rounded" title="Cancel">Cancel</button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                              </td>
+                              <td className="px-4 py-3 text-slate-300">
+                                {booking.room?.roomNumber} • {booking.room?.roomType}
+                              </td>
+                              <td className="px-4 py-3 text-slate-400 text-sm">
+                                {new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="px-4 py-3 text-slate-400 text-sm">
+                                {new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} {new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold text-emerald-400">
+                                ₹{booking.totalAmount?.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
+                                  booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
+                                    booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
+                                      booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                                        'bg-amber-500/20 text-amber-400'
+                                  }`}>
+                                  {booking.status.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-wrap gap-1.5 justify-end">
+                                  <Link
+                                    href={`/bookings/${booking.id}?edit=1`}
+                                    className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                                    title="Edit Booking"
+                                  >
+                                    <FaEdit className="w-3.5 h-3.5" />
+                                  </Link>
+                                  <a href={`/bookings/${booking.id}`} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded text-slate-300">View</a>
+                                  {booking.status === 'CONFIRMED' && (
+                                    <>
+                                      <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')} className="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 rounded text-white">Check In</button>
+                                      <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
+                                    </>
+                                  )}
+                                  {booking.status === 'CHECKED_IN' && (
+                                    <>
+                                      <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="px-2 py-1 text-xs bg-sky-600 hover:bg-sky-500 rounded text-white">Check Out</button>
+                                      <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white">Extend</button>
+                                    </>
+                                  )}
+                                  {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                                    <button onClick={() => setCancelModal({ show: true, bookingId: booking.id })} className="px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 rounded" title="Cancel">Cancel</button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {filteredBookings.map((booking: any) => {
+                    const checkInToday = isCheckInToday(booking)
+                    const checkOutToday = isCheckOutToday(booking)
+                    const needsAction = (booking.status === 'CONFIRMED' && checkInToday) || (booking.status === 'CHECKED_IN' && checkOutToday)
+                    return (
+                      <div
+                        key={booking.id}
+                        onClick={() => router.push(`/bookings/${booking.id}`)}
+                        className={`card p-4 transition-all active:scale-[0.98] ${needsAction ? 'border-l-4 border-l-sky-500 bg-sky-500/5 shadow-[0_5px_15px_rgba(14,165,233,0.1)]' : ''}`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                            {checkInToday && booking.status === 'CONFIRMED' && (
+                              <span className="shrink-0 px-1.5 py-0.5 text-[8px] font-bold uppercase rounded bg-emerald-500/25 text-emerald-400">In</span>
+                            )}
+                            {checkOutToday && booking.status === 'CHECKED_IN' && (
+                              <span className="shrink-0 px-1.5 py-0.5 text-[8px] font-bold uppercase rounded bg-amber-500/25 text-amber-400">Out</span>
+                            )}
+                            <div>
+                              <p className="font-bold text-white text-base leading-tight">{booking.guest?.name}</p>
+                              <p className="text-xs text-slate-500">{booking.guest?.phone}</p>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 text-[9px] font-bold uppercase rounded-lg ${booking.status === 'CONFIRMED' ? 'bg-emerald-500/20 text-emerald-400' :
+                            booking.status === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-400' :
+                              booking.status === 'CHECKED_OUT' ? 'bg-slate-500/20 text-slate-400' :
+                                booking.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                                  'bg-amber-500/20 text-amber-400'
+                            }`}>
+                            {booking.status.replace('_', ' ')}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-4 text-xs bg-slate-800/40 p-3 rounded-xl border border-white/5">
+                          <div className="space-y-0.5">
+                            <p className="text-slate-500 uppercase tracking-wider font-semibold text-[8px]">Room</p>
+                            <p className="text-slate-200 font-medium">{booking.room?.roomNumber} • {booking.room?.roomType}</p>
+                          </div>
+                          <div className="space-y-0.5 text-right">
+                            <p className="text-slate-500 uppercase tracking-wider font-semibold text-[8px]">Amount</p>
+                            <p className="text-emerald-400 font-bold">₹{booking.totalAmount?.toLocaleString()}</p>
+                          </div>
+                          <div className="space-y-0.5">
+                            <p className="text-slate-500 uppercase tracking-wider font-semibold text-[8px]">Check-in</p>
+                            <p className="text-slate-300 font-medium">{new Date(booking.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
+                            <p className="text-[10px] text-slate-500">{new Date(booking.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                          <div className="space-y-0.5 text-right">
+                            <p className="text-slate-500 uppercase tracking-wider font-semibold text-[8px]">Check-out</p>
+                            <p className="text-slate-300 font-medium">{new Date(booking.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
+                            <p className="text-[10px] text-slate-500">{new Date(booking.checkOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex-1 flex gap-2">
+                            <a href={`/bookings/${booking.id}`} className="flex-1 py-1.5 text-center text-[11px] font-medium bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 border border-white/5">View</a>
+                            <Link
+                              href={`/bookings/${booking.id}?edit=1`}
+                              className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-sky-400 border border-white/5"
+                            >
+                              <FaEdit className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                          <div className="w-full flex gap-2">
+                            {booking.status === 'CONFIRMED' && (
+                              <>
+                                <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_IN', 'Check In')} className="flex-1 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white shadow-lg shadow-emerald-600/20">Check In</button>
+                                <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-3 py-2 text-xs bg-amber-600 hover:bg-amber-500 rounded-lg text-white">Extend</button>
+                              </>
+                            )}
+                            {booking.status === 'CHECKED_IN' && (
+                              <>
+                                <button onClick={() => handleStatusUpdate(booking.id, 'CHECKED_OUT', 'Check Out')} className="flex-1 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-500 rounded-lg text-white shadow-lg shadow-sky-600/20">Check Out</button>
+                                <button onClick={() => { setExtendModal({ show: true, booking }); setNewCheckoutDate(new Date(booking.checkOut).toISOString().slice(0, 16)) }} className="px-3 py-2 text-xs bg-amber-600 hover:bg-amber-500 rounded-lg text-white">Extend</button>
+                              </>
+                            )}
+                            {booking.status !== 'CHECKED_OUT' && booking.status !== 'CANCELLED' && (
+                              <button onClick={() => setCancelModal({ show: true, bookingId: booking.id })} className="px-3 py-2 text-xs font-medium text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg border border-red-500/20">Cancel</button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
 
             {/* Timeline View – rooms × next 7 days (occupancy at a glance) */}

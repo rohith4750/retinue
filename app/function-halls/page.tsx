@@ -181,10 +181,11 @@ export default function FunctionHallsPage() {
 
         {/* Halls List */}
         {halls && halls.length > 0 ? (
-          <div className="flex flex-col">
-            {halls.map((hall: any, index: number) => (
+          <div className="space-y-4">
+            {halls.map((hall: any) => (
               <div key={hall.id}>
-                <div className="flex items-center justify-between py-4">
+                {/* Desktop View (Pill/Chip Style) */}
+                <div className="hidden md:flex items-center justify-between py-2">
                   <div
                     className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${
                       hall.status === 'AVAILABLE'
@@ -200,7 +201,6 @@ export default function FunctionHallsPage() {
                       }
                     }}
                   >
-                    {/* Hall Name */}
                     <FaBuilding className={`w-4 h-4 mr-2 ${
                       hall.status === 'AVAILABLE' ? 'text-emerald-400' :
                       hall.status === 'BOOKED' ? 'text-red-400' :
@@ -212,42 +212,35 @@ export default function FunctionHallsPage() {
                       'text-yellow-300'
                     }`}>{hall.name}</span>
                     
-                    {/* Divider */}
                     <span className={`w-px h-5 mx-3 ${
                       hall.status === 'AVAILABLE' ? 'bg-emerald-400' :
                       hall.status === 'BOOKED' ? 'bg-red-400' :
                       'bg-yellow-400'
                     }`}></span>
                     
-                    {/* Capacity */}
                     <FaUsers className="w-3 h-3 mr-1 text-slate-400" />
                     <span className="text-xs text-slate-300">{hall.capacity} guests</span>
                     
-                    {/* Divider */}
                     <span className={`w-px h-5 mx-3 ${
                       hall.status === 'AVAILABLE' ? 'bg-emerald-400' :
                       hall.status === 'BOOKED' ? 'bg-red-400' :
                       'bg-yellow-400'
                     }`}></span>
                     
-                    {/* Price */}
                     <span className="text-sm font-semibold text-white">₹{hall.pricePerDay.toLocaleString()}/day</span>
                     
-                    {/* Divider */}
                     <span className={`w-px h-5 mx-3 ${
                       hall.status === 'AVAILABLE' ? 'bg-emerald-400' :
                       hall.status === 'BOOKED' ? 'bg-red-400' :
                       'bg-yellow-400'
                     }`}></span>
                     
-                    {/* Status */}
                     <span className={`text-[10px] font-semibold uppercase ${
                       hall.status === 'AVAILABLE' ? 'text-emerald-400' :
                       hall.status === 'BOOKED' ? 'text-red-400' :
                       'text-yellow-400'
                     }`}>{hall.status}</span>
 
-                    {/* Delete Button */}
                     {canManageHalls && (
                       <>
                         <span className={`w-px h-5 mx-3 ${
@@ -269,7 +262,6 @@ export default function FunctionHallsPage() {
                     )}
                   </div>
 
-                  {/* Book Now button */}
                   {hall.status === 'AVAILABLE' && (
                     <Link
                       href={`/function-halls/bookings/new?hallId=${hall.id}${selectedDate ? `&date=${selectedDate}` : ''}`}
@@ -279,12 +271,83 @@ export default function FunctionHallsPage() {
                     </Link>
                   )}
                 </div>
-                {index < halls.length - 1 && (
-                  <div className="border-b border-slate-700/50"></div>
-                )}
+
+                {/* Mobile View (Card Style) */}
+                <div 
+                  className={`md:hidden p-4 rounded-2xl border transition-all ${
+                    hall.status === 'AVAILABLE'
+                      ? 'bg-emerald-500/5 border-emerald-500/20'
+                      : hall.status === 'BOOKED'
+                      ? 'bg-red-500/5 border-red-500/20'
+                      : 'bg-yellow-500/5 border-yellow-500/20'
+                  }`}
+                  onClick={() => {
+                    if (canManageHalls) {
+                      setEditingHall(hall)
+                      setShowModal(true)
+                    }
+                  }}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      <FaBuilding className={
+                        hall.status === 'AVAILABLE' ? 'text-emerald-400' :
+                        hall.status === 'BOOKED' ? 'text-red-400' :
+                        'text-yellow-400'
+                      } />
+                      <h3 className="font-bold text-white">{hall.name}</h3>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase border ${
+                      hall.status === 'AVAILABLE' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
+                      hall.status === 'BOOKED' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
+                      'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                    }`}>
+                      {hall.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-slate-800/40 p-2 rounded-lg border border-white/5">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Capacity</p>
+                      <p className="text-sm font-semibold text-slate-200 flex items-center gap-1">
+                        <FaUsers className="text-sky-400" /> {hall.capacity} Guests
+                      </p>
+                    </div>
+                    <div className="bg-slate-800/40 p-2 rounded-lg border border-white/5">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Price</p>
+                      <p className="text-sm font-semibold text-emerald-400">
+                        ₹{hall.pricePerDay.toLocaleString()}/day
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {hall.status === 'AVAILABLE' && (
+                      <Link
+                        href={`/function-halls/bookings/new?hallId=${hall.id}${selectedDate ? `&date=${selectedDate}` : ''}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 py-2 bg-sky-600 text-white text-xs font-bold rounded-lg text-center"
+                      >
+                        Book Now
+                      </Link>
+                    )}
+                    {canManageHalls && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteModal({ show: true, hallId: hall.id })
+                        }}
+                        className="p-2 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
+                      >
+                        <FaTrash className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
+
         ) : (
           <div className="card text-center py-12">
             <div className="flex flex-col items-center">

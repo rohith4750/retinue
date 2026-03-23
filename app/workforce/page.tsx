@@ -606,7 +606,8 @@ export default function WorkforcePage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5">
@@ -669,6 +670,63 @@ export default function WorkforcePage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {paymentsList.map((payment: any) => (
+                <div key={payment.id} className="p-4 bg-slate-800/40 border border-white/5 rounded-xl">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-slate-100 font-bold">{payment.staff?.name || 'Unknown'}</p>
+                      <p className="text-xs text-slate-400">{payment.staff?.role}</p>
+                    </div>
+                    <span className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded">
+                      {payment.paymentMethod || 'Cash'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-2 text-sm mb-3">
+                    <div className="text-slate-400">Date:</div>
+                    <div className="text-slate-200 text-right">{new Date(payment.paymentDate).toLocaleDateString()}</div>
+                    
+                    <div className="text-slate-400">Base Amount:</div>
+                    <div className="text-slate-200 text-right">{formatCurrency(payment.amount)}</div>
+                    
+                    {payment.bonus > 0 && (
+                      <>
+                        <div className="text-slate-400">Bonus:</div>
+                        <div className="text-emerald-400 text-right">+{formatCurrency(payment.bonus)}</div>
+                      </>
+                    )}
+                    
+                    {payment.deductions > 0 && (
+                      <>
+                        <div className="text-slate-400">Deductions:</div>
+                        <div className="text-red-400 text-right">-{formatCurrency(payment.deductions)}</div>
+                      </>
+                    )}
+                    
+                    <div className="text-slate-100 font-bold">Net Amount:</div>
+                    <div className="text-emerald-400 font-bold text-right">{formatCurrency(payment.netAmount)}</div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-3 border-t border-white/5">
+                    <button
+                      onClick={() => openEditPayment(payment)}
+                      className="flex-1 py-2 bg-sky-500/10 text-sky-400 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      <FaEdit /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeletePayment(payment.id)}
+                      className="flex-1 py-2 bg-red-500/10 text-red-400 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      <FaTrash /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

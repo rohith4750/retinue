@@ -103,8 +103,9 @@ export default function InventoryPage() {
           </div>
         )}
 
-        <div className="table-container">
-          <table className="table">
+        <div className="table-container shadow-xl">
+          {/* Desktop Table */}
+          <table className="table hidden md:table">
             <thead>
               <tr>
                 <th>Item Name</th>
@@ -170,19 +171,74 @@ export default function InventoryPage() {
                   </tr>
                 )
               })}
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan={isSuperAdmin ? 7 : 6} className="text-center py-12 text-slate-400">
-                    <div className="flex flex-col items-center">
-                      <FaBox className="text-4xl mb-2 text-slate-500" />
-                      <p className="text-lg font-medium text-slate-300">No items found</p>
-                      <p className="text-sm text-slate-500">Click &quot;Add Item&quot; to add your first stock or asset</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-white/5">
+            {items.map((item: any) => {
+              const isLowStock = item.quantity <= item.minStock
+              return (
+                <div key={item.id} className={`p-4 ${isLowStock ? 'bg-yellow-500/5' : ''}`}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-bold text-slate-100 text-base">{item.itemName}</h3>
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{item.category}</p>
+                    </div>
+                    {isLowStock ? (
+                      <span className="badge badge-warning scale-90 origin-right">Low Stock</span>
+                    ) : (
+                      <span className="badge badge-success scale-90 origin-right">In Stock</span>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="bg-slate-800/40 p-2 rounded-lg border border-white/5 text-center">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Qty</p>
+                      <p className="text-sm font-bold text-slate-200">{item.quantity}</p>
+                    </div>
+                    <div className="bg-slate-800/40 p-2 rounded-lg border border-white/5 text-center">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Unit</p>
+                      <p className="text-sm font-bold text-slate-200 truncate">{item.unit}</p>
+                    </div>
+                    <div className="bg-slate-800/40 p-2 rounded-lg border border-white/5 text-center">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Min</p>
+                      <p className="text-sm font-bold text-slate-200">{item.minStock}</p>
+                    </div>
+                  </div>
+
+                  {isSuperAdmin && (
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => handleEdit(item)}
+                        className="flex-1 py-2 flex items-center justify-center gap-2 bg-slate-800 hover:bg-sky-500/10 text-slate-300 hover:text-sky-400 rounded-lg transition-colors border border-white/5"
+                      >
+                        <FaEdit className="w-3.5 h-3.5" />
+                        <span className="text-xs font-semibold">Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="flex-1 py-2 flex items-center justify-center gap-2 bg-slate-800 hover:bg-red-500/10 text-slate-300 hover:text-red-400 rounded-lg transition-colors border border-white/5"
+                      >
+                        <FaTrash className="w-3.5 h-3.5" />
+                        <span className="text-xs font-semibold">Delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {items.length === 0 && (
+            <div className="text-center py-12 text-slate-400 bg-slate-900/40">
+              <div className="flex flex-col items-center">
+                <FaBox className="text-4xl mb-2 text-slate-500" />
+                <p className="text-lg font-medium text-slate-300">No items found</p>
+                <p className="text-sm text-slate-500 px-4">Click &quot;Add Item&quot; to add your first stock or asset</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {showModal && (

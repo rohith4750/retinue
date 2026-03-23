@@ -593,91 +593,165 @@ export default function RoomsPage() {
                   <p className="text-xs text-slate-500 mt-0.5">
                     {categoryRooms.length} room{categoryRooms.length !== 1 ? 's' : ''}
                   </p>
+                             {/* Room list (Responsive: Cards on mobile, Chips on desktop) */}
+                <div className="p-4">
+                  {/* Desktop Chips */}
+                  <div className="hidden sm:flex flex-wrap gap-3">
+                    {categoryRooms.map((room: any) => (
+                      <div
+                        key={room.id}
+                        className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${room.status === 'AVAILABLE'
+                            ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30'
+                            : room.status === 'BOOKED'
+                              ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30'
+                              : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
+                          }`}
+                        onClick={() => {
+                          if (canManageRooms) {
+                            setEditingRoom(room)
+                            setShowModal(true)
+                          }
+                        }}
+                      >
+                        <span className={`text-sm font-bold ${room.status === 'AVAILABLE' ? 'text-emerald-300' :
+                            room.status === 'BOOKED' ? 'text-red-300' :
+                              'text-yellow-300'
+                          }`}>{room.roomNumber}</span>
+                        <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                            room.status === 'BOOKED' ? 'bg-red-400' :
+                              'bg-yellow-400'
+                          }`} />
+                        <span className="text-sm font-semibold text-white">₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</span>
+                        <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                            room.status === 'BOOKED' ? 'bg-red-400' :
+                              'bg-yellow-400'
+                          }`} />
+                        <span className={`text-[10px] font-semibold uppercase ${room.status === 'AVAILABLE' ? 'text-emerald-400' :
+                            room.status === 'BOOKED' ? 'text-red-400' :
+                              'text-yellow-400'
+                          }`}>{room.status}</span>
+                        {room.status === 'MAINTENANCE' && room.maintenanceReason && (
+                          <>
+                            <span className="w-px h-5 mx-3 bg-yellow-400" />
+                            <span className="text-[10px] text-amber-200/90 max-w-[120px] truncate" title={room.maintenanceReason}>
+                              {room.maintenanceReason}
+                            </span>
+                          </>
+                        )}
+                        {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
+                          <>
+                            {room.checkInAt && (
+                              <>
+                                <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
+                                <span className="text-[10px] text-slate-400" title="Check-in time">
+                                  In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                </span>
+                              </>
+                            )}
+                            {room.checkOutAt && (
+                              <>
+                                <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
+                                <span className="text-[10px] text-slate-400" title="Check-out time">
+                                  Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                </span>
+                              </>
+                            )}
+                          </>
+                        )}
+                        {canManageRooms && (
+                          <>
+                            <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
+                                room.status === 'BOOKED' ? 'bg-red-400' :
+                                  'bg-yellow-400'
+                              }`} />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDelete(room.id)
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
+                              title="Delete"
+                            >
+                              <FaTrash className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="sm:hidden grid grid-cols-1 gap-4">
+                    {categoryRooms.map((room: any) => (
+                      <div
+                        key={room.id}
+                        className={`rounded-xl border-2 p-4 cursor-pointer transition-all active:scale-[0.98] ${room.status === 'AVAILABLE'
+                            ? 'bg-emerald-500/5 border-emerald-500/50 hover:bg-emerald-500/10'
+                            : room.status === 'BOOKED'
+                              ? 'bg-red-500/5 border-red-500/50 hover:bg-red-500/10'
+                              : 'bg-yellow-500/5 border-yellow-500/50 hover:bg-yellow-500/10'
+                          }`}
+                        onClick={() => {
+                          if (canManageRooms) {
+                            setEditingRoom(room)
+                            setShowModal(true)
+                          }
+                        }}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="text-lg font-bold text-white">Room {room.roomNumber}</p>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${room.status === 'AVAILABLE' ? 'text-emerald-400' :
+                                room.status === 'BOOKED' ? 'text-red-400' :
+                                  'text-yellow-400'
+                              }`}>{room.status}</span>
+                          </div>
+                          <p className="text-xl font-bold text-white">₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
+                        </div>
+
+                        {(room.status === 'MAINTENANCE' && room.maintenanceReason) && (
+                          <div className="mb-3 p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                            <p className="text-[10px] text-yellow-300 font-medium">Maintenance Reason:</p>
+                            <p className="text-xs text-slate-300">{room.maintenanceReason}</p>
+                          </div>
+                        )}
+
+                        {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="p-2 bg-slate-900/40 rounded-lg border border-white/5">
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Check In</p>
+                              <p className="text-[10px] text-slate-300 font-medium">
+                                {room.checkInAt ? `${new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}` : 'N/A'}
+                              </p>
+                            </div>
+                            <div className="p-2 bg-slate-900/40 rounded-lg border border-white/5">
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Check Out</p>
+                              <p className="text-[10px] text-slate-300 font-medium">
+                                {room.checkOutAt ? `${new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}` : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {canManageRooms && (
+                          <div className="flex gap-2 justify-end pt-2 border-t border-white/5 mt-2">
+                             <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDelete(room.id)
+                              }}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold uppercase transition-all"
+                            >
+                              <FaTrash className="w-3 h-3" />
+                              Delete Room
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                {/* Room chips in this category */}
-                <div className="flex flex-wrap gap-3 p-4">
-                  {categoryRooms.map((room: any) => (
-                    <div
-                      key={room.id}
-                      className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${room.status === 'AVAILABLE'
-                          ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30'
-                          : room.status === 'BOOKED'
-                            ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30'
-                            : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
-                        }`}
-                      onClick={() => {
-                        if (canManageRooms) {
-                          setEditingRoom(room)
-                          setShowModal(true)
-                        }
-                      }}
-                    >
-                      <span className={`text-sm font-bold ${room.status === 'AVAILABLE' ? 'text-emerald-300' :
-                          room.status === 'BOOKED' ? 'text-red-300' :
-                            'text-yellow-300'
-                        }`}>{room.roomNumber}</span>
-                      <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                          room.status === 'BOOKED' ? 'bg-red-400' :
-                            'bg-yellow-400'
-                        }`} />
-                      <span className="text-sm font-semibold text-white">₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</span>
-                      <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                          room.status === 'BOOKED' ? 'bg-red-400' :
-                            'bg-yellow-400'
-                        }`} />
-                      <span className={`text-[10px] font-semibold uppercase ${room.status === 'AVAILABLE' ? 'text-emerald-400' :
-                          room.status === 'BOOKED' ? 'text-red-400' :
-                            'text-yellow-400'
-                        }`}>{room.status}</span>
-                      {room.status === 'MAINTENANCE' && room.maintenanceReason && (
-                        <>
-                          <span className="w-px h-5 mx-3 bg-yellow-400" />
-                          <span className="text-[10px] text-amber-200/90 max-w-[120px] truncate" title={room.maintenanceReason}>
-                            {room.maintenanceReason}
-                          </span>
-                        </>
-                      )}
-                      {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
-                        <>
-                          {room.checkInAt && (
-                            <>
-                              <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
-                              <span className="text-[10px] text-slate-400" title="Check-in time">
-                                In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                              </span>
-                            </>
-                          )}
-                          {room.checkOutAt && (
-                            <>
-                              <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
-                              <span className="text-[10px] text-slate-400" title="Check-out time">
-                                Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                              </span>
-                            </>
-                          )}
-                        </>
-                      )}
-                      {canManageRooms && (
-                        <>
-                          <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                              room.status === 'BOOKED' ? 'bg-red-400' :
-                                'bg-yellow-400'
-                            }`} />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDelete(room.id)
-                            }}
-                            className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
-                            title="Delete"
-                          >
-                            <FaTrash className="w-3 h-3" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
+     </div>
               </div>
             ))}
           </div>

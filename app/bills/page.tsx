@@ -227,7 +227,7 @@ export default function BillsPage() {
           })}
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
+        <div className="hidden md:block rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px]">
               <thead>
@@ -300,6 +300,51 @@ export default function BillsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Mobile view fallback when 'table' is selected */}
+      {!isLoading && viewMode === 'table' && totalBills > 0 && (
+        <div className="md:hidden grid grid-cols-1 gap-3">
+          {bookings.map((b: any) => {
+            const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
+            const status = b.paymentStatus || 'PENDING'
+            const isConsolidated = b.isConsolidated || b.roomCount > 1
+
+            return (
+              <Link
+                key={b.id}
+                href={`/bills/${b.id}`}
+                className="block rounded-xl border border-white/10 bg-slate-800/80 p-4 relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start gap-2 mb-2">
+                  <span className="text-[10px] font-mono text-slate-500">{b.billNumber || b.id.slice(-6).toUpperCase()}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                      status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}
+                  >
+                    {status}
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-white mb-1">{b.guest?.name}</p>
+                <p className="text-xs text-slate-400 mb-3">
+                  {isConsolidated ? `${b.roomCount} Rooms (${b.displayRoomNumber})` : `${b.room?.roomNumber} • ${b.room?.roomType}`}
+                </p>
+                <div className="flex items-center justify-between py-2 border-t border-white/5 mt-auto">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Paid</span>
+                    <span className="text-sm font-bold text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Remaining</span>
+                    <span className="text-sm font-bold text-amber-400">₹{remaining.toLocaleString()}</span>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
 

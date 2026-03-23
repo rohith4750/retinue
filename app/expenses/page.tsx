@@ -1214,89 +1214,168 @@ export default function ExpensesPage() {
               <p className="text-xs text-slate-500 mt-1">Click "Add Expense" to record an expense</p>
             </div>
           ) : (
-            <div className="overflow-x-auto mt-4">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Category</th>
-                    <th>Business Unit</th>
-                    {canViewFinancials && <th>Amount</th>}
-                    {canViewFinancials && <th>Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {expensesList.map((expense: any) => (
-                    <tr key={expense.id} className={expense.isSalaryPayment ? 'bg-emerald-500/5' : ''}>
-                      <td className="text-slate-300">
-                        {new Date(expense.date).toLocaleDateString()}
-                      </td>
-                      <td>
-                        <div>
-                          <p className="text-slate-100 font-medium flex items-center gap-2">
-                            {expense.isSalaryPayment && <FaUserTie className="w-3 h-3 text-emerald-400" />}
-                            {expense.description}
-                          </p>
-                          {expense.vendor && !expense.isSalaryPayment && (
-                            <p className="text-xs text-slate-500">{expense.vendor}</p>
-                          )}
-                          {expense.isSalaryPayment && (
-                            <p className="text-xs text-emerald-400/70">
-                              {expense.staffType === 'DAILY' ? 'Daily Wage' : 'Monthly Salary'}
-                              {expense.bonus > 0 && ` • Bonus: ₹${expense.bonus.toLocaleString()}`}
-                              {expense.deductions > 0 && ` • Deduction: ₹${expense.deductions.toLocaleString()}`}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
-                          expense.isSalaryPayment 
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
-                            : getCategoryBadge(expense.category)
-                        }`}>
-                          {expense.isSalaryPayment ? 'STAFF SALARY' : expense.category.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getBusinessUnitBadge(expense.businessUnit)}`}>
-                          {expense.businessUnit === 'HOTEL' ? 'Hotel' : expense.businessUnit === 'CONVENTION' ? 'Convention' : 'Shared'}
-                        </span>
-                      </td>
-                      {canViewFinancials && (
-                        <td className="text-red-400 font-semibold">
-                          {formatCurrency(expense.amount)}
-                        </td>
-                      )}
-                      {canViewFinancials && (
-                        <td>
-                          {expense.isSalaryPayment ? (
-                            <span className="text-xs text-slate-500 italic">From Salary</span>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleEditClick(expense)}
-                                className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
-                                title="Edit expense"
-                              >
-                                <FaEdit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setDeleteModal({ show: true, expenseId: expense.id })}
-                                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                                title="Delete expense"
-                              >
-                                <FaTrash className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      )}
+            <div className="mt-4">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Description</th>
+                      <th>Category</th>
+                      <th>Business Unit</th>
+                      {canViewFinancials && <th>Amount</th>}
+                      {canViewFinancials && <th>Actions</th>}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {expensesList.map((expense: any) => (
+                      <tr key={expense.id} className={expense.isSalaryPayment ? 'bg-emerald-500/5' : ''}>
+                        <td className="text-slate-300">
+                          {new Date(expense.date).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <div>
+                            <p className="text-slate-100 font-medium flex items-center gap-2">
+                              {expense.isSalaryPayment && <FaUserTie className="w-3 h-3 text-emerald-400" />}
+                              {expense.description}
+                            </p>
+                            {expense.vendor && !expense.isSalaryPayment && (
+                              <p className="text-xs text-slate-500">{expense.vendor}</p>
+                            )}
+                            {expense.isSalaryPayment && (
+                              <p className="text-xs text-emerald-400/70">
+                                {expense.staffType === 'DAILY' ? 'Daily Wage' : 'Monthly Salary'}
+                                {expense.bonus > 0 && ` • Bonus: ₹${expense.bonus.toLocaleString()}`}
+                                {expense.deductions > 0 && ` • Deduction: ₹${expense.deductions.toLocaleString()}`}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                            expense.isSalaryPayment 
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                              : getCategoryBadge(expense.category)
+                          }`}>
+                            {expense.isSalaryPayment ? 'STAFF SALARY' : expense.category.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getBusinessUnitBadge(expense.businessUnit)}`}>
+                            {expense.businessUnit === 'HOTEL' ? 'Hotel' : expense.businessUnit === 'CONVENTION' ? 'Convention' : 'Shared'}
+                          </span>
+                        </td>
+                        {canViewFinancials && (
+                          <td className="text-red-400 font-semibold">
+                            {formatCurrency(expense.amount)}
+                          </td>
+                        )}
+                        {canViewFinancials && (
+                          <td>
+                            {expense.isSalaryPayment ? (
+                              <span className="text-xs text-slate-500 italic">From Salary</span>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleEditClick(expense)}
+                                  className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded transition-colors"
+                                  title="Edit expense"
+                                >
+                                  <FaEdit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteModal({ show: true, expenseId: expense.id })}
+                                  className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                  title="Delete expense"
+                                >
+                                  <FaTrash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {expensesList.map((expense: any) => (
+                  <div 
+                    key={expense.id} 
+                    className={`p-4 rounded-xl border border-white/5 bg-slate-800/40 relative overflow-hidden ${expense.isSalaryPayment ? 'border-l-4 border-l-emerald-500' : ''}`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                        {new Date(expense.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${getBusinessUnitBadge(expense.businessUnit)}`}>
+                        {expense.businessUnit === 'HOTEL' ? 'Hotel' : expense.businessUnit === 'CONVENTION' ? 'Convention' : 'Both'}
+                      </span>
+                    </div>
+
+                    <div className="mb-3">
+                      <p className="text-slate-100 font-bold leading-tight flex items-center gap-2">
+                        {expense.isSalaryPayment && <FaUserTie className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                        {expense.description}
+                      </p>
+                      {expense.vendor && !expense.isSalaryPayment && (
+                        <p className="text-xs text-slate-500 mt-0.5">{expense.vendor}</p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${
+                        expense.isSalaryPayment 
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                          : getCategoryBadge(expense.category)
+                      }`}>
+                        {expense.isSalaryPayment ? 'Staff Salary' : expense.category.replace('_', ' ')}
+                      </span>
+                      {expense.isSalaryPayment && (
+                        <span className="text-[10px] text-emerald-400/80 font-medium">
+                          {expense.staffType === 'DAILY' ? 'Daily' : 'Monthly'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between py-2 border-y border-white/5 mb-3">
+                      <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount</span>
+                      <span className="text-lg font-bold text-red-400">{formatCurrency(expense.amount)}</span>
+                    </div>
+
+                    {canViewFinancials && (
+                      <div className="flex gap-2">
+                        {expense.isSalaryPayment ? (
+                          <div className="flex-1 py-2 text-center text-[10px] text-slate-500 bg-slate-900/40 rounded-lg italic">
+                            Recorded via Staff Salary
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleEditClick(expense)}
+                              className="flex-1 py-2 flex items-center justify-center gap-2 bg-slate-800 hover:bg-sky-500/10 text-slate-300 hover:text-sky-400 rounded-lg border border-white/5 transition-all"
+                            >
+                              <FaEdit className="w-3 h-3" />
+                              <span className="text-xs font-semibold">Edit</span>
+                            </button>
+                            <button
+                              onClick={() => setDeleteModal({ show: true, expenseId: expense.id })}
+                              className="flex-1 py-2 flex items-center justify-center gap-2 bg-slate-800 hover:bg-red-500/10 text-slate-300 hover:text-red-400 rounded-lg border border-white/5 transition-all"
+                            >
+                              <FaTrash className="w-3 h-3" />
+                              <span className="text-xs font-semibold">Delete</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
