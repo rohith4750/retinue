@@ -446,7 +446,7 @@ export default function AnalyticsPage() {
               6-Month Revenue Forecast
             </h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/5">
@@ -485,6 +485,52 @@ export default function AnalyticsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-white/5">
+            {data?.predictions?.map((pred: any, index: number) => (
+              <div key={index} className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-white">{pred.month}</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-10 h-1 bg-slate-700 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${pred.confidence >= 80 ? 'bg-emerald-500' : pred.confidence >= 70 ? 'bg-yellow-500' : 'bg-orange-500'}`}
+                        style={{ width: `${pred.confidence}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400">{pred.confidence}%</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div>
+                    <p className="text-[10px] uppercase text-slate-500 font-medium">Hotel Revenue</p>
+                    <p className="text-xs text-amber-400 font-semibold">₹{pred.hotelRevenue.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase text-slate-500 font-medium">Hall Revenue</p>
+                    <p className="text-xs text-purple-400 font-semibold">₹{pred.hallRevenue.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-slate-500 font-medium">Expenses</p>
+                    <p className="text-xs text-red-400 font-semibold">₹{pred.expenses.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase text-slate-500 font-medium">Est. Profit</p>
+                    <p className={`text-xs font-bold ${pred.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      ₹{pred.profit.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="pt-2 border-t border-white/5 flex justify-between items-center">
+                  <span className="text-[10px] text-slate-500 font-medium uppercase">Total Forecasted</span>
+                  <span className="text-sm font-bold text-white">₹{pred.totalRevenue.toLocaleString()}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
