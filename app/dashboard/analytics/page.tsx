@@ -30,7 +30,7 @@ function AnalyticsContent() {
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard', 'current', selectedMonth, 'month'],
-    queryFn: () => api.get(`/dashboard?date=${moment().format('YYYY-MM-DD')}&month=${selectedMonth}&type=month`).then(res => res.data),
+    queryFn: () => api.get(`/dashboard?month=${selectedMonth}&type=month`),
   })
 
   if (isLoading) {
