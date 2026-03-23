@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import moment from "moment";
 
 export const dynamic = "force-dynamic";
 
@@ -16,25 +17,27 @@ export async function GET(request: NextRequest) {
     const filterDate = searchParams.get("date");
     const filterMonth = searchParams.get("month");
 
-    let referenceDate = new Date();
+    // Reference point for "now" in Indian Standard Time (UTC+5:30)
+    const nowInIST = moment().utcOffset("+05:30");
+    
+    let referenceDate = nowInIST.clone();
     if (filterDate) {
-      referenceDate = new Date(filterDate);
+      // Use the start of the specified day in IST
+      referenceDate = moment(filterDate).utcOffset("+05:30", true).startOf('day');
     } else if (filterMonth) {
-      referenceDate = new Date(`${filterMonth}-01`);
+      // Use the start of the specified month in IST
+      referenceDate = moment(`${filterMonth}-01`).utcOffset("+05:30", true).startOf('month');
     }
 
-    const today = new Date(referenceDate);
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const now = filterDate ? new Date(today.getTime() + 12 * 60 * 60 * 1000) : new Date();
-
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    const today = referenceDate.clone().startOf('day').toDate();
+    const tomorrow = referenceDate.clone().add(1, 'day').startOf('day').toDate();
+    const startOfMonth = referenceDate.clone().startOf('month').toDate();
+    const endOfMonth = referenceDate.clone().endOf('month').toDate();
     
-    const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+    const startOfLastMonth = referenceDate.clone().subtract(1, 'month').startOf('month').toDate();
+    const endOfLastMonth = referenceDate.clone().subtract(1, 'month').endOf('month').toDate();
+
+    const now = filterDate ? referenceDate.clone().add(12, 'hours').toDate() : nowInIST.toDate();
 
     // Filter to exclude testing data
     const excludeTestingFilter = {
@@ -129,27 +132,13 @@ export async function GET(request: NextRequest) {
         where: { eventDate: { gte: today, lt: tomorrow }, status: { not: "CANCELLED" }, ...hallFilters },
       });
 
-      const nextWeekForHalls = new Date(today);
-      nextWeekForHalls.setDate(nextWeekForHalls.getDate() + 7);
+      const nextWeekForHalls = referenceDate.clone().add(7, 'days').toDate();
       hallUpcoming7Days = await prisma.functionHallBooking.count({
         where: { eventDate: { gte: today, lt: nextWeekForHalls }, status: { in: ["PENDING", "CONFIRMED"] }, ...hallFilters },
       });
     } catch (e) {}
 
-    // Multi-factor calculations
     const totalMonthlyRevenue = monthRevenue + hallRevenueThisMonth;
-
-    // Analytics breakdowns
-    const bookingsByStatus = await prisma.booking.groupBy({
-      by: ["status"],
-      where: excludeTestingFilter,
-      _count: true,
-    });
-
-    const roomsByType = await prisma.room.groupBy({
-      by: ["roomType"],
-      _count: true,
-    });
 
     const stats = {
       totalRooms,
@@ -161,17 +150,13 @@ export async function GET(request: NextRequest) {
       bookingGrowth: lastMonthBookings > 0 ? Math.round(((monthBookings - lastMonthBookings) / lastMonthBookings) * 100) : (monthBookings > 0 ? 100 : 0),
       todayRevenue: isAdmin ? todayRevenue : 0,
       monthRevenue: isAdmin ? monthRevenue : 0,
-      hallRevenueThisMonth: isAdmin ? hallRevenueThisMonth : 0,
+       hallRevenueThisMonth: isAdmin ? hallRevenueThisMonth : 0,
       totalMonthlyRevenue: isAdmin ? totalMonthlyRevenue : 0,
       revenueGrowth: isAdmin && lastMonthRevenue > 0 ? Math.round(((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : (monthRevenue > 0 ? 100 : 0),
       pendingPayments: isAdmin ? (await prisma.booking.aggregate({ where: { paymentStatus: { in: ["PENDING", "PARTIAL"] }, status: { not: "CANCELLED" }, ...excludeTestingFilter }, _sum: { balanceAmount: true } }))._sum.balanceAmount || 0 : 0,
       totalStaff: await prisma.staff.count({ where: { status: "ACTIVE" } }),
       totalGuests: await prisma.guest.count({ where: { name: { not: { contains: "testing" } } } }),
       newGuestsThisMonth: await prisma.guest.count({ where: { createdAt: { gte: startOfMonth, lte: endOfMonth }, name: { not: { contains: "testing" } } } }),
-      lowStockAlerts: (await prisma.inventory.findMany()).filter(item => item.quantity <= item.minStock).length,
-      bookingsByStatus: bookingsByStatus.reduce((acc: any, item) => { acc[item.status] = item._count; return acc; }, {}),
-      roomsByType: roomsByType.reduce((acc: any, item) => { acc[item.roomType] = item._count; return acc; }, {}),
-      roomTypeLabels: { SINGLE: "Single", DOUBLE: "Double", DELUXE: "Deluxe", STANDARD: "Standard", SUITE: "Suite", SUITE_PLUS: "Suite+" },
       totalHalls,
       hallTodayBookings,
       hallUpcoming7Days,

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
 import { successResponse, errorResponse } from '@/lib/api-helpers'
 import { sendDatabaseBackupEmail } from '@/lib/email'
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const now = new Date()
+    const now = moment().utcOffset("+05:30").toDate()
     const results: any = {
       timestamp: now.toISOString(),
       exports: [],
@@ -47,11 +48,11 @@ export async function GET(request: NextRequest) {
       backupEmailSent: false,
     }
 
-    // Calculate date thresholds
-    const passwordResetThreshold = new Date(now.getTime() - RETENTION_PERIODS.passwordResets * 24 * 60 * 60 * 1000)
-    const bookingHistoryThreshold = new Date(now.getTime() - RETENTION_PERIODS.bookingHistory * 24 * 60 * 60 * 1000)
-    const inventoryThreshold = new Date(now.getTime() - RETENTION_PERIODS.inventoryTransactions * 24 * 60 * 60 * 1000)
-    const attendanceThreshold = new Date(now.getTime() - RETENTION_PERIODS.attendance * 24 * 60 * 60 * 1000)
+    // Calculate date thresholds using IST
+    const passwordResetThreshold = moment(now).subtract(RETENTION_PERIODS.passwordResets, 'days').toDate()
+    const bookingHistoryThreshold = moment(now).subtract(RETENTION_PERIODS.bookingHistory, 'days').toDate()
+    const inventoryThreshold = moment(now).subtract(RETENTION_PERIODS.inventoryTransactions, 'days').toDate()
+    const attendanceThreshold = moment(now).subtract(RETENTION_PERIODS.attendance, 'days').toDate()
 
     // Backup data storage (will be sent via email)
     const backupData: {

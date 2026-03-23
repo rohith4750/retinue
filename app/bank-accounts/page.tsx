@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import {
   FaUniversity, FaPlus, FaWallet, FaArrowUp, FaArrowDown,
   FaExchangeAlt, FaEdit, FaTrash, FaEye, FaChevronLeft,
@@ -42,7 +43,7 @@ export default function BankAccountsPage() {
     description: '',
     reference: '',
     category: '',
-    transactionDate: new Date().toISOString().split('T')[0]
+    transactionDate: moment().format('YYYY-MM-DD')
   })
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function BankAccountsPage() {
     refetchOnMount: true
   })
 
-  // Create account mutation
+  // Mutations
   const createAccountMutation = useMutationWithInvalidation({
     mutationFn: (data: any) => api.post('/bank-accounts', data),
     endpoint: '/bank-accounts',
@@ -92,7 +93,6 @@ export default function BankAccountsPage() {
     }
   })
 
-  // Update account mutation
   const updateAccountMutation = useMutationWithInvalidation({
     mutationFn: (data: any) => api.put(`/bank-accounts/${selectedAccount.id}`, data),
     endpoint: '/bank-accounts',
@@ -108,7 +108,6 @@ export default function BankAccountsPage() {
     }
   })
 
-  // Delete account mutation
   const deleteAccountMutation = useMutationWithInvalidation({
     mutationFn: (id: string) => api.delete(`/bank-accounts/${id}`),
     endpoint: '/bank-accounts',
@@ -122,7 +121,6 @@ export default function BankAccountsPage() {
     }
   })
 
-  // Create transaction mutation
   const createTransactionMutation = useMutationWithInvalidation({
     mutationFn: (data: any) => api.post(`/bank-accounts/${viewingAccount.id}/transactions`, data),
     endpoint: '/bank-accounts',
@@ -157,7 +155,7 @@ export default function BankAccountsPage() {
       description: '',
       reference: '',
       category: '',
-      transactionDate: new Date().toISOString().split('T')[0]
+      transactionDate: moment().format('YYYY-MM-DD')
     })
   }
 
@@ -227,7 +225,6 @@ export default function BankAccountsPage() {
     return <LoadingSpinner />
   }
 
-  // Account Detail View
   if (viewingAccount) {
     const detail = accountDetailData?.account || viewingAccount
     const transactions = accountDetailData?.transactions || []
@@ -235,7 +232,6 @@ export default function BankAccountsPage() {
 
     return (
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
@@ -270,13 +266,11 @@ export default function BankAccountsPage() {
           )}
         </div>
 
-        {/* Balance Card */}
         <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-800/20 rounded-xl p-6 border border-emerald-500/20 mb-6">
           <p className="text-sm text-emerald-300 mb-1">Current Balance</p>
           <p className="text-3xl font-bold text-white">₹{detail.currentBalance?.toLocaleString()}</p>
         </div>
 
-        {/* Inline Add Transaction Form */}
         {showAddTransactionForm && (
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-6 border border-sky-500/30 mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -297,7 +291,6 @@ export default function BankAccountsPage() {
 
             <form onSubmit={handleTransactionSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Transaction Type */}
                 <div className="lg:col-span-3">
                   <label className="block text-sm font-medium text-slate-300 mb-2">Transaction Type *</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -320,7 +313,6 @@ export default function BankAccountsPage() {
                   </div>
                 </div>
 
-                {/* Amount */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Amount *</label>
                   <div className="relative">
@@ -337,7 +329,6 @@ export default function BankAccountsPage() {
                   </div>
                 </div>
 
-                {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Description *</label>
                   <input
@@ -350,7 +341,6 @@ export default function BankAccountsPage() {
                   />
                 </div>
 
-                {/* Category */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Category</label>
                   <select
@@ -365,7 +355,6 @@ export default function BankAccountsPage() {
                   </select>
                 </div>
 
-                {/* Reference */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Reference</label>
                   <input
@@ -377,7 +366,6 @@ export default function BankAccountsPage() {
                   />
                 </div>
 
-                {/* Date */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Transaction Date</label>
                   <input
@@ -416,7 +404,6 @@ export default function BankAccountsPage() {
           </div>
         )}
 
-        {/* Transactions List */}
         <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl border border-white/5">
           <div className="p-4 border-b border-white/5">
             <h2 className="text-lg font-semibold text-white">Transaction History</h2>
@@ -472,7 +459,6 @@ export default function BankAccountsPage() {
             </div>
           )}
 
-          {/* Pagination */}
           {pagination.totalPages > 1 && (
             <div className="p-4 border-t border-white/5 flex items-center justify-between">
               <span className="text-xs text-slate-400">
@@ -501,11 +487,9 @@ export default function BankAccountsPage() {
     )
   }
 
-  // Main Accounts List View
   return (
     <>
       <div className="w-full px-4 lg:px-6 py-4 relative z-10">
-        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-xl font-bold text-white">Financial Accounts</h1>
@@ -526,7 +510,6 @@ export default function BankAccountsPage() {
           )}
         </div>
 
-        {/* Inline Add/Edit Account Form */}
         {showAddAccountForm && (
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-6 border border-sky-500/30 mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -653,7 +636,6 @@ export default function BankAccountsPage() {
           </div>
         )}
 
-        {/* Total Balance Card */}
         <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 rounded-xl p-6 border border-sky-500/20 mb-6">
           <div className="flex items-center gap-3 mb-2">
             <FaWallet className="w-6 h-6 text-sky-400" />
@@ -663,7 +645,6 @@ export default function BankAccountsPage() {
           <p className="text-xs text-slate-400 mt-1">{accounts.filter((a: any) => a.isActive).length} active accounts</p>
         </div>
 
-        {/* Accounts Grid */}
         {accounts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accounts.map((account: any) => (
@@ -754,7 +735,6 @@ export default function BankAccountsPage() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal - Only 2 options: Confirm/Cancel */}
       <ConfirmationModal
         show={deleteModal.show}
         title="Deactivate Account"

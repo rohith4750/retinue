@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import {
   FaUsers,
   FaMoneyBillWave,
@@ -65,8 +66,8 @@ export default function WorkforcePage() {
   })
 
   // Filters
-  const currentYear = new Date().getFullYear()
-  const currentMonth = new Date().getMonth() + 1
+  const currentYear = moment().year()
+  const currentMonth = moment().month() + 1
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
   const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString())
 
@@ -75,7 +76,7 @@ export default function WorkforcePage() {
     amount: '',
     bonus: '0',
     deductions: '0',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: moment().format('YYYY-MM-DD'),
     paymentMethod: 'CASH',
     notes: '',
   })
@@ -139,14 +140,9 @@ export default function WorkforcePage() {
     return map
   }, [paymentsList])
 
-  // Get today's date at midnight for comparison
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
+  // Get today's date formatted for comparison
   const isFutureDate = (dateStr: string) => {
-    const d = new Date(dateStr)
-    d.setHours(0, 0, 0, 0)
-    return d > today
+    return moment(dateStr).isAfter(moment(), 'day')
   }
 
   // Check if staff has been paid (Strictly PAID, not just scheduled)
@@ -245,7 +241,7 @@ export default function WorkforcePage() {
       amount: '',
       bonus: '0',
       deductions: '0',
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: moment().format('YYYY-MM-DD'),
       paymentMethod: 'CASH',
       notes: '',
     })
@@ -258,7 +254,7 @@ export default function WorkforcePage() {
       amount: (staff.staffType === 'DAILY' ? staff.dailyWage : staff.salary)?.toString() || '',
       bonus: '0',
       deductions: '0',
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: moment().format('YYYY-MM-DD'),
       paymentMethod: 'CASH',
       notes: '',
     })
@@ -271,7 +267,7 @@ export default function WorkforcePage() {
       amount: payment.amount.toString(),
       bonus: payment.bonus.toString(),
       deductions: payment.deductions.toString(),
-      paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
+      paymentDate: moment(payment.paymentDate).format('YYYY-MM-DD'),
       paymentMethod: payment.paymentMethod || 'CASH',
       notes: payment.notes || '',
     })
@@ -631,7 +627,7 @@ export default function WorkforcePage() {
                         </div>
                       </td>
                       <td className="py-2 px-3 text-slate-300">
-                        {new Date(payment.paymentDate).toLocaleDateString()}
+                        {moment(payment.paymentDate).format('DD/MM/YYYY')}
                       </td>
                       <td className="py-2 px-3 text-right text-slate-300">{formatCurrency(payment.amount)}</td>
                       <td className="py-2 px-3 text-right text-emerald-400">
@@ -688,7 +684,7 @@ export default function WorkforcePage() {
                   
                   <div className="grid grid-cols-2 gap-y-2 text-sm mb-3">
                     <div className="text-slate-400">Date:</div>
-                    <div className="text-slate-200 text-right">{new Date(payment.paymentDate).toLocaleDateString()}</div>
+                    <div className="text-slate-200 text-right">{moment(payment.paymentDate).format('DD/MM/YYYY')}</div>
                     
                     <div className="text-slate-400">Base Amount:</div>
                     <div className="text-slate-200 text-right">{formatCurrency(payment.amount)}</div>

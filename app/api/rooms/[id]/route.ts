@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
@@ -19,7 +20,7 @@ export async function GET(
       include: {
         slots: {
           where: {
-            date: { gte: new Date() },
+            date: { gte: moment().utcOffset("+05:30").startOf('day').toDate() },
           },
           orderBy: { date: 'asc' },
         },

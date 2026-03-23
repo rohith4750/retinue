@@ -54,14 +54,24 @@ function createWindow() {
     `);
   });
 
+  // Handle reloads to show splash indicator
+  mainWindow.webContents.on('did-start-loading', () => {
+    if (!splashWindow) {
+      createSplash();
+    }
+  });
+
   // Once the app loads, hide splash and show main window
   mainWindow.webContents.on('did-finish-load', () => {
     if (splashWindow) {
       splashWindow.close();
       splashWindow = null;
     }
-    mainWindow.show();
-    mainWindow.maximize();
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+      mainWindow.maximize();
+    }
+    mainWindow.focus();
   });
 
   mainWindow.loadURL(startUrl);

@@ -5,27 +5,20 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaClock, FaFilter, FaList, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 
-function formatDateTimeLocal(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const y = date.getFullYear()
-  const m = pad(date.getMonth() + 1)
-  const d = pad(date.getDate())
-  const hh = pad(date.getHours())
-  const mm = pad(date.getMinutes())
-  return `${y}-${m}-${d}T${hh}:${mm}`
+function formatDateTimeLocal(date: any) {
+  return moment(date).format('YYYY-MM-DDTHH:mm')
 }
 
 function getDefaultAvailabilityWindow() {
-  const now = new Date()
-  now.setSeconds(0, 0)
-  const nextDay = new Date(now)
-  nextDay.setDate(nextDay.getDate() + 1)
+  const now = moment().seconds(0).milliseconds(0)
+  const nextDay = moment(now).add(1, 'day')
   return {
     checkIn: formatDateTimeLocal(now),
     checkOut: formatDateTimeLocal(nextDay),
@@ -33,16 +26,13 @@ function getDefaultAvailabilityWindow() {
 }
 
 function getStartOfTodayLocal() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return formatDateTimeLocal(d)
+  return moment().startOf('day').format('YYYY-MM-DDTHH:mm')
 }
 
 function getCheckOutPlus24h(checkInLocal: string) {
-  const dt = new Date(checkInLocal)
-  if (Number.isNaN(dt.getTime())) return ''
-  dt.setDate(dt.getDate() + 1)
-  return formatDateTimeLocal(dt)
+  const m = moment(checkInLocal)
+  if (!m.isValid()) return ''
+  return formatDateTimeLocal(m.add(1, 'day'))
 }
 
 export default function RoomsPage() {
@@ -69,9 +59,7 @@ export default function RoomsPage() {
   // Calendar view state
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [calendarStartDate, setCalendarStartDate] = useState(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return today
+    return moment().startOf('day')
   })
   const [calendarFloorFilter, setCalendarFloorFilter] = useState<string>('all')
 
@@ -83,8 +71,7 @@ export default function RoomsPage() {
   }, [])
 
   // Calculate end date for the 7-day view
-  const calendarEndDate = new Date(calendarStartDate)
-  calendarEndDate.setDate(calendarEndDate.getDate() + 8) // +8 days to cover slightly more than the week to be safe with timezone/overlap
+  const calendarEndDate = moment(calendarStartDate).add(8, 'days') // +8 days to cover slightly more than the week to be safe with timezone/overlap
 
   // Fetch bookings for calendar view (include ONLINE so grid shows correct Free/Booked for all sources)
   const { data: bookingsResponse } = useQuery({
@@ -106,54 +93,41 @@ export default function RoomsPage() {
 
   // Generate 7 days for calendar
   const calendarDays = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(calendarStartDate)
-    date.setDate(date.getDate() + i)
-    return date
+    return moment(calendarStartDate).add(i, 'days')
   })
 
   // In calendar: show "Checked In" only on today's column, not future days.
-  const getBookingDisplayStatusForDate = (booking: any, date: Date) => {
+  const getBookingDisplayStatusForDate = (booking: any, date: any) => {
     if (!booking) return null
     if (booking.status !== 'CHECKED_IN') return booking.status
 
-    const day = new Date(date)
-    day.setHours(0, 0, 0, 0)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    return day.getTime() === today.getTime() ? 'CHECKED_IN' : 'CONFIRMED'
+    return moment(date).isSame(moment(), 'day') ? 'CHECKED_IN' : 'CONFIRMED'
   }
 
   // Check if a room is booked on a specific date
-  const getRoomBookingForDate = (roomId: string, date: Date) => {
-    const dateStart = new Date(date)
-    dateStart.setHours(0, 0, 0, 0)
-    const dateEnd = new Date(date)
-    dateEnd.setHours(23, 59, 59, 999)
+  const getRoomBookingForDate = (roomId: string, date: any) => {
+    const dateStart = moment(date).startOf('day')
+    const dateEnd = moment(date).endOf('day')
 
     return bookings.find((booking: any) => {
       const bookingRoomId = booking.room?.id ?? booking.roomId
       if (bookingRoomId !== roomId) return false
       if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') return false
-      const checkIn = new Date(booking.checkIn)
-      const checkOut = new Date(booking.checkOut)
-      return checkIn <= dateEnd && checkOut >= dateStart
+      const checkIn = moment(booking.checkIn)
+      const checkOut = moment(booking.checkOut)
+      return checkIn.isBefore(dateEnd) && checkOut.isAfter(dateStart)
     })
   }
 
   // Navigate calendar
   const navigateCalendar = (direction: 'prev' | 'next') => {
     setCalendarStartDate(prev => {
-      const newDate = new Date(prev)
-      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7))
-      return newDate
+      return moment(prev).add(direction === 'next' ? 7 : -7, 'days')
     })
   }
 
   const goToToday = () => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    setCalendarStartDate(today)
+    setCalendarStartDate(moment().startOf('day'))
   }
 
   // Check if user can manage rooms (ADMIN or SUPER_ADMIN only)
@@ -170,8 +144,8 @@ export default function RoomsPage() {
         params.append('search', debouncedSearch)
       }
       if (isCheckingAvailability && filterCheckIn && filterCheckOut) {
-        const checkInDate = new Date(filterCheckIn).toISOString()
-        const checkOutDate = new Date(filterCheckOut).toISOString()
+        const checkInDate = moment(filterCheckIn).toISOString()
+        const checkOutDate = moment(filterCheckOut).toISOString()
         return api.get(`/rooms/available?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}`)
       }
       return api.get(`/rooms?${params.toString()}`)
@@ -377,15 +351,11 @@ export default function RoomsPage() {
                 <p className="text-xs text-slate-400">
                   Showing rooms available from{' '}
                   <span className="text-sky-400 font-medium">
-                    {new Date(filterCheckIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    {' at '}
-                    {new Date(filterCheckIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {moment(filterCheckIn).format('DD MMM, YYYY [at] hh:mm A')}
                   </span>
                   {' to '}
                   <span className="text-sky-400 font-medium">
-                    {new Date(filterCheckOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    {' at '}
-                    {new Date(filterCheckOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {moment(filterCheckOut).format('DD MMM, YYYY [at] hh:mm A')}
                   </span>
                 </p>
               </div>
@@ -415,7 +385,7 @@ export default function RoomsPage() {
                         <FaChevronLeft className="w-4 h-4" />
                       </button>
                       <h3 className="text-base font-bold text-white min-w-[120px] text-center">
-                        {calendarStartDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                        {calendarStartDate.format('MMM YYYY')}
                       </h3>
                       <button
                         onClick={() => navigateCalendar('next')}
@@ -454,22 +424,19 @@ export default function RoomsPage() {
                     <thead>
                       <tr className="bg-slate-900/40">
                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-36 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">Room</th>
-                        {calendarDays.map((date, i) => {
-                          const isToday = date.toDateString() === new Date().toDateString()
-                          return (
-                            <th key={i} className={`px-2 py-3 text-center min-w-[110px] border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''}`}>
-                              <div className={`text-[10px] uppercase tracking-wider font-medium ${isToday ? 'text-sky-400' : 'text-slate-500'}`}>
-                                {date.toLocaleDateString('en-IN', { weekday: 'short' })}
+                        {calendarDays.map((date, i) => (
+                            <th key={i} className={`px-2 py-3 text-center min-w-[110px] border-r border-white/5 last:border-r-0 ${date.isSame(moment(), 'day') ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''}`}>
+                              <div className={`text-[10px] uppercase tracking-wider font-medium ${date.isSame(moment(), 'day') ? 'text-sky-400' : 'text-slate-500'}`}>
+                                {date.format('ddd')}
                               </div>
-                              <div className={`text-lg font-bold mt-0.5 ${isToday ? 'text-sky-300' : 'text-slate-300'}`}>
-                                {date.getDate()}
+                              <div className={`text-lg font-bold mt-0.5 ${date.isSame(moment(), 'day') ? 'text-sky-300' : 'text-slate-300'}`}>
+                                {date.date()}
                               </div>
-                              <div className={`text-[10px] ${isToday ? 'text-sky-400/80' : 'text-slate-500'}`}>
-                                {date.toLocaleDateString('en-IN', { month: 'short' })}
+                              <div className={`text-[10px] ${date.isSame(moment(), 'day') ? 'text-sky-400/80' : 'text-slate-500'}`}>
+                                {date.format('MMM')}
                               </div>
                             </th>
-                          )
-                        })}
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -493,19 +460,19 @@ export default function RoomsPage() {
                                 {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
                                   <div className="text-[9px] text-red-300/90 mt-0.5 space-y-0.5">
                                     {room.checkInAt && (
-                                      <p title="Check-in time">In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                      <p title="Check-in time">In: {moment(room.checkInAt).format('DD MMM, hh:mm A')}</p>
                                     )}
                                     {room.checkOutAt && (
-                                      <p title="Check-out time">Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                      <p title="Check-out time">Out: {moment(room.checkOutAt).format('DD MMM, hh:mm A')}</p>
                                     )}
                                   </div>
                                 )}
                               </div>
                             </div>
                           </td>
-                          {calendarDays.map((date, i) => {
+                          {calendarDays.map((date: any, i) => {
                             const booking = getRoomBookingForDate(room.id, date)
-                            const isToday = date.toDateString() === new Date().toDateString()
+                            const isToday = date.isSame(moment(), 'day')
                             const displayStatus = booking ? getBookingDisplayStatusForDate(booking, date) : null
                             return (
                               <td key={i} className={`px-1.5 py-1.5 align-top border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/8' : ''}`}>
@@ -644,7 +611,7 @@ export default function RoomsPage() {
                               <>
                                 <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
                                 <span className="text-[10px] text-slate-400" title="Check-in time">
-                                  In: {new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                  In: {moment(room.checkInAt).format('DD MMM, hh:mm A')}
                                 </span>
                               </>
                             )}
@@ -652,7 +619,7 @@ export default function RoomsPage() {
                               <>
                                 <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
                                 <span className="text-[10px] text-slate-400" title="Check-out time">
-                                  Out: {new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, {new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                  Out: {moment(room.checkOutAt).format('DD MMM, hh:mm A')}
                                 </span>
                               </>
                             )}
@@ -721,13 +688,13 @@ export default function RoomsPage() {
                             <div className="p-2 bg-slate-900/40 rounded-lg border border-white/5">
                               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Check In</p>
                               <p className="text-[10px] text-slate-300 font-medium">
-                                {room.checkInAt ? `${new Date(room.checkInAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${new Date(room.checkInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}` : 'N/A'}
+                                {room.checkInAt ? moment(room.checkInAt).format('DD MMM, hh:mm A') : 'N/A'}
                               </p>
                             </div>
                             <div className="p-2 bg-slate-900/40 rounded-lg border border-white/5">
                               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Check Out</p>
                               <p className="text-[10px] text-slate-300 font-medium">
-                                {room.checkOutAt ? `${new Date(room.checkOutAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${new Date(room.checkOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}` : 'N/A'}
+                                {room.checkOutAt ? moment(room.checkOutAt).format('DD MMM, hh:mm A') : 'N/A'}
                               </p>
                             </div>
                           </div>

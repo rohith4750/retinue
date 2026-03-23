@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import moment from "moment";
 import { successResponse, errorResponse } from "@/lib/api-helpers";
 
 /**
@@ -31,9 +32,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse dates
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
+    // Parse dates using IST
+    const checkInDate = moment(checkIn).utcOffset("+05:30").toDate();
+    const checkOutDate = moment(checkOut).utcOffset("+05:30").toDate();
 
     // Validate dates
     if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
@@ -50,8 +51,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Time-based overlap: room is BOOKED if any active booking's [checkIn, checkOut] overlaps.
-    const now = new Date();
+    // Time-based overlap using IST
+    const now = moment().utcOffset("+05:30").toDate();
     const activeBookings = await prisma.booking.findMany({
       where: {
         status: {

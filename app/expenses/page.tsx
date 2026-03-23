@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import {
   FaMoneyBillWave,
   FaHotel,
@@ -99,7 +100,7 @@ export default function ExpensesPage() {
     category: 'MAINTENANCE',
     description: '',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: moment().format('YYYY-MM-DD'),
     vendor: '',
     invoiceNumber: '',
     notes: '',
@@ -109,12 +110,12 @@ export default function ExpensesPage() {
   // Salary payment form state (for regular staff)
   const [salaryFormData, setSalaryFormData] = useState({
     staffId: '',
-    month: (new Date().getMonth() + 1).toString(),
-    year: new Date().getFullYear().toString(),
+    month: moment().format('M'),
+    year: moment().format('YYYY'),
     amount: '',
     bonus: '',
     deductions: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: moment().format('YYYY-MM-DD'),
     paymentMethod: 'CASH',
     notes: '',
   })
@@ -126,7 +127,7 @@ export default function ExpensesPage() {
     providerName: '',
     description: '',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: moment().format('YYYY-MM-DD'),
     businessUnit: 'HOTEL',
     paymentMethod: 'CASH',
     phone: '',
@@ -135,8 +136,8 @@ export default function ExpensesPage() {
   const [serviceFormErrors, setServiceFormErrors] = useState<Record<string, string>>({})
 
   // Filters
-  const currentYear = new Date().getFullYear()
-  const currentMonth = new Date().getMonth() + 1
+  const currentYear = moment().year()
+  const currentMonth = moment().month() + 1
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
   const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString())
   const [selectedBusinessUnit, setSelectedBusinessUnit] = useState('')
@@ -222,7 +223,7 @@ export default function ExpensesPage() {
       category: 'MAINTENANCE',
       description: '',
       amount: '',
-      date: new Date().toISOString().split('T')[0],
+      date: moment().format('YYYY-MM-DD'),
       vendor: '',
       invoiceNumber: '',
       notes: '',
@@ -235,12 +236,12 @@ export default function ExpensesPage() {
   const resetSalaryForm = () => {
     setSalaryFormData({
       staffId: '',
-      month: (new Date().getMonth() + 1).toString(),
-      year: new Date().getFullYear().toString(),
+      month: moment().format('M'),
+      year: moment().format('YYYY'),
       amount: '',
       bonus: '',
       deductions: '',
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: moment().format('YYYY-MM-DD'),
       paymentMethod: 'CASH',
       notes: '',
     })
@@ -254,7 +255,7 @@ export default function ExpensesPage() {
       providerName: '',
       description: '',
       amount: '',
-      date: new Date().toISOString().split('T')[0],
+      date: moment().format('YYYY-MM-DD'),
       businessUnit: 'HOTEL',
       paymentMethod: 'CASH',
       phone: '',
@@ -466,7 +467,7 @@ export default function ExpensesPage() {
       category: expense.category || 'MAINTENANCE',
       description: expense.description || '',
       amount: expense.amount?.toString() || '',
-      date: expense.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      date: expense.date ? moment(expense.date).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'),
       vendor: expense.vendor || '',
       invoiceNumber: expense.invoiceNumber || '',
       notes: expense.notes || '',

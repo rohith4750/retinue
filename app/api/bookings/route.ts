@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import moment from "moment";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
 
 
@@ -67,12 +68,10 @@ export async function GET(request: NextRequest) {
       where.source = "ONLINE";
     }
 
-    // Date filter (specific date) - find ALL bookings active on this date (overlap)
+    // Date filter (specific date) - find ALL bookings active on this date (overlap) using IST
     if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      const startOfDay = moment(date).utcOffset("+05:30").startOf('day').toDate();
+      const endOfDay = moment(date).utcOffset("+05:30").endOf('day').toDate();
 
       // Check for overlap: checkIn < endOfDay AND checkOut > startOfDay
       where.AND = [
@@ -100,11 +99,9 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Quick Filters (Server-side)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    // Quick Filters (Server-side) using IST
+    const todayStart = moment().utcOffset("+05:30").startOf('day').toDate();
+    const todayEnd = moment().utcOffset("+05:30").endOf('day').toDate();
 
     if (quickFilter === "checkin_today") {
       where.checkIn = { gte: todayStart, lte: todayEnd };
@@ -256,12 +253,12 @@ export async function POST(request: NextRequest) {
     let checkInDate = new Date(validatedData.checkIn);
     let checkOutDate = new Date(validatedData.checkOut);
 
-    // If date-only string, set time to start/end of day
+    // If date-only string, set time to start/end of day using IST
     if (validatedData.checkIn.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      checkInDate.setHours(0, 0, 0, 0);
+      checkInDate = moment(validatedData.checkIn).utcOffset("+05:30").startOf('day').toDate();
     }
     if (validatedData.checkOut.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      checkOutDate.setHours(23, 59, 59, 999);
+      checkOutDate = moment(validatedData.checkOut).utcOffset("+05:30").endOf('day').toDate();
     }
 
     // Validate dates are valid
@@ -330,8 +327,7 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          const checkInDateOnly = new Date(checkInDate);
-          checkInDateOnly.setHours(0, 0, 0, 0);
+          const checkInDateOnly = moment(checkInDate).utcOffset("+05:30").startOf('day').toDate();
 
           const slot = await tx.roomSlot.upsert({
             where: {
@@ -411,9 +407,8 @@ export async function POST(request: NextRequest) {
             include: { room: true, guest: true },
           });
 
-          // Update room status only if booking is CURRENTLY active
-          // For future or past (already ended) bookings, room remains/returns to AVAILABLE
-          const now = new Date();
+          // Update room status only if booking is CURRENTLY active using IST
+          const now = moment().utcOffset("+05:30").toDate();
           const isCurrentlyActive = checkInDate <= now && checkOutDate > now;
           if (isCurrentlyActive) {
             await tx.room.update({

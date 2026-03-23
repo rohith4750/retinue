@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
@@ -32,10 +33,8 @@ export async function GET(request: NextRequest) {
 
     // Derive effective status from actual bookings: only PENDING/CONFIRMED/CHECKED_IN block a room.
     // If booking was CHECKED_OUT (early or on time), room is AVAILABLE regardless of Room.status.
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    const today = moment().utcOffset("+05:30").startOf('day').toDate()
+    const tomorrow = moment(today).add(1, 'day').toDate()
     const overlapping = await prisma.booking.findMany({
       where: {
         status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
@@ -47,8 +46,7 @@ export async function GET(request: NextRequest) {
       select: { roomId: true, checkOut: true },
     })
     const blocking = overlapping.filter((b) => {
-      const checkoutDayStart = new Date(b.checkOut)
-      checkoutDayStart.setHours(0, 0, 0, 0)
+      const checkoutDayStart = moment(b.checkOut).utcOffset("+05:30").startOf('day').toDate()
       return checkoutDayStart > today
     })
     const bookedRoomIds = new Set(blocking.map((b) => b.roomId))

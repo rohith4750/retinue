@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import { FaUsers, FaPlus, FaEdit, FaTrash, FaTimes, FaSave, FaMoneyBillWave, FaCalendarDay, FaRupeeSign } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
@@ -32,14 +33,13 @@ export default function StaffPage() {
   })
 
   // Salary payment form
-  const currentDate = new Date()
   const [salaryForm, setSalaryForm] = useState({
-    month: (currentDate.getMonth() + 1).toString(),
-    year: currentDate.getFullYear().toString(),
+    month: (moment().month() + 1).toString(),
+    year: moment().year().toString(),
     amount: '',
     bonus: '0',
     deductions: '0',
-    paymentDate: currentDate.toISOString().split('T')[0],
+    paymentDate: moment().format('YYYY-MM-DD'),
     paymentMethod: 'CASH',
     notes: '',
   })
@@ -66,8 +66,8 @@ export default function StaffPage() {
 
   // Fetch salary payments for current month to check payment status
   const { data: salaryPaymentsData, refetch: refetchSalaryPayments } = useQuery({
-    queryKey: ['salary-payments', currentDate.getMonth() + 1, currentDate.getFullYear()],
-    queryFn: () => api.get(`/salary-payments?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`),
+    queryKey: ['salary-payments', moment().month() + 1, moment().year()],
+    queryFn: () => api.get(`/salary-payments?month=${moment().month() + 1}&year=${moment().year()}`),
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true
@@ -148,14 +148,13 @@ export default function StaffPage() {
   }
 
   const resetSalaryForm = () => {
-    const now = new Date()
     setSalaryForm({
-      month: (now.getMonth() + 1).toString(),
-      year: now.getFullYear().toString(),
+      month: (moment().month() + 1).toString(),
+      year: moment().year().toString(),
       amount: '',
       bonus: '0',
       deductions: '0',
-      paymentDate: now.toISOString().split('T')[0],
+      paymentDate: moment().format('YYYY-MM-DD'),
       paymentMethod: 'CASH',
       notes: '',
     })
@@ -163,14 +162,13 @@ export default function StaffPage() {
 
   const openPaySalary = (member: any) => {
     setPayingStaff(member)
-    const now = new Date()
     setSalaryForm({
-      month: (now.getMonth() + 1).toString(),
-      year: now.getFullYear().toString(),
+      month: (moment().month() + 1).toString(),
+      year: moment().year().toString(),
       amount: member.staffType === 'DAILY' ? (member.dailyWage || '').toString() : (member.salary || '').toString(),
       bonus: '0',
       deductions: '0',
-      paymentDate: now.toISOString().split('T')[0],
+      paymentDate: moment().format('YYYY-MM-DD'),
       paymentMethod: 'CASH',
       notes: '',
     })
@@ -489,7 +487,7 @@ export default function StaffPage() {
                     onChange={(e) => setSalaryForm({ ...salaryForm, year: e.target.value })}
                     className="form-input"
                   >
-                    {[currentDate.getFullYear(), currentDate.getFullYear() - 1].map(y => (
+                    {[moment().year(), moment().year() - 1].map(y => (
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
@@ -793,7 +791,7 @@ export default function StaffPage() {
                   {isStaffPaidThisMonth(member.id) ? (
                     <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 font-bold">
                       <FaMoneyBillWave className="w-3 h-3" />
-                      PAID FOR {MONTHS.find(m => m.value === (currentDate.getMonth() + 1).toString())?.label.toUpperCase()}
+                      PAID FOR {MONTHS.find(m => m.value === (moment().month() + 1).toString())?.label.toUpperCase()}
                     </span>
                   ) : member.status === 'ACTIVE' ? (
                     <span className="text-[10px] px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">

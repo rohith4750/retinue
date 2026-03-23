@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import moment from "moment";
 import { successResponse, errorResponse } from "@/lib/api-helpers";
 import {
   createBookingSchema,
@@ -55,14 +56,14 @@ export async function POST(request: NextRequest) {
     }
 
     const validatedData = validationResult.data;
-    let checkInDate = new Date(validatedData.checkIn);
-    let checkOutDate = new Date(validatedData.checkOut);
+    let checkInDate = moment(validatedData.checkIn).utcOffset("+05:30").toDate();
+    let checkOutDate = moment(validatedData.checkOut).utcOffset("+05:30").toDate();
 
     if (validatedData.checkIn.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      checkInDate.setHours(0, 0, 0, 0);
+      checkInDate = moment(validatedData.checkIn).utcOffset("+05:30").startOf('day').toDate();
     }
     if (validatedData.checkOut.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      checkOutDate.setHours(23, 59, 59, 999);
+      checkOutDate = moment(validatedData.checkOut).utcOffset("+05:30").endOf('day').toDate();
     }
 
     if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
@@ -121,8 +122,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const checkInDateOnly = new Date(checkInDate);
-        checkInDateOnly.setHours(0, 0, 0, 0);
+        const checkInDateOnly = moment(checkInDate).utcOffset("+05:30").startOf('day').toDate();
 
         const slot = await tx.roomSlot.upsert({
           where: {
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        const now = new Date();
+        const now = moment().utcOffset("+05:30").toDate();
         if (checkInDate <= now) {
           await tx.room.update({
             where: { id: roomId },

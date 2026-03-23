@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import moment from "moment";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
 
 // Types - will be available from @prisma/client after running: npx prisma generate
@@ -221,14 +222,14 @@ export async function PUT(
 
         // Early checkout: recalculate amount (< 12h = minimum charge, >= 12h = day rate). Receptionist finalizes payment.
         if (status === "CHECKED_OUT") {
-          const actualCheckOut =
-            data.actualCheckOut != null
-              ? new Date(data.actualCheckOut)
-              : data.checkOut != null
-                ? new Date(data.checkOut)
-                : new Date();
-          const isEarlyCheckout =
-            actualCheckOut.getTime() < currentBooking.checkOut.getTime();
+            const actualCheckOut =
+              data.actualCheckOut != null
+                ? moment(data.actualCheckOut).utcOffset("+05:30").toDate()
+                : data.checkOut != null
+                  ? moment(data.checkOut).utcOffset("+05:30").toDate()
+                  : moment().utcOffset("+05:30").toDate();
+            const isEarlyCheckout =
+              actualCheckOut.getTime() < currentBooking.checkOut.getTime();
           if (isEarlyCheckout && currentBooking.room?.basePrice != null) {
             const early = calculateEarlyCheckoutAmount(
               currentBooking.checkIn,
@@ -272,7 +273,7 @@ export async function PUT(
 
         // Phase 3: Allow date modifications
         if (checkIn) {
-          const newCheckIn = new Date(checkIn);
+          const newCheckIn = moment(checkIn).utcOffset("+05:30").toDate();
           const currentCheckIn = new Date(currentBooking.checkIn);
           // Compare with second precision to avoid minor millisecond mismatches
           if (
@@ -290,7 +291,7 @@ export async function PUT(
 
         // CheckOut change (skip when status is CHECKED_OUT; early-checkout block above handles that)
         if (checkOut && status !== "CHECKED_OUT") {
-          const newCheckOut = new Date(checkOut);
+          const newCheckOut = moment(checkOut).utcOffset("+05:30").toDate();
           const currentCheckOut = new Date(currentBooking.checkOut);
           if (
             Math.floor(newCheckOut.getTime() / 1000) !==
@@ -456,8 +457,7 @@ export async function PUT(
           }
 
           // Create new slot for new room (same date as current booking)
-          const checkInDateOnly = new Date(currentBooking.checkIn);
-          checkInDateOnly.setHours(0, 0, 0, 0);
+          const checkInDateOnly = moment(currentBooking.checkIn).utcOffset("+05:30").startOf('day').toDate();
           const newSlot = await tx.roomSlot.create({
             data: {
               roomId,

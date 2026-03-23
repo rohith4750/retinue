@@ -14,6 +14,7 @@ import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidatio
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut'
+import moment from 'moment'
 
 export default function BookingsPage() {
   const router = useRouter()
@@ -133,14 +134,14 @@ export default function BookingsPage() {
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
   const isCheckInToday = (b: any) => {
-    const today = new Date().toISOString().split('T')[0]
-    const checkIn = new Date(b.checkIn).toISOString().split('T')[0]
+    const today = moment().format('YYYY-MM-DD')
+    const checkIn = moment(b.checkIn).format('YYYY-MM-DD')
     return checkIn === today
   }
 
   const isCheckOutToday = (b: any) => {
-    const today = new Date().toISOString().split('T')[0]
-    const checkOut = new Date(b.checkOut).toISOString().split('T')[0]
+    const today = moment().format('YYYY-MM-DD')
+    const checkOut = moment(b.checkOut).format('YYYY-MM-DD')
     return checkOut === today
   }
 
@@ -236,7 +237,7 @@ export default function BookingsPage() {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `bookings_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', `bookings_${moment().format('YYYY-MM-DD')}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -683,7 +684,7 @@ export default function BookingsPage() {
                             Room
                           </th>
                           {timelineDays.map((day, i) => {
-                            const isToday = day.toDateString() === new Date().toDateString()
+                            const isToday = moment(day).isSame(moment(), 'day')
                             return (
                               <th
                                 key={i}
@@ -711,7 +712,7 @@ export default function BookingsPage() {
                             </td>
                             {timelineDays.map((day, i) => {
                               const booking = getBookingForCell(roomId, day)
-                              const isToday = day.toDateString() === new Date().toDateString()
+                              const isToday = moment(day).isSame(moment(), 'day')
                               return (
                                 <td
                                   key={i}

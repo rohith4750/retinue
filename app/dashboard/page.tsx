@@ -10,6 +10,7 @@ import {
   FaChartLine, FaUserPlus, FaClipboardList, FaMoneyBillWave, FaPercentage,
   FaCalendarCheck, FaSignOutAlt, FaSignInAlt, FaTachometerAlt, FaUserTag
 } from 'react-icons/fa'
+import moment from 'moment'
 
 const GUEST_TYPE_ORDER = ['WALK_IN', 'CORPORATE', 'OTA', 'REGULAR', 'FAMILY', 'GOVERNMENT', 'AGENT']
 const GUEST_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
@@ -40,8 +41,8 @@ export default function DashboardPage() {
     }
   }, [])
 
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
-  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7))
+  const [selectedDate, setSelectedDate] = useState<string>(moment().format('YYYY-MM-DD'))
+  const [selectedMonth, setSelectedMonth] = useState<string>(moment().format('YYYY-MM'))
   const [filterType, setFilterType] = useState<'day' | 'month'>('day')
 
   const { data: stats, isLoading } = useQuery({
@@ -166,8 +167,8 @@ export default function DashboardPage() {
               )}
               <button
                 onClick={() => {
-                  setSelectedDate(new Date().toISOString().split('T')[0])
-                  setSelectedMonth(new Date().toISOString().slice(0, 7))
+                  setSelectedDate(moment().format('YYYY-MM-DD'))
+                  setSelectedMonth(moment().format('YYYY-MM'))
                 }}
                 className="p-2.5 bg-slate-800/50 border border-white/10 rounded-xl text-slate-400 hover:text-sky-400 transition-all"
                 title="Reset to Today"

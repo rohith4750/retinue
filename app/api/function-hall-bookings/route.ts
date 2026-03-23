@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 import { logHallBookingChange } from '@/lib/hall-booking-audit'
 
@@ -48,13 +49,10 @@ export async function GET(request: NextRequest) {
       (prisma as any).functionHallBooking.count({ where })
     ])
 
-    // Simplified summary stats for the UI
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const nextWeek = new Date(today)
-    nextWeek.setDate(nextWeek.getDate() + 7)
+    // Simplified summary stats for the UI using IST
+    const today = moment().utcOffset("+05:30").startOf('day').toDate()
+    const tomorrow = moment(today).add(1, 'day').toDate()
+    const nextWeek = moment(today).add(7, 'days').toDate()
 
     const [summary] = await Promise.all([
       (async () => {
@@ -154,12 +152,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for conflicting bookings on the same date
-    const eventDateObj = new Date(eventDate)
-    const startOfDay = new Date(eventDateObj)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(eventDateObj)
-    endOfDay.setHours(23, 59, 59, 999)
+    // Check for conflicting bookings on the same date using IST
+    const eventDateObj = moment(eventDate).utcOffset("+05:30").toDate()
+    const startOfDay = moment(eventDateObj).startOf('day').toDate()
+    const endOfDay = moment(eventDateObj).endOf('day').toDate()
 
     const conflictingBooking = await (prisma as any).functionHallBooking.findFirst({
       where: {

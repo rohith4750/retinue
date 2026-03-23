@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/api-helpers'
+import moment from 'moment'
 
 // GET - Get revenue and expense summary
 export async function GET(request: NextRequest) {
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams
     const month = searchParams.get('month')
-    const year = searchParams.get('year') || new Date().getFullYear().toString()
+    const year = searchParams.get('year') || moment().utcOffset("+05:30").year().toString()
 
     const currentYear = parseInt(year)
     const currentMonth = month ? parseInt(month) : null
@@ -25,13 +26,13 @@ export async function GET(request: NextRequest) {
 
     if (currentMonth) {
       hotelRevenueQuery.createdAt = {
-        gte: new Date(currentYear, currentMonth - 1, 1),
-        lt: new Date(currentYear, currentMonth, 1),
+        gte: moment([currentYear, currentMonth - 1]).utcOffset("+05:30", true).startOf('month').toDate(),
+        lt: moment([currentYear, currentMonth - 1]).utcOffset("+05:30", true).endOf('month').toDate(),
       }
     } else {
       hotelRevenueQuery.createdAt = {
-        gte: new Date(currentYear, 0, 1),
-        lt: new Date(currentYear + 1, 0, 1),
+        gte: moment([currentYear]).utcOffset("+05:30", true).startOf('year').toDate(),
+        lt: moment([currentYear]).utcOffset("+05:30", true).endOf('year').toDate(),
       }
     }
 
@@ -54,13 +55,13 @@ export async function GET(request: NextRequest) {
 
     if (currentMonth) {
       conventionRevenueQuery.eventDate = {
-        gte: new Date(currentYear, currentMonth - 1, 1),
-        lt: new Date(currentYear, currentMonth, 1),
+        gte: moment([currentYear, currentMonth - 1]).utcOffset("+05:30", true).startOf('month').toDate(),
+        lt: moment([currentYear, currentMonth - 1]).utcOffset("+05:30", true).endOf('month').toDate(),
       }
     } else {
       conventionRevenueQuery.eventDate = {
-        gte: new Date(currentYear, 0, 1),
-        lt: new Date(currentYear + 1, 0, 1),
+        gte: moment([currentYear]).utcOffset("+05:30", true).startOf('year').toDate(),
+        lt: moment([currentYear]).utcOffset("+05:30", true).endOf('year').toDate(),
       }
     }
 
@@ -118,20 +119,20 @@ export async function GET(request: NextRequest) {
     const monthsToFetch = currentMonth ? [currentMonth] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
     for (const m of monthsToFetch) {
-      const monthStart = new Date(currentYear, m - 1, 1)
-      const monthEnd = new Date(currentYear, m, 1)
+      const monthStart = moment([currentYear, m - 1]).utcOffset("+05:30", true).startOf('month').toDate()
+      const monthEnd = moment([currentYear, m - 1]).utcOffset("+05:30", true).endOf('month').toDate()
 
       // Monthly hotel revenue
       const monthlyHotelBookings = hotelBookings.filter((booking: any) => {
         const bookingDate = new Date(booking.createdAt)
-        return bookingDate >= monthStart && bookingDate < monthEnd
+        return bookingDate >= monthStart && bookingDate <= monthEnd
       })
       const monthlyHotelRevenue = monthlyHotelBookings.reduce((sum: number, booking: any) => sum + (booking.paidAmount || 0), 0)
 
       // Monthly convention revenue
       const monthlyConventionBookings = conventionBookings.filter((booking: any) => {
         const eventDate = new Date(booking.eventDate)
-        return eventDate >= monthStart && eventDate < monthEnd
+        return eventDate >= monthStart && eventDate <= monthEnd
       })
       const monthlyConventionRevenue = monthlyConventionBookings.reduce((sum: number, booking: any) => sum + booking.advanceAmount, 0)
 
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
 
       monthlyData.push({
         month: m,
-        monthName: new Date(currentYear, m - 1).toLocaleString('default', { month: 'short' }),
+        monthName: moment([currentYear, m - 1]).format('MMM'),
         hotel: {
           revenue: monthlyHotelRevenue,
           expenses: monthlyHotelExpenses,
