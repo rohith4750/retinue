@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic';
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // GET /api/analytics/predictions - Get predictive analytics

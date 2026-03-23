@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+
+export const dynamic = 'force-dynamic';
 import { requireAuth } from "@/lib/api-helpers";
 import * as XLSX from "xlsx";
 

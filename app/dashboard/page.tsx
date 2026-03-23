@@ -246,13 +246,26 @@ export default function DashboardPage() {
 
         {/* Monthly Stats with Growth Indicators - Only for ADMIN/SUPER_ADMIN */}
         {canViewFinance && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-            {/* Monthly Revenue */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+            {/* Total Revenue - New Card */}
+            <div className="bg-gradient-to-br from-indigo-600/30 to-indigo-800/20 backdrop-blur-xl border border-indigo-500/20 rounded-xl md:rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-400/10 rounded-full blur-2xl"></div>
+              <div className="relative z-10">
+                <p className="text-xs text-indigo-300 uppercase tracking-wider font-bold">Total Revenue (All)</p>
+                <p className="text-3xl font-extrabold text-white mt-2">₹{(stats?.totalMonthlyRevenue || 0).toLocaleString()}</p>
+                <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+                  <span className="text-slate-400">Hotel + Convention</span>
+                  <span className="text-indigo-400 font-bold">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Monthly Revenue (Hotel) */}
             <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                    {filterType === 'month' ? `${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} Revenue` : 'Monthly Revenue'}
+                    {filterType === 'month' ? `${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long' })} Hotel` : 'Hotel Revenue'}
                   </p>
                   <p className="text-2xl font-bold text-white mt-2">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
                 </div>
@@ -266,7 +279,7 @@ export default function DashboardPage() {
               </div>
               <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
                 <span className="text-slate-400">vs last month</span>
-                <span className="text-slate-300">Hotel Revenue</span>
+                <span className="text-slate-300">Stay Attribution</span>
               </div>
             </div>
 
