@@ -40,9 +40,18 @@ export default function DashboardPage() {
     }
   }, [])
 
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7))
+  const [filterType, setFilterType] = useState<'day' | 'month'>('day')
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => api.get('/dashboard'),
+    queryKey: ['dashboard', selectedDate, selectedMonth, filterType],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (filterType === 'day') params.append('date', selectedDate)
+      else params.append('month', selectedMonth)
+      return api.get(`/dashboard?${params.toString()}`)
+    },
     staleTime: 0,
     refetchOnMount: 'always',
   })
@@ -82,32 +91,90 @@ export default function DashboardPage() {
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-4 lg:px-6 py-4 relative z-10 space-y-6">
 
-        {/* Welcome Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <FaTachometerAlt className="text-sky-400" />
-              Dashboard Overview
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Welcome back, {user?.username || 'User'}! Here&apos;s what&apos;s happening today.
-            </p>
+        {/* Welcome Header & Filters */}
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <FaTachometerAlt className="text-sky-400" />
+                Dashboard Overview
+              </h1>
+              <p className="text-sm text-slate-400 mt-1">
+                Welcome back, {user?.username || 'User'}! Here&apos;s what&apos;s happening.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/bookings/new"
+                className="btn-primary flex items-center gap-2 text-sm"
+              >
+                <FaCalendarAlt className="w-4 h-4" />
+                New Booking
+              </Link>
+              <Link
+                href="/function-halls/bookings/new"
+                className="btn-secondary flex items-center gap-2 text-sm"
+              >
+                <FaBuilding className="w-4 h-4" />
+                Hall Booking
+              </Link>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/bookings/new"
-              className="btn-primary flex items-center gap-2 text-sm"
-            >
-              <FaCalendarAlt className="w-4 h-4" />
-              New Booking
-            </Link>
-            <Link
-              href="/function-halls/bookings/new"
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <FaBuilding className="w-4 h-4" />
-              Hall Booking
-            </Link>
+
+          {/* Filter Bar */}
+          <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 p-1 bg-slate-800/50 rounded-xl">
+              <button
+                onClick={() => setFilterType('day')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === 'day' ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/20' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Specific Day
+              </button>
+              <button
+                onClick={() => setFilterType('month')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === 'month' ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/20' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Entire Month
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              {filterType === 'day' ? (
+                <div className="relative flex-1 md:w-48">
+                  <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-400 w-4 h-4 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full bg-slate-800/50 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  />
+                </div>
+              ) : (
+                <div className="relative flex-1 md:w-48">
+                  <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-400 w-4 h-4 pointer-events-none" />
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full bg-slate-800/50 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  />
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedDate(new Date().toISOString().split('T')[0])
+                  setSelectedMonth(new Date().toISOString().slice(0, 7))
+                }}
+                className="p-2.5 bg-slate-800/50 border border-white/10 rounded-xl text-slate-400 hover:text-sky-400 transition-all"
+                title="Reset to Today"
+              >
+                <FaClock className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -138,7 +205,9 @@ export default function DashboardPage() {
                 <span className="text-xs text-emerald-200/70 font-medium">of {stats?.totalRooms || 0}</span>
               </div>
               <p className="text-3xl font-bold text-white tracking-tight">{stats?.availableRooms || 0}</p>
-              <p className="text-xs text-emerald-200/70 mt-1 font-medium">Available Rooms</p>
+              <p className="text-xs text-emerald-200/70 mt-1 font-medium">
+                Available Rooms {filterType === 'day' ? `(on ${new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})` : ''}
+              </p>
             </div>
           </div>
 
@@ -149,10 +218,10 @@ export default function DashboardPage() {
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
                   <FaDollarSign className="text-amber-400 text-xl" />
-                  <span className="text-xs text-slate-400">Today</span>
+                  <span className="text-xs text-slate-400">{filterType === 'day' ? 'Selected Day' : 'Month Start'}</span>
                 </div>
                 <p className="text-3xl font-bold text-white">₹{((stats?.todayRevenue || 0) / 1000).toFixed(1)}K</p>
-                <p className="text-xs text-slate-400 mt-1">Today&apos;s Revenue</p>
+                <p className="text-xs text-slate-400 mt-1">{filterType === 'day' ? 'Day Revenue' : 'Date Revenue'}</p>
               </div>
             </div>
           )}
@@ -182,7 +251,9 @@ export default function DashboardPage() {
             <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Revenue</p>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+                    {filterType === 'month' ? `${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} Revenue` : 'Monthly Revenue'}
+                  </p>
                   <p className="text-2xl font-bold text-white mt-2">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
                 </div>
                 <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${(stats?.revenueGrowth || 0) >= 0
@@ -203,7 +274,9 @@ export default function DashboardPage() {
             <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Bookings</p>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+                    {filterType === 'month' ? `${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} Bookings` : 'Monthly Bookings'}
+                  </p>
                   <p className="text-2xl font-bold text-white mt-2">{stats?.monthBookings || 0}</p>
                 </div>
                 <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${(stats?.bookingGrowth || 0) >= 0
@@ -251,7 +324,11 @@ export default function DashboardPage() {
                     <FaChartLine className="text-sky-400" />
                     Weekly Revenue
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">Last 7 days performance</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {filterType === 'day' 
+                      ? `7 days up to ${new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` 
+                      : `Last 7 days of ${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long' })}`}
+                  </p>
                 </div>
               </div>
               <div className="h-48 flex items-end gap-2">
@@ -772,7 +849,11 @@ export default function DashboardPage() {
                     <FaChartLine className="text-emerald-400" />
                     Revenue Trend
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">Last 6 months comparison</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {filterType === 'month' 
+                      ? `6 months up to ${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` 
+                      : 'Last 6 months comparison'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs">
                   <span className="flex items-center gap-1">

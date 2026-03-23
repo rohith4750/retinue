@@ -15,13 +15,27 @@ export async function GET(request: NextRequest) {
     const user = authResult as any;
     const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
-    const now = new Date();
-    const today = new Date();
+    const { searchParams } = new URL(request.url);
+    const filterDate = searchParams.get("date"); // e.g., 2026-03-23
+    const filterMonth = searchParams.get("month"); // e.g., 2026-03
+
+    // Reference point for "today"
+    let referenceDate = new Date();
+    if (filterDate) {
+      referenceDate = new Date(filterDate);
+    } else if (filterMonth) {
+      // If month is provided but no date, use the first of that month
+      referenceDate = new Date(`${filterMonth}-01`);
+    }
+
+    const today = new Date(referenceDate);
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Get start of current month and last month
+    const now = filterDate ? new Date(today.getTime() + 12 * 60 * 60 * 1000) : new Date(); // If filtered by date, simulate noon
+
+    // Get start of current month (from reference) and last month
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const startOfLastMonth = new Date(
       today.getFullYear(),
