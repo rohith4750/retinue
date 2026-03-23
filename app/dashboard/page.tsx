@@ -207,7 +207,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-3xl font-bold text-white tracking-tight">{stats?.availableRooms || 0}</p>
               <p className="text-xs text-emerald-200/70 mt-1 font-medium">
-                Available Rooms {filterType === 'day' ? `(on ${new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})` : ''}
+                Available Rooms {filterType === 'day' ? `(on ${moment(selectedDate).format('D MMM')})` : ''}
               </p>
             </div>
           </div>
@@ -229,7 +229,7 @@ export default function DashboardPage() {
 
           {/* Today's Bookings - click to open bookings page filtered by today (checkout from there) */}
           <Link
-            href={`/bookings?date=${new Date().toISOString().slice(0, 10)}`}
+            href={`/bookings?date=${moment().format('YYYY-MM-DD')}`}
             className="block bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden hover:border-purple-400/40 hover:from-purple-600/40 hover:to-purple-800/30 transition-all"
           >
             <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl"></div>
@@ -248,15 +248,38 @@ export default function DashboardPage() {
         {/* Monthly Stats with Growth Indicators - Only for ADMIN/SUPER_ADMIN */}
         {canViewFinance && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
-            {/* Total Revenue - New Card */}
-            <div className="bg-gradient-to-br from-indigo-600/30 to-indigo-800/20 backdrop-blur-xl border border-indigo-500/20 rounded-xl md:rounded-2xl p-4 md:p-5 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-400/10 rounded-full blur-2xl"></div>
+            {/* Total Revenue - Premium Card */}
+            <div className="bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 backdrop-blur-xl border border-white/20 rounded-2xl p-5 md:p-6 relative overflow-hidden group shadow-2xl shadow-indigo-900/40 hover:scale-[1.02] transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/20 transition-all duration-700"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-400/20 rounded-full blur-2xl -ml-12 -mb-12"></div>
+              
               <div className="relative z-10">
-                <p className="text-xs text-indigo-300 uppercase tracking-wider font-bold">Total Revenue (All)</p>
-                <p className="text-3xl font-extrabold text-white mt-2">₹{(stats?.totalMonthlyRevenue || 0).toLocaleString()}</p>
-                <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400">Hotel + Convention</span>
-                  <span className="text-indigo-400 font-bold">LIVE</span>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
+                    <FaMoneyBillWave className="text-white text-xl" />
+                  </div>
+                  <span className="text-[10px] bg-white/20 text-white px-2.5 py-1 rounded-full font-black tracking-widest border border-white/10">
+                    TOTAL EARNINGS
+                  </span>
+                </div>
+                
+                <p className="text-xs text-indigo-100/70 font-medium uppercase tracking-widest">Aggregate Revenue</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-bold text-indigo-200">₹</span>
+                  <p className="text-4xl font-black text-white tracking-tighter">
+                    {(stats?.totalMonthlyRevenue || 0).toLocaleString()}
+                  </p>
+                </div>
+                
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-indigo-200/50 font-bold uppercase">Source Breakdown</span>
+                    <span className="text-xs text-white font-semibold">Hotel + Convention Halls</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <span className="text-[10px] text-emerald-300 font-black">LIVE DATA</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -266,7 +289,7 @@ export default function DashboardPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                    {filterType === 'month' ? `${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long' })} Hotel` : 'Hotel Revenue'}
+                    {filterType === 'month' ? `${moment(selectedMonth).format('MMMM')} Hotel` : 'Hotel Revenue'}
                   </p>
                   <p className="text-2xl font-bold text-white mt-2">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
                 </div>
@@ -289,7 +312,7 @@ export default function DashboardPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                    {filterType === 'month' ? `${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} Bookings` : 'Monthly Bookings'}
+                    {filterType === 'month' ? `${moment(selectedMonth).format('MMMM YYYY')} Bookings` : 'Monthly Bookings'}
                   </p>
                   <p className="text-2xl font-bold text-white mt-2">{stats?.monthBookings || 0}</p>
                 </div>
@@ -340,8 +363,8 @@ export default function DashboardPage() {
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
                     {filterType === 'day' 
-                      ? `7 days up to ${new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` 
-                      : `Last 7 days of ${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'long' })}`}
+                      ? `7 days up to ${moment(selectedDate).format('D MMM')}` 
+                      : `Last 7 days of ${moment(selectedMonth).format('MMMM')}`}
                   </p>
                 </div>
               </div>
@@ -723,46 +746,74 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Payment Health (Admin only) */}
+          {/* Payment Health (Admin only) - Premium Design */}
           {canViewFinance && (
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <FaMoneyBillWave className="text-emerald-400" />
-                <p className="text-sm font-semibold text-white">Payment Health</p>
-              </div>
-              <div className="flex items-end justify-between mb-3">
-                <div>
-                  <p className="text-xs text-slate-400">Outstanding</p>
-                  <p className="text-xl font-bold text-white">₹{(stats?.pendingPayments || 0).toLocaleString()}</p>
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                    <FaMoneyBillWave className="text-emerald-400 text-lg" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Payment Health</h3>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Financial Liquidity</p>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-slate-500">This month</p>
-                  <p className="text-xs text-slate-300">
-                    Paid: <span className="text-emerald-400 font-semibold">{stats?.paymentStatusThisMonth?.PAID || 0}</span>{' '}
-                    • Partial: <span className="text-amber-400 font-semibold">{stats?.paymentStatusThisMonth?.PARTIAL || 0}</span>{' '}
-                    • Pending: <span className="text-red-400 font-semibold">{stats?.paymentStatusThisMonth?.PENDING || 0}</span>
-                  </p>
+                  <p className="text-[10px] text-slate-500 uppercase font-black">Outstanding</p>
+                  <p className="text-lg font-black text-rose-400">₹{(stats?.pendingPayments || 0).toLocaleString()}</p>
                 </div>
               </div>
-              <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
-                {(() => {
-                  const paid = stats?.paymentStatusThisMonth?.PAID || 0
-                  const partial = stats?.paymentStatusThisMonth?.PARTIAL || 0
-                  const pending = stats?.paymentStatusThisMonth?.PENDING || 0
-                  const total = paid + partial + pending
-                  const paidPct = total > 0 ? (paid / total) * 100 : 0
-                  const partialPct = total > 0 ? (partial / total) * 100 : 0
-                  const pendingPct = total > 0 ? (pending / total) * 100 : 0
-                  return (
-                    <div className="flex h-full w-full">
-                      <div className="bg-emerald-500" style={{ width: `${paidPct}%` }} />
-                      <div className="bg-amber-500" style={{ width: `${partialPct}%` }} />
-                      <div className="bg-red-500" style={{ width: `${pendingPct}%` }} />
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Collection Status (Month)</p>
+                    <div className="flex gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <span className="text-xs text-white font-bold">{stats?.paymentStatusThisMonth?.PAID || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                        <span className="text-xs text-white font-bold">{stats?.paymentStatusThisMonth?.PARTIAL || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                        <span className="text-xs text-white font-bold">{stats?.paymentStatusThisMonth?.PENDING || 0}</span>
+                      </div>
                     </div>
-                  )
-                })()}
+                  </div>
+                  <div className="text-right">
+                     <span className="text-[10px] px-2 py-0.5 bg-slate-800 rounded text-slate-400 font-bold">BY CHECK-IN</span>
+                  </div>
+                </div>
+
+                <div className="relative pt-2">
+                  <div className="h-3 bg-slate-800 rounded-full overflow-hidden flex shadow-inner border border-white/5">
+                    {(() => {
+                      const paid = stats?.paymentStatusThisMonth?.PAID || 0
+                      const partial = stats?.paymentStatusThisMonth?.PARTIAL || 0
+                      const pending = stats?.paymentStatusThisMonth?.PENDING || 0
+                      const total = paid + partial + pending
+                      const paidPct = total > 0 ? (paid / total) * 100 : 0
+                      const partialPct = total > 0 ? (partial / total) * 100 : 0
+                      const pendingPct = total > 0 ? (pending / total) * 100 : 0
+                      return (
+                        <>
+                          <div className="bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-1000" style={{ width: `${paidPct}%` }} />
+                          <div className="bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-1000" style={{ width: `${partialPct}%` }} />
+                          <div className="bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-1000" style={{ width: `${pendingPct}%` }} />
+                        </>
+                      )
+                    })()}
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-[9px] text-emerald-400 font-bold uppercase">Collected</span>
+                    <span className="text-[9px] text-rose-400 font-bold uppercase">At Risk</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-[10px] text-slate-500 mt-2">Split of payment statuses for bookings created this month</p>
             </div>
           )}
 
@@ -865,7 +916,7 @@ export default function DashboardPage() {
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
                     {filterType === 'month' 
-                      ? `6 months up to ${new Date(selectedMonth).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` 
+                      ? `6 months up to ${moment(selectedMonth).format('MMM YYYY')}` 
                       : 'Last 6 months comparison'}
                   </p>
                 </div>
