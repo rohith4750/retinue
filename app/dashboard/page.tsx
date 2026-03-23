@@ -685,46 +685,50 @@ export default function DashboardPage() {
         {/* Operational & Payment Insights */}
         <div className={`grid grid-cols-1 md:grid-cols-3 ${canViewFinance ? 'lg:grid-cols-4' : ''} gap-4`}>
           {/* Stay Metrics */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-sky-500/20 rounded-xl">
-                  <FaClock className="text-sky-400 text-lg" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Avg stay (this month)</p>
-                  <p className="text-2xl font-bold text-white">{stats?.avgStayHoursThisMonth || 0}h</p>
-                </div>
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-full">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-sky-500/20 rounded-xl">
+                <FaClock className="text-sky-400 text-lg" />
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-slate-500">Avg booking value</p>
-                <p className="text-sm font-semibold text-slate-200">₹{(stats?.avgBookingValueThisMonth || 0).toLocaleString()}</p>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Stay Duration</p>
+                <h3 className="text-sm font-bold text-white">Avg stay (this month)</h3>
+              </div>
+            </div>
+            
+            <div className="mt-4 flex items-end justify-between">
+              <div>
+                <p className="text-4xl font-black text-white leading-none">{stats?.avgStayHoursThisMonth || 0}h</p>
+              </div>
+              <div className="text-right pb-1">
+                <p className="text-[10px] text-slate-500 uppercase font-bold">Avg value</p>
+                <p className="text-sm font-black text-sky-400 leading-tight">₹{(stats?.avgBookingValueThisMonth || 0).toLocaleString()}</p>
               </div>
             </div>
           </div>
 
           {/* Operational Alerts */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 h-full flex flex-col">
+            <div className="flex items-center gap-2 mb-4">
               <FaExclamationTriangle className="text-amber-400" />
-              <p className="text-sm font-semibold text-white">Operational Alerts</p>
+              <p className="text-sm font-bold text-white uppercase tracking-wider">Operational Alerts</p>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Overdue checkouts</span>
-                <span className={`font-semibold ${(stats?.overdueCheckouts || 0) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center justify-between text-sm py-1 border-b border-white/5">
+                <span className="text-slate-400 font-medium">Overdue checkouts</span>
+                <span className={`font-black ${(stats?.overdueCheckouts || 0) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                   {stats?.overdueCheckouts || 0}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Flexible checkout (TBD)</span>
-                <span className={`font-semibold ${(stats?.flexibleCheckoutActive || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+              <div className="flex items-center justify-between text-sm py-1 border-b border-white/5">
+                <span className="text-slate-400 font-medium">Flexible checkout (TBD)</span>
+                <span className={`font-black ${(stats?.flexibleCheckoutActive || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
                   {stats?.flexibleCheckoutActive || 0}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Maintenance rooms</span>
-                <span className={`font-semibold ${(stats?.maintenanceRooms || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+              <div className="flex items-center justify-between text-sm py-1">
+                <span className="text-slate-400 font-medium">Maintenance rooms</span>
+                <span className={`font-black ${(stats?.maintenanceRooms || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
                   {stats?.maintenanceRooms || 0}
                 </span>
               </div>
