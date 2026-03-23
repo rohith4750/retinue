@@ -1,10 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
-import {
-  excludeTestingGuestsFilter,
-  isTestingGuest,
-} from "@/lib/booking-utils";
+
 
 // UserRole type - will be available from @prisma/client after running: npx prisma generate
 type UserRole = "SUPER_ADMIN" | "ADMIN" | "RECEPTIONIST" | "STAFF";
@@ -164,25 +161,22 @@ export async function GET(request: NextRequest) {
           where: {
             ...statsWhere,
             status: "CONFIRMED",
-            ...excludeTestingGuestsFilter,
           },
         }),
         prisma.booking.count({
           where: {
             ...statsWhere,
             status: "CHECKED_IN",
-            ...excludeTestingGuestsFilter,
           },
         }),
         prisma.booking.count({
           where: {
             ...statsWhere,
             status: "CHECKED_OUT",
-            ...excludeTestingGuestsFilter,
           },
         }),
         prisma.booking.aggregate({
-          where: { ...statsWhere, ...excludeTestingGuestsFilter },
+          where: { ...statsWhere },
           _sum: { totalAmount: true },
         }),
       ]);
@@ -493,7 +487,8 @@ export async function POST(request: NextRequest) {
       role: RoomBookedSourceRole;
     };
 
-    const isTest = isTestingGuest(result.guest.name);
+    // const isTest = isTestingGuest(result.guest.name);
+    const isTest = false;
 
     if (!isTest) {
       await notifyInternalRoomBooked({

@@ -63,18 +63,18 @@ export default function InventoryPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center h-48 md:h-96">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
 
-  return (
+    return (
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
-      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
-        <div className="flex justify-between items-center mb-6">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10">
+        <div className="flex justify-between items-center mb-4 md:mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-1">Stock & Assets</h1>
             <p className="text-sm text-slate-400">Track stock levels and assign assets to rooms or halls</p>
@@ -92,7 +92,7 @@ export default function InventoryPage() {
         </div>
 
         {lowStockItems.length > 0 && (
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-6 backdrop-blur-sm">
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 md:p-4 mb-4 md:mb-6 backdrop-blur-sm">
             <p className="font-bold text-yellow-400 flex items-center">
               <FaExclamationTriangle className="mr-2" />
               Low Stock Alert!

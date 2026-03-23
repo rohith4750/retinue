@@ -1,12 +1,13 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit } from 'react-icons/fa'
+import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit, FaTrash } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
+import { toast } from 'react-hot-toast'
 
 type PaymentFilter = 'all' | 'PENDING' | 'PARTIAL' | 'PAID'
 
@@ -31,11 +32,31 @@ export default function BillsPage() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
+  const queryClient = useQueryClient()
   const { data: response, isLoading } = useQuery({
     queryKey: ['bills', page, limit, debouncedSearch, paymentFilter],
     queryFn: () => api.get(`/bills?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`),
     staleTime: 5000,
   })
+
+  const deleteBillMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/bills/${id}`),
+    onSuccess: () => {
+      toast.success('Bill deleted successfully')
+      queryClient.invalidateQueries({ queryKey: ['bills'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to delete bill')
+    }
+  })
+
+  const handleDelete = (e: React.MouseEvent, id: string, billNumber: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (window.confirm(`Are you sure you want to permanently delete bill ${billNumber}? This action cannot be undone.`)) {
+      deleteBillMutation.mutate(id)
+    }
+  }
 
   // Data structure from /api/bills is the same array of objects, but consolidated
   const bookings = response?.data || []
@@ -218,6 +239,14 @@ export default function BillsPage() {
                   >
                     <FaEdit className="w-4 h-4" />
                   </Link>
+                  <button
+                    onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Delete Bill"
+                    disabled={deleteBillMutation.isPending}
+                  >
+                    <FaTrash className="w-4 h-4" />
+                  </button>
                   <p className="text-xs text-emerald-400 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
                     View Bill →
                   </p>
@@ -292,6 +321,14 @@ export default function BillsPage() {
                           >
                             <FaEdit className="w-4 h-4" />
                           </Link>
+                          <button
+                            onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                            className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Delete Bill"
+                            disabled={deleteBillMutation.isPending}
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -341,6 +378,22 @@ export default function BillsPage() {
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Remaining</span>
                     <span className="text-sm font-bold text-amber-400">₹{remaining.toLocaleString()}</span>
                   </div>
+                </div>
+                <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/5 pt-3">
+                  <Link
+                    href={`/bookings/${b.id}/edit`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400"
+                  >
+                    <FaEdit className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-red-400"
+                    disabled={deleteBillMutation.isPending}
+                  >
+                    <FaTrash className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </Link>
             )

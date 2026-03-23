@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-helpers";
-import {
-  excludeTestingGuestsFilter,
-  excludeTestingHallGuestsFilter,
-} from "@/lib/booking-utils";
 import * as XLSX from "xlsx";
 
 // GET /api/reports - Generate comprehensive Excel report
@@ -38,7 +34,6 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
-          ...excludeTestingGuestsFilter,
         },
         include: {
           guest: true,
@@ -96,18 +91,7 @@ export async function GET(request: NextRequest) {
 
       // 3. Guests Sheet
       const guests = await prisma.guest.findMany({
-        where: {
-          createdAt: {
-            gte: start,
-            lte: end,
-          },
-          name: {
-            not: {
-              contains: "testing",
-            },
-            mode: "insensitive",
-          },
-        },
+        where: {},
         orderBy: { createdAt: "desc" },
       });
 
@@ -134,7 +118,6 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
-          ...excludeTestingGuestsFilter,
         },
         _sum: {
           totalAmount: true,
@@ -151,7 +134,6 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
-          ...excludeTestingGuestsFilter,
         },
         _count: true,
       });
@@ -196,7 +178,6 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
-            ...excludeTestingHallGuestsFilter,
           },
           include: {
             hall: true,
@@ -409,9 +390,6 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
-            NOT: [
-              { description: { contains: "testing", mode: "insensitive" } },
-            ],
           },
           orderBy: { date: "desc" },
         });
@@ -485,7 +463,6 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
-          ...excludeTestingGuestsFilter,
         },
         _sum: {
           paidAmount: true,
@@ -501,7 +478,6 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
-            ...excludeTestingHallGuestsFilter,
           },
           _sum: {
             advanceAmount: true,
@@ -521,9 +497,6 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
-            NOT: [
-              { description: { contains: "testing", mode: "insensitive" } },
-            ],
           },
           _sum: {
             amount: true,

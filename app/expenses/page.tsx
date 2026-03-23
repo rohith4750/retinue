@@ -504,9 +504,9 @@ export default function ExpensesPage() {
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
-      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <h1 className="text-xl font-bold text-slate-100">
             {canViewFinancials ? 'Revenue & Expenses' : 'Record Expenses'}
           </h1>
@@ -558,7 +558,7 @@ export default function ExpensesPage() {
 
         {/* Inline Add/Edit Expense Form */}
         {(expenseMode === 'expense' || editingExpense) && (
-          <div className="card mb-6">
+          <div className="card mb-4 md:mb-6">
             <div className="card-header mb-4">
               <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
                 <FaPlus className="text-sky-400" />

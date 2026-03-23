@@ -58,8 +58,8 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="w-full px-4 lg:px-6 py-4">
-        <div className="space-y-6">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4">
+        <div className="space-y-4 md:space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="bg-slate-800/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
@@ -89,7 +89,7 @@ export default function DashboardPage() {
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
-      <div className="w-full px-4 lg:px-6 py-4 relative z-10 space-y-6">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10 space-y-4 md:space-y-6">
 
         {/* Welcome Header & Filters */}
         <div className="flex flex-col gap-6">
@@ -179,16 +179,16 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Stats - Row 1 */}
-        <div className={`grid grid-cols-2 ${canViewFinance ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+        <div className={`grid grid-cols-2 ${canViewFinance ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-2 md:gap-4`}>
           {/* Occupancy Rate */}
-          <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 backdrop-blur-xl border border-sky-500/20 rounded-2xl p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
+          <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 backdrop-blur-xl border border-sky-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
             <div className="absolute top-0 right-0 w-24 h-24 bg-sky-400/20 rounded-full blur-2xl group-hover:bg-sky-400/30 transition-all"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
                 <FaPercentage className="text-sky-400 text-xl" />
-                <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${(stats?.occupancyRate || 0) >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
+                <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${(stats?.occupancyRate || 0) >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
                   }`}>
-                  {(stats?.occupancyRate || 0) >= 70 ? 'Good' : 'Low'}
+                  {(stats?.occupancyRate || 0) >= 70 ? 'GOOD' : 'LOW'}
                 </span>
               </div>
               <p className="text-3xl font-bold text-white tracking-tight">{stats?.occupancyRate || 0}%</p>
@@ -197,7 +197,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Available Rooms */}
-          <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-800/20 backdrop-blur-xl border border-emerald-500/20 rounded-2xl p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
+          <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-800/20 backdrop-blur-xl border border-emerald-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-all"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -213,7 +213,7 @@ export default function DashboardPage() {
 
           {/* Today's Revenue - Only for ADMIN/SUPER_ADMIN */}
           {canViewFinance && (
-            <div className="bg-gradient-to-br from-amber-600/30 to-amber-800/20 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-4 relative overflow-hidden">
+            <div className="bg-gradient-to-br from-amber-600/30 to-amber-800/20 backdrop-blur-xl border border-amber-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/10 rounded-full blur-2xl"></div>
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
@@ -229,7 +229,7 @@ export default function DashboardPage() {
           {/* Today's Bookings - click to open bookings page filtered by today (checkout from there) */}
           <Link
             href={`/bookings?date=${new Date().toISOString().slice(0, 10)}`}
-            className="block bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-4 relative overflow-hidden hover:border-purple-400/40 hover:from-purple-600/40 hover:to-purple-800/30 transition-all"
+            className="block bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden hover:border-purple-400/40 hover:from-purple-600/40 hover:to-purple-800/30 transition-all"
           >
             <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl"></div>
             <div className="relative z-10">
@@ -246,9 +246,9 @@ export default function DashboardPage() {
 
         {/* Monthly Stats with Growth Indicators - Only for ADMIN/SUPER_ADMIN */}
         {canViewFinance && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             {/* Monthly Revenue */}
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
@@ -271,7 +271,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Monthly Bookings */}
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
@@ -294,7 +294,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Hall Revenue */}
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Hall Revenue</p>
@@ -314,10 +314,10 @@ export default function DashboardPage() {
         )}
 
         {/* Charts & Analytics Section */}
-        <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
+        <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-4 md:gap-6`}>
           {/* Weekly Revenue Chart - Only for ADMIN/SUPER_ADMIN */}
           {canViewFinance && (
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -365,7 +365,7 @@ export default function DashboardPage() {
           )}
 
           {/* Room Status Distribution */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -380,14 +380,14 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-300 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                    <span className="w-3 h-3 rounded-lg bg-emerald-500"></span>
                     Available
                   </span>
                   <span className="text-sm font-semibold text-white">{stats?.availableRooms || 0}</span>
                 </div>
-                <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-700 rounded-lg overflow-hidden">
                   <div
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    className="h-full bg-emerald-500 rounded-lg transition-all duration-500"
                     style={{ width: `${stats?.totalRooms ? ((stats?.availableRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
                   />
                 </div>
@@ -396,14 +396,14 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-300 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                    <span className="w-3 h-3 rounded-lg bg-red-500"></span>
                     Booked
                   </span>
                   <span className="text-sm font-semibold text-white">{stats?.bookedRooms || 0}</span>
                 </div>
-                <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-700 rounded-lg overflow-hidden">
                   <div
-                    className="h-full bg-red-500 rounded-full transition-all duration-500"
+                    className="h-full bg-red-500 rounded-lg transition-all duration-500"
                     style={{ width: `${stats?.totalRooms ? ((stats?.bookedRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
                   />
                 </div>
@@ -456,8 +456,8 @@ export default function DashboardPage() {
                           <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
                           <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
                         </div>
-                        <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
+                        <div className="h-2 bg-slate-700/60 rounded-lg overflow-hidden">
+                          <div className={`h-full rounded-lg transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
                         </div>
                       </div>
                     )
@@ -476,7 +476,7 @@ export default function DashboardPage() {
                       const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
                       return (
                         <div key={type} className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-slate-800/40">
-                          <div className={`w-2 h-7 rounded-full ${colors.bar}`} />
+                          <div className={`w-1.5 h-7 rounded-lg ${colors.bar}`} />
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium ${colors.text}`}>{label}</p>
                             <p className="text-[10px] text-slate-500">{data.count} booking(s)</p>
@@ -513,8 +513,8 @@ export default function DashboardPage() {
                           <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
                           <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
                         </div>
-                        <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
+                        <div className="h-2 bg-slate-700/60 rounded-lg overflow-hidden">
+                          <div className={`h-full rounded-lg transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
                         </div>
                       </div>
                     )

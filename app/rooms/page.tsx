@@ -263,13 +263,13 @@ export default function RoomsPage() {
     )
   }
 
-  return (
+    return (
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
-      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10">
         {/* Header: Search/Filter on left, Add Room on right */}
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 md:gap-4 mb-3 md:mb-4">
           {/* Left: Search and Date Filter Toggle */}
           <div className="flex flex-wrap items-center gap-3">
             <SearchInput
@@ -511,7 +511,7 @@ export default function RoomsPage() {
                               <td key={i} className={`px-1.5 py-1.5 align-top border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/8' : ''}`}>
                                 {booking ? (
                                   <div
-                                    className={`px-2 py-2 rounded-xl text-center cursor-pointer transition-all hover:scale-[1.03] shadow-sm ${displayStatus === 'CHECKED_IN' ? 'bg-sky-500/25 border border-sky-500/50 shadow-sky-500/10' :
+                                    className={`px-2 py-2 rounded-lg text-center cursor-pointer transition-all hover:scale-[1.03] shadow-sm ${displayStatus === 'CHECKED_IN' ? 'bg-sky-500/25 border border-sky-500/50 shadow-sky-500/10' :
                                         displayStatus === 'CONFIRMED' ? 'bg-emerald-500/25 border border-emerald-500/50 shadow-emerald-500/10' :
                                           'bg-amber-500/25 border border-amber-500/50 shadow-amber-500/10'
                                       }`}
@@ -600,7 +600,7 @@ export default function RoomsPage() {
                     {categoryRooms.map((room: any) => (
                       <div
                         key={room.id}
-                        className={`inline-flex items-center px-4 py-2.5 rounded-full border-2 cursor-pointer transition-all hover:scale-[1.02] ${room.status === 'AVAILABLE'
+                        className={`inline-flex items-center px-4 py-2.5 rounded-xl border-2 cursor-pointer transition-all hover:scale-[1.02] ${room.status === 'AVAILABLE'
                             ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30'
                             : room.status === 'BOOKED'
                               ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30'
@@ -626,9 +626,9 @@ export default function RoomsPage() {
                             room.status === 'BOOKED' ? 'bg-red-400' :
                               'bg-yellow-400'
                           }`} />
-                        <span className={`text-[10px] font-semibold uppercase ${room.status === 'AVAILABLE' ? 'text-emerald-400' :
-                            room.status === 'BOOKED' ? 'text-red-400' :
-                              'text-yellow-400'
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${room.status === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-400' :
+                            room.status === 'BOOKED' ? 'bg-red-500/20 text-red-400' :
+                              'bg-yellow-500/20 text-yellow-400'
                           }`}>{room.status}</span>
                         {room.status === 'MAINTENANCE' && room.maintenanceReason && (
                           <>
@@ -669,7 +669,7 @@ export default function RoomsPage() {
                                 e.stopPropagation()
                                 handleDelete(room.id)
                               }}
-                              className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-full hover:bg-red-500/30"
+                              className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/30"
                               title="Delete"
                             >
                               <FaTrash className="w-3 h-3" />

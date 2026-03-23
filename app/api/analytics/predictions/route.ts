@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-import { excludeTestingGuestsFilter, excludeTestingHallGuestsFilter } from '@/lib/booking-utils'
 
 // GET /api/analytics/predictions - Get predictive analytics
 export async function GET(request: NextRequest) {
@@ -25,7 +24,6 @@ export async function GET(request: NextRequest) {
       const hotelBookings = await prisma.booking.count({
         where: {
           createdAt: { gte: monthStart, lte: monthEnd },
-          ...excludeTestingGuestsFilter
         }
       })
 
@@ -33,7 +31,6 @@ export async function GET(request: NextRequest) {
       const hotelRevenue = await prisma.booking.aggregate({
         where: {
           createdAt: { gte: monthStart, lte: monthEnd },
-          ...excludeTestingGuestsFilter
         },
         _sum: { paidAmount: true }
       })
@@ -46,14 +43,12 @@ export async function GET(request: NextRequest) {
         hallBookings = await prisma.functionHallBooking.count({
           where: {
             createdAt: { gte: monthStart, lte: monthEnd },
-            ...excludeTestingHallGuestsFilter
           }
         })
         // @ts-ignore
         const hallRevenueData = await prisma.functionHallBooking.aggregate({
           where: {
             createdAt: { gte: monthStart, lte: monthEnd },
-            ...excludeTestingHallGuestsFilter
           },
           _sum: { advanceAmount: true }
         })

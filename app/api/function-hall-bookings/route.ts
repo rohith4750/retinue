@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 import { logHallBookingChange } from '@/lib/hall-booking-audit'
-import { excludeTestingHallGuestsFilter } from '@/lib/booking-utils'
 
 // GET /api/function-hall-bookings - List all function hall bookings
 export async function GET(request: NextRequest) {
@@ -14,14 +13,11 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const hallId = searchParams.get('hallId')
     const search = searchParams.get('search')
-    const includeTesting = searchParams.get('includeTesting') === 'true'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
-    const where: any = {
-      ...(includeTesting ? {} : excludeTestingHallGuestsFilter)
-    }
+    const where: any = {}
 
     // Exclude cancelled by default
     if (status) {
@@ -64,18 +60,18 @@ export async function GET(request: NextRequest) {
       (async () => {
         const [revenue, pending, todayCount, upcoming] = await Promise.all([
           (prisma as any).functionHallBooking.aggregate({
-            where: { ...excludeTestingHallGuestsFilter, status: { not: 'CANCELLED' } },
+            where: { status: { not: 'CANCELLED' } },
             _sum: { advanceAmount: true }
           }),
           (prisma as any).functionHallBooking.aggregate({
-            where: { ...excludeTestingHallGuestsFilter, status: { not: 'CANCELLED' } },
+            where: { status: { not: 'CANCELLED' } },
             _sum: { balanceAmount: true }
           }),
           (prisma as any).functionHallBooking.count({
-            where: { ...excludeTestingHallGuestsFilter, eventDate: { gte: today, lt: tomorrow }, status: { not: 'CANCELLED' } }
+            where: { eventDate: { gte: today, lt: tomorrow }, status: { not: 'CANCELLED' } }
           }),
           (prisma as any).functionHallBooking.count({
-            where: { ...excludeTestingHallGuestsFilter, eventDate: { gte: tomorrow, lt: nextWeek }, status: { not: 'CANCELLED' } }
+            where: { eventDate: { gte: tomorrow, lt: nextWeek }, status: { not: 'CANCELLED' } }
           })
         ])
         return {

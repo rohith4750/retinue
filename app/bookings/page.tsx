@@ -261,8 +261,8 @@ export default function BookingsPage() {
 
   if (isLoading) {
     return (
-      <div className="w-full px-4 lg:px-6 py-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="card">
               <div className="h-6 w-32 bg-slate-700/50 rounded animate-pulse mb-4" />
@@ -278,11 +278,11 @@ export default function BookingsPage() {
     )
   }
 
-  return (
+    return (
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
-      <div className="w-full px-4 lg:px-6 py-4 relative z-10">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10">
         {/* Header: Search/Export on left, History/New Booking on right */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           {/* Left: Search, View Toggle, Export */}
@@ -404,7 +404,7 @@ export default function BookingsPage() {
             </div>
 
             {/* Summary Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
               <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <FaCheckCircle className="w-4 h-4 text-emerald-400" />
