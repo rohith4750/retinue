@@ -286,10 +286,10 @@ export default function DashboardPage() {
                     <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Hotel Revenue</p>
                     <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
                       <FaArrowUp className="text-[10px] text-emerald-400" />
-                      <span className="text-[10px] text-emerald-400 font-bold">332%</span>
+                      <span className="text-[10px] text-emerald-400 font-bold">{stats?.revenueGrowth || 0}%</span>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-white tracking-tighter">₹{(stats?.hotelRevenue || 0).toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-white tracking-tighter">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
                   <span className="text-slate-500 font-bold uppercase tracking-tighter">vs last month</span>
@@ -309,10 +309,10 @@ export default function DashboardPage() {
                     <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Monthly Bookings</p>
                     <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-400/10 border border-emerald-400/20 rounded-full">
                       <FaArrowUp className="text-[10px] text-emerald-400" />
-                      <span className="text-[10px] text-emerald-400 font-bold">150%</span>
+                      <span className="text-[10px] text-emerald-400 font-bold">{stats?.bookingGrowth || 0}%</span>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-white tracking-tighter">{stats?.totalBookings || 0}</p>
+                  <p className="text-3xl font-bold text-white tracking-tighter">{stats?.monthBookings || 0}</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
                   <span className="text-slate-500 font-bold uppercase tracking-tighter">vs last month</span>
@@ -331,10 +331,10 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Hall Revenue</p>
                     <div className="p-1 px-2 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                      <span className="text-[10px] text-purple-400 font-bold">{stats?.totalHalls || 0}</span>
+                      <span className="text-[10px] text-purple-400 font-bold">{stats?.hallBookingsThisMonth || 0}</span>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-white tracking-tighter">₹{(stats?.hallRevenue || 0).toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-white tracking-tighter">₹{(stats?.hallRevenueThisMonth || 0).toLocaleString()}</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
                   <span className="text-slate-500 font-bold uppercase tracking-tighter">{stats?.totalHalls || 0} halls</span>

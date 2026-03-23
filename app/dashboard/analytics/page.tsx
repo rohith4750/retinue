@@ -49,15 +49,15 @@ function AnalyticsContent() {
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6">
           <p className="text-xs text-amber-500 uppercase font-black tracking-widest mb-1">Hotel Performance</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-white">₹{(stats?.hotelRevenue || 0).toLocaleString()}</span>
-            <span className="text-xs text-emerald-400 font-bold">↑ 332%</span>
+            <span className="text-3xl font-black text-white">₹{(stats?.monthRevenue || 0).toLocaleString()}</span>
+            <span className="text-xs text-emerald-400 font-bold">↑ {stats?.revenueGrowth || 0}%</span>
           </div>
           <p className="text-xs text-slate-500 mt-2">vs last month revenue</p>
         </div>
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6">
           <p className="text-xs text-purple-500 uppercase font-black tracking-widest mb-1">Convention Hall</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-white">₹{(stats?.hallRevenue || 0).toLocaleString()}</span>
+            <span className="text-3xl font-black text-white">₹{(stats?.hallRevenueThisMonth || 0).toLocaleString()}</span>
             <span className="text-xs text-slate-500 font-bold">Stable</span>
           </div>
           <p className="text-xs text-slate-500 mt-2">Total from {stats?.totalHalls || 0} halls</p>
@@ -105,7 +105,7 @@ function AnalyticsContent() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6 text-center">
             <p className="text-[10px] text-slate-500 uppercase font-black mb-1">Total Bookings</p>
-            <p className="text-4xl font-black text-indigo-400 leading-none">{stats?.totalBookings || 0}</p>
+            <p className="text-4xl font-black text-indigo-400 leading-none">{stats?.monthBookings || 0}</p>
             <p className="text-xs text-slate-600 mt-2 font-bold">{stats?.newGuestsThisMonth || 0} new guests this month</p>
          </div>
          <div className="md:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6">
@@ -159,7 +159,7 @@ function AnalyticsContent() {
                 <div className="flex-1">
                    <p className="text-xs text-slate-400 font-bold mb-1">{type}</p>
                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-sky-500" style={{ width: `${(count / (stats?.totalBookings || 1)) * 100}%` }} />
+                      <div className="h-full bg-sky-500" style={{ width: `${(count / (stats?.monthBookings || 1)) * 100}%` }} />
                    </div>
                 </div>
                 <span className="text-sm font-black text-white pt-4">{count}</span>
@@ -206,7 +206,7 @@ function AnalyticsContent() {
               <div className="flex-1">
                  <p className="text-xs text-slate-200 font-bold mb-1">{h.hallName}</p>
                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500" style={{ width: `${(h.revenue / (stats?.hallRevenue || 1)) * 100}%` }} />
+                    <div className="h-full bg-purple-500" style={{ width: `${(h.revenue / (stats?.hallRevenueThisMonth || 1)) * 100}%` }} />
                  </div>
               </div>
               <div className="text-right pt-4">
