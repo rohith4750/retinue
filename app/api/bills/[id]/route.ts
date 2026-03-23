@@ -126,16 +126,19 @@ export async function GET(
       ),
     };
 
-    // Determine overall payment status
+    // Determine overall payment status and latest checkout date
     let paymentStatus = "PENDING";
     if (consolidated.balanceAmount <= 0) paymentStatus = "PAID";
     else if (consolidated.paidAmount > 0) paymentStatus = "PARTIAL";
+    
+    const latestCheckOut = new Date(Math.max(...relatedBookings.map(b => new Date(b.checkOut).getTime())));
 
     // Return in a format compatible with old Bill structure for frontend
     const billData = {
       id: booking.id,
       bookingId: booking.id,
       billNumber: primaryBillBooking.billNumber, // Primary bill number (from earliest booking)
+      billDate: latestCheckOut, // Consolidated bill date is the latest check-out
       // Consolidated totals
       subtotal: consolidated.subtotal,
       tax: consolidated.tax,
