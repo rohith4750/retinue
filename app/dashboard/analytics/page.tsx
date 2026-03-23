@@ -139,11 +139,11 @@ function AnalyticsContent() {
             Guest Type Distribution
           </h4>
           <div className="space-y-4">
-            {Object.entries(stats?.bookingsByGuestType || {}).map(([type, count]: any) => (
+            {Object.entries(stats?.bookingsByGuestType || {}).map(([type, data]: any) => (
               <div key={type} className="flex items-center gap-4">
                 <div className={`w-3 h-3 rounded-full ${GUEST_TYPE_COLORS[type] || 'bg-slate-500'}`} />
                 <span className="text-xs text-slate-400 flex-1 font-bold">{type}</span>
-                <span className="text-sm font-black text-white">{count}</span>
+                <span className="text-sm font-black text-white">{data.count}</span>
               </div>
             ))}
           </div>
@@ -154,7 +154,7 @@ function AnalyticsContent() {
             Room Type Performance
           </h4>
           <div className="space-y-4">
-            {Object.entries(stats?.bookingsByRoomType || {}).map(([type, count]: any) => (
+            {Object.entries(stats?.roomsByType || {}).map(([type, count]: any) => (
               <div key={type} className="flex items-center gap-4">
                 <div className="flex-1">
                    <p className="text-xs text-slate-400 font-bold mb-1">{type}</p>

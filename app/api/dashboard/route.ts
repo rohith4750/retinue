@@ -265,6 +265,13 @@ export async function GET(request: NextRequest) {
       return { roomId: tr.roomId, roomNumber: room?.roomNumber, roomType: room?.roomType, floor: room?.floor, revenue: tr._sum.paidAmount || 0 };
     }));
 
+    // Event Type Analysis for Halls
+    const hallEventTypesThisMonth = await prisma.functionHallBooking.groupBy({
+      by: ['eventType'],
+      where: { eventDate: { gte: startOfMonth, lte: endOfMonth }, status: { not: "CANCELLED" }, customerName: { not: { contains: "testing" } } },
+      _count: true
+    }).then(res => res.map(r => ({ eventType: r.eventType, count: r._count })));
+
     // Inventory Alerts
     const lowStockAlerts = await prisma.inventory.count({
       where: { quantity: { lte: prisma.inventory.fields.minStock } }
@@ -306,6 +313,7 @@ export async function GET(request: NextRequest) {
       recentHallBookings,
       topRoomsThisMonth,
       lowStockAlerts,
+      hallEventTypesThisMonth,
       upcomingCheckIns: todayBookings,
       upcomingCheckOuts: await prisma.booking.count({ where: { checkOut: { gte: today, lt: tomorrow }, status: "CHECKED_IN", ...excludeTestingFilter } }),
       timestamp: nowInIST.toISOString()
