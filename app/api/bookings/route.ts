@@ -417,11 +417,11 @@ export async function POST(request: NextRequest) {
             include: { room: true, guest: true },
           });
 
-          // Update room status only if check-in is today or in the past
-          // For future bookings, room remains AVAILABLE until check-in
+          // Update room status only if booking is CURRENTLY active
+          // For future or past (already ended) bookings, room remains/returns to AVAILABLE
           const now = new Date();
-          const isCurrentOrPastBooking = checkInDate <= now;
-          if (isCurrentOrPastBooking) {
+          const isCurrentlyActive = checkInDate <= now && checkOutDate > now;
+          if (isCurrentlyActive) {
             await tx.room.update({
               where: { id: roomId },
               data: { status: "BOOKED" },

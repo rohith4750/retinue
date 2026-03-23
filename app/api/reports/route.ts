@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
+          ...excludeTestingGuestsFilter,
         },
         include: {
           guest: true,
@@ -99,6 +100,12 @@ export async function GET(request: NextRequest) {
           createdAt: {
             gte: start,
             lte: end,
+          },
+          name: {
+            not: {
+              contains: "testing",
+            },
+            mode: "insensitive",
           },
         },
         orderBy: { createdAt: "desc" },
@@ -402,6 +409,9 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
+            NOT: [
+              { description: { contains: "testing", mode: "insensitive" } },
+            ],
           },
           orderBy: { date: "desc" },
         });
@@ -511,6 +521,9 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
+            NOT: [
+              { description: { contains: "testing", mode: "insensitive" } },
+            ],
           },
           _sum: {
             amount: true,

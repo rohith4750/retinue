@@ -60,10 +60,8 @@ export function validateBookingDates(
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  // Check-in must be today or in future
-  if (checkIn < now) {
-    return { valid: false, error: "Check-in date cannot be in the past" };
-  }
+  // Check-in restriction removed to allow historical data entry
+  // (checkIn < now check was here)
 
   // Check-out must be after check-in
   if (checkOut <= checkIn) {

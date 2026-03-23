@@ -157,16 +157,7 @@ export const bookingValidationRules: ValidationRules = {
   checkIn: {
     required: true,
     date: true,
-    custom: (value) => {
-      if (!value) return null
-      const date = new Date(value)
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-      if (date < now) {
-        return 'Check-in date cannot be in the past'
-      }
-      return null
-    },
+    custom: () => null, // Allow past check-in (manual entry)
   },
   checkOut: {
     required: true,
