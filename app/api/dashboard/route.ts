@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
-import {
-  excludeTestingGuestsFilter,
-  excludeTestingHallGuestsFilter,
-} from "@/lib/booking-utils";
 
 // GET /api/dashboard - Get dashboard statistics
 export async function GET(request: NextRequest) {
@@ -57,7 +53,6 @@ export async function GET(request: NextRequest) {
     const activeBookings = await prisma.booking.findMany({
       where: {
         status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN"] },
-        ...excludeTestingGuestsFilter,
       },
       select: { roomId: true, checkIn: true, checkOut: true, status: true },
     });
@@ -88,7 +83,6 @@ export async function GET(request: NextRequest) {
           lt: tomorrow,
         },
         status: { notIn: ["CHECKED_OUT", "CANCELLED"] },
-        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -98,7 +92,6 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: startOfMonth,
         },
-        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -109,7 +102,6 @@ export async function GET(request: NextRequest) {
           gte: startOfLastMonth,
           lte: endOfLastMonth,
         },
-        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -120,7 +112,6 @@ export async function GET(request: NextRequest) {
           gte: today,
           lt: tomorrow,
         },
-        ...excludeTestingGuestsFilter,
       },
       _sum: {
         paidAmount: true,
@@ -133,7 +124,6 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: startOfMonth,
         },
-        ...excludeTestingGuestsFilter,
       },
       _sum: {
         paidAmount: true,
@@ -148,7 +138,6 @@ export async function GET(request: NextRequest) {
           gte: startOfLastMonth,
           lte: endOfLastMonth,
         },
-        ...excludeTestingGuestsFilter,
       },
       _sum: {
         paidAmount: true,
@@ -160,7 +149,6 @@ export async function GET(request: NextRequest) {
       where: {
         paymentStatus: { in: ["PENDING", "PARTIAL"] },
         status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
       },
       _sum: {
         balanceAmount: true,
@@ -183,7 +171,6 @@ export async function GET(request: NextRequest) {
     const bookingsWithGuest = await prisma.booking.findMany({
       where: {
         status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
       },
       select: {
         totalAmount: true,
@@ -225,7 +212,6 @@ export async function GET(request: NextRequest) {
     const bookingsWithRoom = await prisma.booking.findMany({
       where: {
         status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
       },
       select: {
         totalAmount: true,
@@ -293,8 +279,7 @@ export async function GET(request: NextRequest) {
           createdAt: {
             gte: startOfMonth,
           },
-          ...excludeTestingHallGuestsFilter,
-        },
+          },
       });
       // @ts-ignore
       const hallRevenueData = await prisma.functionHallBooking.aggregate({
@@ -303,8 +288,7 @@ export async function GET(request: NextRequest) {
             gte: startOfMonth,
           },
           status: { in: ["CONFIRMED", "COMPLETED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
+          },
         _sum: {
           advanceAmount: true,
         },
@@ -317,8 +301,7 @@ export async function GET(request: NextRequest) {
         where: {
           eventDate: { gte: today, lt: tomorrow },
           status: { notIn: ["CANCELLED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
+          },
       });
 
       // Upcoming events (next 7 days)
@@ -329,8 +312,7 @@ export async function GET(request: NextRequest) {
         where: {
           eventDate: { gte: today, lt: nextWeekForHalls },
           status: { in: ["PENDING", "CONFIRMED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
+          },
       });
 
       // Status breakdown (this month)
@@ -339,8 +321,7 @@ export async function GET(request: NextRequest) {
         by: ["status"],
         where: {
           createdAt: { gte: startOfMonth },
-          ...excludeTestingHallGuestsFilter,
-        },
+          },
         _count: true,
       });
       hallStatusThisMonth = hallStatusRows.reduce((acc: any, r: any) => {
@@ -376,8 +357,7 @@ export async function GET(request: NextRequest) {
         where: {
           createdAt: { gte: startOfMonth },
           status: { notIn: ["CANCELLED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
+          },
         _count: true,
         _sum: { totalAmount: true },
       });
@@ -406,7 +386,7 @@ export async function GET(request: NextRequest) {
       // @ts-ignore - Prisma types may not include FunctionHallBooking relations
       recentHallBookings = await (prisma.functionHallBooking as any).findMany({
         take: 3,
-        where: excludeTestingHallGuestsFilter,
+        where: {},
         orderBy: { createdAt: "desc" },
         include: {
           hall: true,
@@ -518,7 +498,7 @@ export async function GET(request: NextRequest) {
     // Recent bookings (billing info now in Booking itself)
     const recentBookings = await prisma.booking.findMany({
       take: 5,
-      where: excludeTestingGuestsFilter,
+      where: {},
       orderBy: { bookingDate: "desc" },
       include: {
         room: true,
@@ -536,7 +516,6 @@ export async function GET(request: NextRequest) {
           lt: nextWeek,
         },
         status: "CONFIRMED",
-        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -548,7 +527,6 @@ export async function GET(request: NextRequest) {
           lt: tomorrow,
         },
         status: "CHECKED_IN",
-        ...excludeTestingGuestsFilter,
       },
     });
 
@@ -558,7 +536,6 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: { gte: startOfMonth },
         status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
       },
       _count: true,
     });
@@ -568,7 +545,6 @@ export async function GET(request: NextRequest) {
       where: {
         status: "CHECKED_IN",
         checkOut: { lt: now },
-        ...excludeTestingGuestsFilter,
       },
     });
     // @ts-ignore - Prisma types may be outdated (flexibleCheckout)
@@ -576,7 +552,6 @@ export async function GET(request: NextRequest) {
       where: {
         status: "CHECKED_IN",
         flexibleCheckout: true,
-        ...excludeTestingGuestsFilter,
       },
     });
     // maintenanceRooms already computed at top (used for available/booked today)
@@ -586,7 +561,6 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: { gte: startOfMonth },
         status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
       },
       select: {
         checkIn: true,
@@ -621,7 +595,6 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: { gte: startOfMonth },
         status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
       },
       _sum: { paidAmount: true },
     });
