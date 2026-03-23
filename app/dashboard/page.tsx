@@ -248,37 +248,22 @@ export default function DashboardPage() {
         {/* Monthly Stats with Growth Indicators - Only for ADMIN/SUPER_ADMIN */}
         {canViewFinance && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
-            {/* Total Revenue - Premium Card */}
-            <div className="bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 backdrop-blur-xl border border-white/20 rounded-2xl p-5 md:p-6 relative overflow-hidden group shadow-2xl shadow-indigo-900/40 hover:scale-[1.02] transition-all duration-500">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/20 transition-all duration-700"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-400/20 rounded-full blur-2xl -ml-12 -mb-12"></div>
-              
+            {/* Total Revenue - Restored to simpler design */}
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-2xl"></div>
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
-                    <FaMoneyBillWave className="text-white text-xl" />
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-2 bg-indigo-500/20 rounded-lg">
+                    <FaMoneyBillWave className="text-indigo-400 text-sm" />
                   </div>
-                  <span className="text-[10px] bg-white/20 text-white px-2.5 py-1 rounded-full font-black tracking-widest border border-white/10">
-                    TOTAL EARNINGS
-                  </span>
+                  <p className="text-xs text-indigo-400 uppercase tracking-wider font-bold">Total Revenue (All)</p>
                 </div>
-                
-                <p className="text-xs text-indigo-100/70 font-medium uppercase tracking-widest">Aggregate Revenue</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-xl font-bold text-indigo-200">₹</span>
-                  <p className="text-4xl font-black text-white tracking-tighter">
-                    {(stats?.totalMonthlyRevenue || 0).toLocaleString()}
-                  </p>
-                </div>
-                
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-indigo-200/50 font-bold uppercase">Source Breakdown</span>
-                    <span className="text-xs text-white font-semibold">Hotel + Convention Halls</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                    <span className="text-[10px] text-emerald-300 font-black">LIVE DATA</span>
+                <p className="text-3xl font-bold text-white mt-1">₹{(stats?.totalMonthlyRevenue || 0).toLocaleString()}</p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+                  <span className="text-slate-500">Hotel + Convention</span>
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <span className="text-indigo-400 font-bold uppercase tracking-tighter">Live Aggregate</span>
                   </div>
                 </div>
               </div>
@@ -746,51 +731,38 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Payment Health (Admin only) - Premium Design */}
+          {/* Payment Health (Admin only) - Simplified Clean Design */}
           {canViewFinance && (
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-xl">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                    <FaMoneyBillWave className="text-emerald-400 text-lg" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Payment Health</h3>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Financial Liquidity</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <FaMoneyBillWave className="text-emerald-500" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Payment Health</h3>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-slate-500 uppercase font-black">Outstanding</p>
-                  <p className="text-lg font-black text-rose-400">₹{(stats?.pendingPayments || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-500 font-bold mb-1">OUTSTANDING BALANCE</p>
+                  <p className="text-xl font-bold text-white">₹{(stats?.pendingPayments || 0).toLocaleString()}</p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <div className="space-y-1">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold">Collection Status (Month)</p>
-                    <div className="flex gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        <span className="text-xs text-white font-bold">{stats?.paymentStatusThisMonth?.PAID || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                        <span className="text-xs text-white font-bold">{stats?.paymentStatusThisMonth?.PARTIAL || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                        <span className="text-xs text-white font-bold">{stats?.paymentStatusThisMonth?.PENDING || 0}</span>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-slate-800/40 border border-white/5 rounded-lg p-2">
+                    <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Paid</p>
+                    <p className="text-lg font-bold text-emerald-500">{stats?.paymentStatusThisMonth?.PAID || 0}</p>
                   </div>
-                  <div className="text-right">
-                     <span className="text-[10px] px-2 py-0.5 bg-slate-800 rounded text-slate-400 font-bold">BY CHECK-IN</span>
+                  <div className="bg-slate-800/40 border border-white/5 rounded-lg p-2">
+                    <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Partial</p>
+                    <p className="text-lg font-bold text-amber-500">{stats?.paymentStatusThisMonth?.PARTIAL || 0}</p>
+                  </div>
+                  <div className="bg-slate-800/40 border border-white/5 rounded-lg p-2">
+                    <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Pending</p>
+                    <p className="text-lg font-bold text-red-500">{stats?.paymentStatusThisMonth?.PENDING || 0}</p>
                   </div>
                 </div>
 
                 <div className="relative pt-2">
-                  <div className="h-3 bg-slate-800 rounded-full overflow-hidden flex shadow-inner border border-white/5">
+                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden flex">
                     {(() => {
                       const paid = stats?.paymentStatusThisMonth?.PAID || 0
                       const partial = stats?.paymentStatusThisMonth?.PARTIAL || 0
@@ -801,17 +773,14 @@ export default function DashboardPage() {
                       const pendingPct = total > 0 ? (pending / total) * 100 : 0
                       return (
                         <>
-                          <div className="bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-1000" style={{ width: `${paidPct}%` }} />
-                          <div className="bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-1000" style={{ width: `${partialPct}%` }} />
-                          <div className="bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-1000" style={{ width: `${pendingPct}%` }} />
+                          <div className="bg-emerald-500 transition-all duration-700" style={{ width: `${paidPct}%` }} />
+                          <div className="bg-amber-500 transition-all duration-700" style={{ width: `${partialPct}%` }} />
+                          <div className="bg-red-500 transition-all duration-700" style={{ width: `${pendingPct}%` }} />
                         </>
                       )
                     })()}
                   </div>
-                  <div className="flex justify-between mt-2">
-                    <span className="text-[9px] text-emerald-400 font-bold uppercase">Collected</span>
-                    <span className="text-[9px] text-rose-400 font-bold uppercase">At Risk</span>
-                  </div>
+                  <p className="text-[10px] text-slate-500 mt-2 text-center uppercase tracking-widest font-bold">Split of current month bookings</p>
                 </div>
               </div>
             </div>
