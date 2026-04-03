@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // POST /api/bank-accounts/[id]/transactions - Create new transaction
@@ -82,7 +83,7 @@ export async function POST(
           reference: reference || null,
           category: category || null,
           relatedTo: relatedTo || null,
-          transactionDate: transactionDate ? new Date(transactionDate) : new Date(),
+          transactionDate: transactionDate ? moment(transactionDate).utcOffset("+05:30").toDate() : moment().utcOffset("+05:30").toDate(),
           createdBy: null
         }
       }),

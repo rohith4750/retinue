@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       role: user.role,
       username: user.username,
+      rememberMe: !!payload.rememberMe,
     })
 
     // Update access token cookie
@@ -60,12 +61,13 @@ export async function POST(request: NextRequest) {
       path: '/',
     })
 
-    // Update refresh token cookie
+    // Update refresh token cookie (respect original rememberMe status)
+    const isRememberMe = !!payload.rememberMe
     cookieStore.set('refreshToken', newTokenPair.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: isRememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60,
       path: '/',
     })
 

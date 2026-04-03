@@ -116,3 +116,8 @@ export function setAccessToken(accessToken: string): void {
   // Cookie-only auth mode: access token is managed by httpOnly cookies on server.
   void accessToken
 }
+
+export function isRememberMe(): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(REMEMBER_ME_KEY) === 'true'
+}

@@ -5,6 +5,7 @@ import { api } from '@/lib/api-client'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import { FaBuilding, FaUser, FaPhone, FaEnvelope, FaCalendarAlt, FaClock, FaUsers, FaRupeeSign, FaArrowLeft } from 'react-icons/fa'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import Link from 'next/link'
@@ -152,7 +153,7 @@ function NewFunctionHallBookingContent() {
                     value={formData.eventDate}
                     onChange={handleChange}
                     required
-                    min={new Date().toISOString().split('T')[0]}
+                    min={moment().format('YYYY-MM-DD')}
                     className="form-input"
                   />
                 </div>

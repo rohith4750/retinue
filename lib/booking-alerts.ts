@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { isTestingGuest } from "./booking-utils";
 import {
   sendRoomBookedAlert,
   sendBookingStepAlert,
@@ -76,9 +75,6 @@ async function createInAppNotifications(
 export async function notifyInternalRoomBooked(
   details: RoomBookedAlertDetails,
 ): Promise<void> {
-  if (isTestingGuest(details.guestName)) {
-    return;
-  }
   try {
     // 1. Send Emails
     const toEmails = await getInternalAlertEmails();
@@ -117,9 +113,6 @@ export async function notifyInternalRoomBooked(
 export async function notifyInternalBookingStep(
   details: BookingStepAlertDetails,
 ): Promise<void> {
-  if (isTestingGuest(details.guestName)) {
-    return;
-  }
   try {
     const { step, guestName, roomNumber, bookingReference } = details;
 

@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar'
 import { Toolbar } from './Toolbar'
 import { Footer } from './Footer'
 import { initSessionTimeout, setupSessionListeners, clearSessionTimeout } from '@/lib/session-manager'
-import { isLoggedIn, clearAuth } from '@/lib/auth-storage'
+import { isLoggedIn, clearAuth, isRememberMe } from '@/lib/auth-storage'
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode
@@ -112,16 +112,24 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
         setIsAuthenticated(true)
         setIsLoading(false)
         setTimeout(() => {
-          initSessionTimeout(handleSessionTimeout)
-          sessionInitialized.current = true
+          // Only enable idle timeout if "Remember Me" is NOT checked
+          if (!isRememberMe()) {
+            initSessionTimeout(handleSessionTimeout)
+            sessionInitialized.current = true
+          } else {
+            console.log('Remember Me active: Skipping idle timeout')
+          }
         }, 500)
       } catch (error) {
         console.error('Token validation error (network/DB), allowing access:', error)
         setIsAuthenticated(true)
         setIsLoading(false)
         setTimeout(() => {
-          initSessionTimeout(handleSessionTimeout)
-          sessionInitialized.current = true
+          // Only enable idle timeout if "Remember Me" is NOT checked
+          if (!isRememberMe()) {
+            initSessionTimeout(handleSessionTimeout)
+            sessionInitialized.current = true
+          }
         }, 500)
       } finally {
         validationInProgress.current = false

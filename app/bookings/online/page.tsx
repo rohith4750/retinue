@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import {
   FaCalendarAlt,
   FaCheckCircle,
@@ -104,18 +105,8 @@ export default function OnlineBookingsPage() {
     if (cancelModal.bookingId) cancelBookingMutation.mutate(cancelModal.bookingId)
   }
 
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-  const todayEnd = new Date()
-  todayEnd.setHours(23, 59, 59, 999)
-  const isCheckInToday = (b: any) => {
-    const d = new Date(b.checkIn)
-    return d >= todayStart && d <= todayEnd
-  }
-  const isCheckOutToday = (b: any) => {
-    const d = new Date(b.checkOut)
-    return d >= todayStart && d <= todayEnd
-  }
+  const isCheckInToday = (b: any) => moment(b.checkIn).isSame(moment(), 'day')
+  const isCheckOutToday = (b: any) => moment(b.checkOut).isSame(moment(), 'day')
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 lg:p-8">
@@ -259,24 +250,10 @@ export default function OnlineBookingsPage() {
                             {booking.room?.roomNumber} • {booking.room?.roomType}
                           </td>
                           <td className="px-4 py-3 text-slate-400 text-sm">
-                            {new Date(booking.checkIn).toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                            })}{' '}
-                            {new Date(booking.checkIn).toLocaleTimeString('en-IN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {moment(booking.checkIn).format('DD MMM, hh:mm A')}
                           </td>
                           <td className="px-4 py-3 text-slate-400 text-sm">
-                            {new Date(booking.checkOut).toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                            })}{' '}
-                            {new Date(booking.checkOut).toLocaleTimeString('en-IN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {moment(booking.checkOut).format('DD MMM, hh:mm A')}
                           </td>
                           <td className="px-4 py-3 text-right font-semibold text-emerald-400">
                             ₹{booking.totalAmount?.toLocaleString()}

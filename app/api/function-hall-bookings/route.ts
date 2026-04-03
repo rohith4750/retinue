@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 import { logHallBookingChange } from '@/lib/hall-booking-audit'
-import { excludeTestingHallGuestsFilter } from '@/lib/booking-utils'
 
 // GET /api/function-hall-bookings - List all function hall bookings
 export async function GET(request: NextRequest) {
@@ -14,14 +14,11 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const hallId = searchParams.get('hallId')
     const search = searchParams.get('search')
-    const includeTesting = searchParams.get('includeTesting') === 'true'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
-    const where: any = {
-      ...(includeTesting ? {} : excludeTestingHallGuestsFilter)
-    }
+    const where: any = {}
 
     // Exclude cancelled by default
     if (status) {
@@ -52,30 +49,27 @@ export async function GET(request: NextRequest) {
       (prisma as any).functionHallBooking.count({ where })
     ])
 
-    // Simplified summary stats for the UI
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const nextWeek = new Date(today)
-    nextWeek.setDate(nextWeek.getDate() + 7)
+    // Simplified summary stats for the UI using IST
+    const today = moment().utcOffset("+05:30").startOf('day').toDate()
+    const tomorrow = moment(today).add(1, 'day').toDate()
+    const nextWeek = moment(today).add(7, 'days').toDate()
 
     const [summary] = await Promise.all([
       (async () => {
         const [revenue, pending, todayCount, upcoming] = await Promise.all([
           (prisma as any).functionHallBooking.aggregate({
-            where: { ...excludeTestingHallGuestsFilter, status: { not: 'CANCELLED' } },
+            where: { status: { not: 'CANCELLED' } },
             _sum: { advanceAmount: true }
           }),
           (prisma as any).functionHallBooking.aggregate({
-            where: { ...excludeTestingHallGuestsFilter, status: { not: 'CANCELLED' } },
+            where: { status: { not: 'CANCELLED' } },
             _sum: { balanceAmount: true }
           }),
           (prisma as any).functionHallBooking.count({
-            where: { ...excludeTestingHallGuestsFilter, eventDate: { gte: today, lt: tomorrow }, status: { not: 'CANCELLED' } }
+            where: { eventDate: { gte: today, lt: tomorrow }, status: { not: 'CANCELLED' } }
           }),
           (prisma as any).functionHallBooking.count({
-            where: { ...excludeTestingHallGuestsFilter, eventDate: { gte: tomorrow, lt: nextWeek }, status: { not: 'CANCELLED' } }
+            where: { eventDate: { gte: tomorrow, lt: nextWeek }, status: { not: 'CANCELLED' } }
           })
         ])
         return {
@@ -158,12 +152,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for conflicting bookings on the same date
-    const eventDateObj = new Date(eventDate)
-    const startOfDay = new Date(eventDateObj)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(eventDateObj)
-    endOfDay.setHours(23, 59, 59, 999)
+    // Check for conflicting bookings on the same date using IST
+    const eventDateObj = moment(eventDate).utcOffset("+05:30").toDate()
+    const startOfDay = moment(eventDateObj).startOf('day').toDate()
+    const endOfDay = moment(eventDateObj).endOf('day').toDate()
 
     const conflictingBooking = await (prisma as any).functionHallBooking.findFirst({
       where: {

@@ -1,49 +1,63 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
-import {
-  excludeTestingGuestsFilter,
-  excludeTestingHallGuestsFilter,
-} from "@/lib/booking-utils";
+import moment from "moment";
+import { BookingStatus } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
 
 // GET /api/dashboard - Get dashboard statistics
 export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth()(request);
     if (authResult instanceof Response) return authResult;
-    // cast to any to be safe with SessionUser type
     const user = authResult as any;
     const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
-    const now = new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { searchParams } = new URL(request.url);
+    const filterDate = searchParams.get("date");
+    const filterMonth = searchParams.get("month");
 
-    // Get start of current month and last month
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const startOfLastMonth = new Date(
-      today.getFullYear(),
-      today.getMonth() - 1,
-      1,
-    );
-    const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    // Reference point for "now" in Indian Standard Time (UTC+5:30)
+    const nowInIST = moment().utcOffset("+05:30");
+    
+    let referenceDate = nowInIST.clone();
+    if (filterDate) {
+      referenceDate = moment(filterDate).utcOffset("+05:30", true).startOf('day');
+    } else if (filterMonth) {
+      referenceDate = moment(`${filterMonth}-01`).utcOffset("+05:30", true).startOf('month');
+    }
 
-    // Total rooms
+    const today = referenceDate.clone().startOf('day').toDate();
+    const tomorrow = referenceDate.clone().add(1, 'day').startOf('day').toDate();
+    const startOfMonth = referenceDate.clone().startOf('month').toDate();
+    const endOfMonth = referenceDate.clone().endOf('month').toDate();
+    
+    const startOfLastMonth = referenceDate.clone().subtract(1, 'month').startOf('month').toDate();
+    const endOfLastMonth = referenceDate.clone().subtract(1, 'month').endOf('month').toDate();
+
+    const now = filterDate ? referenceDate.clone().add(12, 'hours').toDate() : nowInIST.toDate();
+
+    // Filter to exclude testing data
+    const excludeTestingFilter = {
+      guest: {
+        name: {
+          not: {
+            contains: "testing",
+          },
+        },
+      },
+    };
+
+    // Basic Hotel Stats
     const totalRooms = await prisma.room.count();
+    const maintenanceRooms = await prisma.room.count({ where: { status: "MAINTENANCE" } });
 
-    // Maintenance rooms (excluded from available/booked counts)
-    const maintenanceRooms = await prisma.room.count({
-      where: { status: "MAINTENANCE" },
-    });
-
-    // Booked/available TODAY: occupancy ends at check-out time.
-    // However, if the guest is still CHECKED_IN, they occupy the room even if past their scheduled check-out time.
+    // Active bookings overlap calculation
     const activeBookings = await prisma.booking.findMany({
       where: {
         status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN"] },
-        ...excludeTestingGuestsFilter,
+        ...excludeTestingFilter,
       },
       select: { roomId: true, checkIn: true, checkOut: true, status: true },
     });
@@ -51,739 +65,263 @@ export async function GET(request: NextRequest) {
     const overlappingToday = activeBookings.filter((b) => {
       const bCheckIn = new Date(b.checkIn);
       const bCheckOut = new Date(b.checkOut);
-      // For CHECKED_IN, effective checkout is at least 'now'
-      const effectiveCheckOut =
-        b.status === "CHECKED_IN" && bCheckOut < now ? now : bCheckOut;
+      const effectiveCheckOut = b.status === "CHECKED_IN" && bCheckOut < now ? now : bCheckOut;
       return bCheckIn < tomorrow && effectiveCheckOut > today;
     });
 
-    // Any booking overlapping today is considered "Booked" for the day,
-    // unless it was already filtered out by the query (checkOut > today).
-    // The previous logic filtered out checkouts happening today, but they should be considered occupied until actual checkout.
     const bookedRooms = new Set(overlappingToday.map((b) => b.roomId)).size;
-    const availableRooms = Math.max(
-      0,
-      totalRooms - maintenanceRooms - bookedRooms,
-    );
+    const availableRooms = Math.max(0, totalRooms - maintenanceRooms - bookedRooms);
 
-    // Today's check-ins that are still active (exclude checked-out / cancelled)
+    // Summary counts
     const todayBookings = await prisma.booking.count({
       where: {
-        checkIn: {
-          gte: today,
-          lt: tomorrow,
-        },
+        checkIn: { gte: today, lt: tomorrow },
         status: { notIn: ["CHECKED_OUT", "CANCELLED"] },
-        ...excludeTestingGuestsFilter,
+        ...excludeTestingFilter,
       },
     });
 
-    // This month's bookings
     const monthBookings = await prisma.booking.count({
-      where: {
-        createdAt: {
-          gte: startOfMonth,
-        },
-        ...excludeTestingGuestsFilter,
-      },
+      where: { checkIn: { gte: startOfMonth, lte: endOfMonth }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
     });
 
-    // Last month's bookings for comparison
     const lastMonthBookings = await prisma.booking.count({
-      where: {
-        createdAt: {
-          gte: startOfLastMonth,
-          lte: endOfLastMonth,
-        },
-        ...excludeTestingGuestsFilter,
-      },
+      where: { checkIn: { gte: startOfLastMonth, lte: endOfLastMonth }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
     });
 
-    // Today's revenue (using Booking - Bill merged)
-    const todayRevenue = await prisma.booking.aggregate({
-      where: {
-        createdAt: {
-          gte: today,
-          lt: tomorrow,
-        },
-        ...excludeTestingGuestsFilter,
-      },
-      _sum: {
-        paidAmount: true,
-      },
+    // Revenue Tracking
+    const todayRevenueAggregate = await prisma.booking.aggregate({
+      where: { checkIn: { gte: today, lt: tomorrow }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
+      _sum: { paidAmount: true },
     });
+    const todayRevenue = todayRevenueAggregate._sum.paidAmount || 0;
 
-    // This month's revenue
-    const monthRevenue = await prisma.booking.aggregate({
-      where: {
-        createdAt: {
-          gte: startOfMonth,
-        },
-        ...excludeTestingGuestsFilter,
-      },
-      _sum: {
-        paidAmount: true,
-        totalAmount: true,
-      },
+    const monthRevenueAggregate = await prisma.booking.aggregate({
+      where: { checkIn: { gte: startOfMonth, lte: endOfMonth }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
+      _sum: { paidAmount: true },
     });
+    const monthRevenue = monthRevenueAggregate._sum.paidAmount || 0;
 
-    // Last month's revenue for comparison
-    const lastMonthRevenue = await prisma.booking.aggregate({
-      where: {
-        createdAt: {
-          gte: startOfLastMonth,
-          lte: endOfLastMonth,
-        },
-        ...excludeTestingGuestsFilter,
-      },
-      _sum: {
-        paidAmount: true,
-      },
+    const lastMonthRevenueAggregate = await prisma.booking.aggregate({
+      where: { checkIn: { gte: startOfLastMonth, lte: endOfLastMonth }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
+      _sum: { paidAmount: true },
     });
+    const lastMonthRevenue = lastMonthRevenueAggregate._sum.paidAmount || 0;
 
-    // Pending payments
-    const pendingPayments = await prisma.booking.aggregate({
-      where: {
-        paymentStatus: { in: ["PENDING", "PARTIAL"] },
-        status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
-      },
-      _sum: {
-        balanceAmount: true,
-      },
-    });
-
-    // Low inventory alerts (quantity <= minStock; Prisma can't compare two columns in where)
-    const allInventory = await prisma.inventory.findMany();
-    const lowStockItems = allInventory.filter(
-      (item) => item.quantity <= item.minStock,
-    );
-
-    // Booking status breakdown
-    const bookingsByStatus = await prisma.booking.groupBy({
-      by: ["status"],
-      _count: true,
-    });
-
-    // Customer / Guest type analytics (from bookings via guest)
-    const bookingsWithGuest = await prisma.booking.findMany({
-      where: {
-        status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
-      },
-      select: {
-        totalAmount: true,
-        paidAmount: true,
-        createdAt: true,
-        guest: { select: { guestType: true } },
-      },
-    });
-    const guestTypeAllTime: Record<string, { count: number; revenue: number }> =
-      {};
-    const guestTypeThisMonth: Record<
-      string,
-      { count: number; revenue: number }
-    > = {};
-    const guestTypeLabels: Record<string, string> = {
-      WALK_IN: "Walk-in",
-      CORPORATE: "Corporate",
-      OTA: "OTA",
-      GOVERNMENT: "Government",
-      REGULAR: "Regular",
-      AGENT: "Agent",
-      FAMILY: "Family",
-    };
-    for (const b of bookingsWithGuest) {
-      const type = b.guest?.guestType || "WALK_IN";
-      if (!guestTypeAllTime[type])
-        guestTypeAllTime[type] = { count: 0, revenue: 0 };
-      guestTypeAllTime[type].count += 1;
-      guestTypeAllTime[type].revenue += b.totalAmount || 0;
-      if (b.createdAt >= startOfMonth) {
-        if (!guestTypeThisMonth[type])
-          guestTypeThisMonth[type] = { count: 0, revenue: 0 };
-        guestTypeThisMonth[type].count += 1;
-        guestTypeThisMonth[type].revenue += b.totalAmount || 0;
-      }
-    }
-
-    // Bookings by room type (all time + this month)
-    const bookingsWithRoom = await prisma.booking.findMany({
-      where: {
-        status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
-      },
-      select: {
-        totalAmount: true,
-        createdAt: true,
-        room: { select: { roomType: true } },
-      },
-    });
-    const roomTypeAllTime: Record<string, { count: number; revenue: number }> =
-      {};
-    const roomTypeThisMonth: Record<
-      string,
-      { count: number; revenue: number }
-    > = {};
-    const roomTypeLabels: Record<string, string> = {
-      SINGLE: "Single",
-      DOUBLE: "Double",
-      DELUXE: "Deluxe",
-      STANDARD: "Standard",
-      SUITE: "Suite",
-      SUITE_PLUS: "Suite+",
-    };
-    for (const b of bookingsWithRoom) {
-      const type = b.room?.roomType || "STANDARD";
-      if (!roomTypeAllTime[type])
-        roomTypeAllTime[type] = { count: 0, revenue: 0 };
-      roomTypeAllTime[type].count += 1;
-      roomTypeAllTime[type].revenue += b.totalAmount || 0;
-      if (b.createdAt >= startOfMonth) {
-        if (!roomTypeThisMonth[type])
-          roomTypeThisMonth[type] = { count: 0, revenue: 0 };
-        roomTypeThisMonth[type].count += 1;
-        roomTypeThisMonth[type].revenue += b.totalAmount || 0;
-      }
-    }
-
-    // Room type distribution (room count)
-    const roomsByType = await prisma.room.groupBy({
-      by: ["roomType"],
-      _count: true,
-    });
-
-    // Function halls stats - use raw queries to avoid TypeScript issues
+    // Hall Stats & Revenue
     let totalHalls = 0;
-    let hallBookingsThisMonth = 0;
     let hallRevenueThisMonth = 0;
-    let recentHallBookings: any[] = [];
     let hallTodayBookings = 0;
     let hallUpcoming7Days = 0;
-    let hallStatusThisMonth: Record<string, number> = {};
-    let hallEventTypesThisMonth: Array<{ eventType: string; count: number }> =
-      [];
-    let topHallsThisMonth: Array<{
-      hallId: string;
-      name: string;
-      revenue: number;
-      bookings: number;
-    }> = [];
-
+    let hallBookingsThisMonth = 0;
+    
     try {
-      // @ts-ignore - Prisma types may not be updated
       totalHalls = await prisma.functionHall.count();
-      // @ts-ignore
+      const hallFilters = { customerName: { not: { contains: "testing" } } };
+
       hallBookingsThisMonth = await prisma.functionHallBooking.count({
-        where: {
-          createdAt: {
-            gte: startOfMonth,
-          },
-          ...excludeTestingHallGuestsFilter,
-        },
-      });
-      // @ts-ignore
-      const hallRevenueData = await prisma.functionHallBooking.aggregate({
-        where: {
-          createdAt: {
-            gte: startOfMonth,
-          },
-          status: { in: ["CONFIRMED", "COMPLETED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
-        _sum: {
-          advanceAmount: true,
-        },
-      });
-      hallRevenueThisMonth = hallRevenueData._sum.advanceAmount || 0;
-
-      // Today events (by eventDate)
-      // @ts-ignore
-      hallTodayBookings = await prisma.functionHallBooking.count({
-        where: {
-          eventDate: { gte: today, lt: tomorrow },
-          status: { notIn: ["CANCELLED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
+        where: { eventDate: { gte: startOfMonth, lte: endOfMonth }, status: { not: "CANCELLED" }, ...hallFilters },
       });
 
-      // Upcoming events (next 7 days)
-      const nextWeekForHalls = new Date(today);
-      nextWeekForHalls.setDate(nextWeekForHalls.getDate() + 7);
-      // @ts-ignore
-      hallUpcoming7Days = await prisma.functionHallBooking.count({
-        where: {
-          eventDate: { gte: today, lt: nextWeekForHalls },
-          status: { in: ["PENDING", "CONFIRMED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
-      });
-
-      // Status breakdown (this month)
-      // @ts-ignore
-      const hallStatusRows = await prisma.functionHallBooking.groupBy({
-        by: ["status"],
-        where: {
-          createdAt: { gte: startOfMonth },
-          ...excludeTestingHallGuestsFilter,
-        },
-        _count: true,
-      });
-      hallStatusThisMonth = hallStatusRows.reduce((acc: any, r: any) => {
-        acc[r.status] = r._count;
-        return acc;
-      }, {});
-
-      // Event types breakdown (this month) - no orderBy/take in groupBy; sort/slice in JS
-      const hallEventTypeRows = (await (
-        prisma as any
-      ).functionHallBooking.groupBy({
-        by: ["eventType"],
-        where: {
-          createdAt: { gte: startOfMonth },
-          status: { notIn: ["CANCELLED"] },
-        },
-        _count: true,
-      })) as any[];
-      hallEventTypesThisMonth = hallEventTypeRows
-        .map((r: any) => ({ eventType: r.eventType, count: r._count }))
-        .sort((a: any, b: any) => b.count - a.count)
-        .slice(0, 6);
-
-      hallEventTypesThisMonth = hallEventTypeRows
-        .map((r: any) => ({ eventType: r.eventType, count: r._count }))
-        .sort((a: any, b: any) => b.count - a.count)
-        .slice(0, 6);
-
-      // Top halls by booked value this month - sort/slice in JS (groupBy orderBy requires by-fields)
-      // @ts-ignore
-      const topHallGroupsRaw = await prisma.functionHallBooking.groupBy({
-        by: ["hallId"],
-        where: {
-          createdAt: { gte: startOfMonth },
-          status: { notIn: ["CANCELLED"] },
-          ...excludeTestingHallGuestsFilter,
-        },
-        _count: true,
+      const hRevData = await prisma.functionHallBooking.aggregate({
+        where: { eventDate: { gte: startOfMonth, lte: endOfMonth }, status: { in: ["CONFIRMED", "COMPLETED"] }, ...hallFilters },
         _sum: { totalAmount: true },
       });
-      const topHallGroups = topHallGroupsRaw
-        .sort(
-          (a: any, b: any) =>
-            (b._sum?.totalAmount ?? 0) - (a._sum?.totalAmount ?? 0),
-        )
-        .slice(0, 5);
-      const topHallIds = topHallGroups.map((g: any) => g.hallId);
-      // @ts-ignore
-      const topHallMeta = await prisma.functionHall.findMany({
-        where: { id: { in: topHallIds } },
-        select: { id: true, name: true },
-      });
-      topHallsThisMonth = topHallGroups.map((g: any) => {
-        const meta = topHallMeta.find((h: any) => h.id === g.hallId);
-        return {
-          hallId: g.hallId,
-          name: meta?.name || "—",
-          revenue: g._sum?.totalAmount || 0,
-          bookings: g._count || 0,
-        };
+      hallRevenueThisMonth = hRevData._sum.totalAmount || 0;
+
+      hallTodayBookings = await prisma.functionHallBooking.count({
+        where: { eventDate: { gte: today, lt: tomorrow }, status: { not: "CANCELLED" }, ...hallFilters },
       });
 
-      // @ts-ignore - Prisma types may not include FunctionHallBooking relations
-      recentHallBookings = await (prisma.functionHallBooking as any).findMany({
-        take: 3,
-        where: excludeTestingHallGuestsFilter,
-        orderBy: { createdAt: "desc" },
-        include: {
-          hall: true,
-        },
+      const nextWeekForHalls = referenceDate.clone().add(7, 'days').toDate();
+      hallUpcoming7Days = await prisma.functionHallBooking.count({
+        where: { eventDate: { gte: today, lt: nextWeekForHalls }, status: { in: ["PENDING", "CONFIRMED"] }, ...hallFilters },
       });
-    } catch (e) {
-      // Function hall tables might not exist yet
-    }
+    } catch (e) {}
 
-    // Staff count
-    const totalStaff = await prisma.staff.count({
-      where: { status: "ACTIVE" },
-    });
-
-    // Guests count
-    const totalGuests = await prisma.guest.count();
-    const newGuestsThisMonth = await prisma.guest.count({
-      where: {
-        createdAt: {
-          gte: startOfMonth,
-        },
-        name: {
-          not: {
-            contains: "testing",
-          },
-          mode: "insensitive",
-        },
-      },
-    });
-
-    // Weekly revenue data (last 7 days)
-    const weeklyRevenue = [];
+    // Weekly Revenue Chart Data
+    const weeklyRevenue: { day: string; amount: number }[] = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
+      const d = referenceDate.clone().subtract(i, 'days').startOf('day').toDate();
+      const dNext = referenceDate.clone().subtract(i - 1, 'days').startOf('day').toDate();
+      
       const dayRevenue = await prisma.booking.aggregate({
-        where: {
-          createdAt: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-        _sum: {
-          paidAmount: true,
-        },
+        where: { checkIn: { gte: d, lt: dNext }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
+        _sum: { paidAmount: true },
       });
-
+      
       weeklyRevenue.push({
-        day: date.toLocaleDateString("en-US", { weekday: "short" }),
-        date: date.toISOString().split("T")[0],
+        day: moment(d).format('ddd'),
         amount: dayRevenue._sum.paidAmount || 0,
       });
     }
 
-    // Monthly revenue trend (last 6 months)
-    const monthlyTrend = [];
+    // Monthly Trend Data
+    const monthlyTrend: { month: string; hotelRevenue: number; hallRevenue: number; total: number }[] = [];
     for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthEnd = new Date(
-        today.getFullYear(),
-        today.getMonth() - i + 1,
-        0,
-      );
-
-      const monthData = await prisma.booking.aggregate({
-        where: {
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-        _sum: {
-          paidAmount: true,
-        },
+      const mStart = referenceDate.clone().subtract(i, 'months').startOf('month').toDate();
+      const mEnd = referenceDate.clone().subtract(i, 'months').endOf('month').toDate();
+      
+      const hRev = await prisma.booking.aggregate({
+        where: { checkIn: { gte: mStart, lte: mEnd }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
+        _sum: { paidAmount: true },
       });
-
-      // Also get hall revenue
-      let hallMonthRevenue = 0;
-      try {
-        // @ts-ignore
-        const hallMonthData = await prisma.functionHallBooking.aggregate({
-          where: {
-            createdAt: {
-              gte: monthStart,
-              lte: monthEnd,
-            },
-          },
-          _sum: {
-            advanceAmount: true,
-          },
-        });
-        hallMonthRevenue = hallMonthData._sum.advanceAmount || 0;
-      } catch (e) {
-        // Function hall tables might not exist
-      }
-
+      
+      const hallRev = await prisma.functionHallBooking.aggregate({
+        where: { eventDate: { gte: mStart, lte: mEnd }, status: { not: "CANCELLED" }, customerName: { not: { contains: "testing" } } },
+        _sum: { totalAmount: true },
+      });
+      
+      const hotelAmount = hRev._sum.paidAmount || 0;
+      const hallAmount = hallRev._sum.totalAmount || 0;
+      
       monthlyTrend.push({
-        month: monthStart.toLocaleDateString("en-US", { month: "short" }),
-        year: monthStart.getFullYear(),
-        hotelRevenue: monthData._sum.paidAmount || 0,
-        hallRevenue: hallMonthRevenue,
-        total: (monthData._sum.paidAmount || 0) + hallMonthRevenue,
+        month: moment(mStart).format('MMM'),
+        hotelRevenue: hotelAmount,
+        hallRevenue: hallAmount,
+        total: hotelAmount + hallAmount
       });
     }
 
-    // Recent bookings (billing info now in Booking itself)
+    // Analytical Breakdowns
+    const bookingsByStatus: any = {};
+    const statuses: BookingStatus[] = ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED", "PENDING"];
+    for (const status of statuses) {
+      bookingsByStatus[status] = await prisma.booking.count({ where: { status, ...excludeTestingFilter } });
+    }
+
+    const bookingsByGuestType: any = {};
+    const guestTypes = ['WALK_IN', 'CORPORATE', 'OTA', 'REGULAR', 'FAMILY', 'GOVERNMENT', 'AGENT'];
+    for (const type of guestTypes) {
+      bookingsByGuestType[type] = {
+        count: await prisma.booking.count({ where: { guest: { guestType: type, name: { not: { contains: "testing" } } } } }),
+        revenue: 0 
+      };
+    }
+
+    const bookingsByGuestTypeThisMonth: any = {};
+    for (const type of guestTypes) {
+      const agg = await prisma.booking.aggregate({
+        where: { checkIn: { gte: startOfMonth, lte: endOfMonth }, guest: { guestType: type, name: { not: { contains: "testing" } } }, status: { not: "CANCELLED" } },
+        _sum: { paidAmount: true },
+        _count: true
+      });
+      bookingsByGuestTypeThisMonth[type] = {
+        count: agg._count || 0,
+        revenue: agg._sum?.paidAmount || 0
+      };
+    }
+
+    const roomsByType: any = {};
+    const roomTypes = await prisma.room.groupBy({ by: ['roomType'], _count: true });
+    roomTypes.forEach(rt => roomsByType[rt.roomType] = rt._count);
+
+    // Performance Metrics
+    const completedBookingsThisMonth = await prisma.booking.findMany({
+      where: { checkOut: { gte: startOfMonth, lte: endOfMonth }, status: "CHECKED_OUT", ...excludeTestingFilter },
+      select: { checkIn: true, checkOut: true, paidAmount: true }
+    });
+    
+    let totalStayHours = 0;
+    completedBookingsThisMonth.forEach(b => {
+      totalStayHours += moment(b.checkOut).diff(moment(b.checkIn), 'hours');
+    });
+    const avgStayHoursThisMonth = completedBookingsThisMonth.length > 0 ? Math.round(totalStayHours / completedBookingsThisMonth.length) : 0;
+    const avgBookingValueThisMonth = monthBookings > 0 ? Math.round(monthRevenue / monthBookings) : 0;
+
+    // Payment Health
+    const paymentStatusThisMonth = {
+      PAID: await prisma.booking.count({ where: { checkIn: { gte: startOfMonth, lte: endOfMonth }, paymentStatus: "PAID", status: { not: "CANCELLED" }, ...excludeTestingFilter } }),
+      PARTIAL: await prisma.booking.count({ where: { checkIn: { gte: startOfMonth, lte: endOfMonth }, paymentStatus: "PARTIAL", status: { not: "CANCELLED" }, ...excludeTestingFilter } }),
+      PENDING: await prisma.booking.count({ where: { checkIn: { gte: startOfMonth, lte: endOfMonth }, paymentStatus: "PENDING", status: { not: "CANCELLED" }, ...excludeTestingFilter } }),
+    };
+
+    // Recent Activity
     const recentBookings = await prisma.booking.findMany({
       take: 5,
-      where: excludeTestingGuestsFilter,
-      orderBy: { bookingDate: "desc" },
-      include: {
-        room: true,
-        guest: true,
-      },
+      orderBy: { createdAt: 'desc' },
+      where: excludeTestingFilter,
+      include: { guest: true, room: true }
     });
 
-    // Upcoming check-ins (next 7 days)
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    const upcomingCheckIns = await prisma.booking.count({
-      where: {
-        checkIn: {
-          gte: today,
-          lt: nextWeek,
-        },
-        status: "CONFIRMED",
-        ...excludeTestingGuestsFilter,
-      },
+    const recentHallBookings = await prisma.functionHallBooking.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      where: { customerName: { not: { contains: "testing" } } },
+      include: { hall: true }
     });
 
-    // Upcoming check-outs (today)
-    const upcomingCheckOuts = await prisma.booking.count({
-      where: {
-        checkOut: {
-          gte: today,
-          lt: tomorrow,
-        },
-        status: "CHECKED_IN",
-        ...excludeTestingGuestsFilter,
-      },
-    });
-
-    // Payment health (this month)
-    const paymentStatusThisMonth = await prisma.booking.groupBy({
-      by: ["paymentStatus"],
-      where: {
-        createdAt: { gte: startOfMonth },
-        status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
-      },
-      _count: true,
-    });
-
-    // Operational alerts
-    const overdueCheckouts = await prisma.booking.count({
-      where: {
-        status: "CHECKED_IN",
-        checkOut: { lt: now },
-        ...excludeTestingGuestsFilter,
-      },
-    });
-    // @ts-ignore - Prisma types may be outdated (flexibleCheckout)
-    const flexibleCheckoutActive = await (prisma.booking as any).count({
-      where: {
-        status: "CHECKED_IN",
-        flexibleCheckout: true,
-        ...excludeTestingGuestsFilter,
-      },
-    });
-    // maintenanceRooms already computed at top (used for available/booked today)
-
-    // Stay metrics (this month)
-    const monthStayRows = await prisma.booking.findMany({
-      where: {
-        createdAt: { gte: startOfMonth },
-        status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
-      },
-      select: {
-        checkIn: true,
-        checkOut: true,
-        totalAmount: true,
-        paidAmount: true,
-      },
-      take: 3000,
-    });
-    let stayHoursSum = 0;
-    let stayCount = 0;
-    for (const b of monthStayRows) {
-      const diffMs =
-        new Date(b.checkOut).getTime() - new Date(b.checkIn).getTime();
-      if (Number.isFinite(diffMs) && diffMs > 0) {
-        stayHoursSum += diffMs / (1000 * 60 * 60);
-        stayCount += 1;
-      }
-    }
-    const avgStayHoursThisMonth =
-      stayCount > 0 ? Math.round((stayHoursSum / stayCount) * 10) / 10 : 0;
-    const avgBookingValueThisMonth =
-      monthBookings > 0
-        ? Math.round(
-            ((monthRevenue._sum.paidAmount || 0) / monthBookings) * 100,
-          ) / 100
-        : 0;
-
-    // Top rooms this month by paid revenue - sort/slice in JS (groupBy orderBy requires by-fields)
-    const topRoomGroupsRaw = await prisma.booking.groupBy({
-      by: ["roomId"],
-      where: {
-        createdAt: { gte: startOfMonth },
-        status: { not: "CANCELLED" },
-        ...excludeTestingGuestsFilter,
-      },
+    // Top Performers
+    const topRoomsRaw = await prisma.booking.groupBy({
+      by: ['roomId'],
+      where: { checkIn: { gte: startOfMonth, lte: endOfMonth }, status: { not: "CANCELLED" }, ...excludeTestingFilter },
       _sum: { paidAmount: true },
+      orderBy: { _sum: { paidAmount: 'desc' } },
+      take: 5
     });
-    const topRoomGroups = topRoomGroupsRaw
-      .sort((a, b) => (b._sum?.paidAmount ?? 0) - (a._sum?.paidAmount ?? 0))
-      .slice(0, 5);
-    const topRoomIds = topRoomGroups.map((g) => g.roomId);
-    const topRoomsMeta = topRoomIds.length
-      ? await prisma.room.findMany({
-          where: { id: { in: topRoomIds } },
-          select: { id: true, roomNumber: true, roomType: true, floor: true },
-        })
-      : [];
-    const topRoomsThisMonth = topRoomGroups.map((g) => {
-      const meta = topRoomsMeta.find((r) => r.id === g.roomId);
-      return {
-        roomId: g.roomId,
-        roomNumber: meta?.roomNumber || "—",
-        roomType: meta?.roomType || "—",
-        floor: meta?.floor ?? null,
-        revenue: g._sum.paidAmount || 0,
-      };
+    
+    const topRoomsThisMonth = await Promise.all(topRoomsRaw.map(async (tr) => {
+      const room = await prisma.room.findUnique({ where: { id: tr.roomId } });
+      return { roomId: tr.roomId, roomNumber: room?.roomNumber, roomType: room?.roomType, floor: room?.floor, revenue: tr._sum.paidAmount || 0 };
+    }));
+
+    // Event Type Analysis for Halls
+    const hallEventTypesThisMonth = await prisma.functionHallBooking.groupBy({
+      by: ['eventType'],
+      where: { eventDate: { gte: startOfMonth, lte: endOfMonth }, status: { not: "CANCELLED" }, customerName: { not: { contains: "testing" } } },
+      _count: true
+    }).then(res => res.map(r => ({ eventType: r.eventType, count: r._count })));
+
+    // Inventory Alerts
+    const lowStockAlerts = await prisma.inventory.count({
+      where: { quantity: { lte: prisma.inventory.fields.minStock } }
     });
-
-    // Calculate occupancy rate
-    const occupancyRate =
-      totalRooms > 0 ? Math.round((bookedRooms / totalRooms) * 100) : 0;
-
-    // Calculate growth percentages
-    const bookingGrowth =
-      lastMonthBookings > 0
-        ? Math.round(
-            ((monthBookings - lastMonthBookings) / lastMonthBookings) * 100,
-          )
-        : monthBookings > 0
-          ? 100
-          : 0;
-
-    const revenueGrowth =
-      (lastMonthRevenue._sum.paidAmount || 0) > 0
-        ? Math.round(
-            (((monthRevenue._sum.paidAmount || 0) -
-              (lastMonthRevenue._sum.paidAmount || 0)) /
-              (lastMonthRevenue._sum.paidAmount || 1)) *
-              100,
-          )
-        : (monthRevenue._sum.paidAmount || 0) > 0
-          ? 100
-          : 0;
 
     const stats = {
-      // Basic stats
       totalRooms,
       availableRooms,
       bookedRooms,
-      occupancyRate,
-
-      // Booking stats
+      occupancyRate: totalRooms > 0 ? Math.round((bookedRooms / totalRooms) * 100) : 0,
       todayBookings,
       monthBookings,
-      bookingGrowth,
-      upcomingCheckIns,
-      upcomingCheckOuts,
-
-      // Revenue stats (Redacted for non-admin)
-      todayRevenue: isAdmin ? todayRevenue._sum.paidAmount || 0 : 0,
-      monthRevenue: isAdmin ? monthRevenue._sum.paidAmount || 0 : 0,
-      revenueGrowth: isAdmin ? revenueGrowth : 0,
-      pendingPayments: isAdmin ? pendingPayments._sum.balanceAmount || 0 : 0,
-
-      // Function Hall stats
-      totalHalls,
-      hallBookingsThisMonth,
+      bookingGrowth: lastMonthBookings > 0 ? Math.round(((monthBookings - lastMonthBookings) / lastMonthBookings) * 100) : (monthBookings > 0 ? 100 : 0),
+      todayRevenue: isAdmin ? todayRevenue : 0,
+      monthRevenue: isAdmin ? monthRevenue : 0,
       hallRevenueThisMonth: isAdmin ? hallRevenueThisMonth : 0,
+      totalMonthlyRevenue: isAdmin ? monthRevenue + hallRevenueThisMonth : 0,
+      revenueGrowth: isAdmin && lastMonthRevenue > 0 ? Math.round(((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : (monthRevenue > 0 ? 100 : 0),
+      pendingPayments: isAdmin ? (await prisma.booking.aggregate({ where: { paymentStatus: { in: ["PENDING", "PARTIAL"] }, status: { not: "CANCELLED" }, ...excludeTestingFilter }, _sum: { balanceAmount: true } }))._sum.balanceAmount || 0 : 0,
+      totalStaff: await prisma.staff.count({ where: { status: "ACTIVE" } }),
+      totalGuests: await prisma.guest.count({ where: { name: { not: { contains: "testing" } } } }),
+      newGuestsThisMonth: await prisma.guest.count({ where: { createdAt: { gte: startOfMonth, lte: endOfMonth }, name: { not: { contains: "testing" } } } }),
+      totalHalls,
       hallTodayBookings,
       hallUpcoming7Days,
-      hallStatusThisMonth,
-      hallEventTypesThisMonth,
-      topHallsThisMonth: isAdmin
-        ? topHallsThisMonth
-        : topHallsThisMonth.map((h) => ({ ...h, revenue: 0 })),
-
-      // Other stats
-      lowStockAlerts: lowStockItems.length,
-      totalStaff,
-      totalGuests,
-      newGuestsThisMonth,
-
-      // Breakdowns
-      bookingsByStatus: bookingsByStatus.reduce((acc: any, item) => {
-        acc[item.status] = item._count;
-        return acc;
-      }, {}),
-      roomsByType: roomsByType.reduce((acc: any, item) => {
-        acc[item.roomType] = item._count;
-        return acc;
-      }, {}),
-
-      // Guest/Room Type Analytics (Redacted revenue if non-admin)
-      bookingsByGuestType: isAdmin
-        ? guestTypeAllTime
-        : Object.fromEntries(
-            Object.entries(guestTypeAllTime).map(([k, v]) => [
-              k,
-              { ...v, revenue: 0 },
-            ]),
-          ),
-      bookingsByGuestTypeThisMonth: isAdmin
-        ? guestTypeThisMonth
-        : Object.fromEntries(
-            Object.entries(guestTypeThisMonth).map(([k, v]) => [
-              k,
-              { ...v, revenue: 0 },
-            ]),
-          ),
-      guestTypeLabels,
-
-      bookingsByRoomType: isAdmin
-        ? roomTypeAllTime
-        : Object.fromEntries(
-            Object.entries(roomTypeAllTime).map(([k, v]) => [
-              k,
-              { ...v, revenue: 0 },
-            ]),
-          ),
-      bookingsByRoomTypeThisMonth: isAdmin
-        ? roomTypeThisMonth
-        : Object.fromEntries(
-            Object.entries(roomTypeThisMonth).map(([k, v]) => [
-              k,
-              { ...v, revenue: 0 },
-            ]),
-          ),
-      roomTypeLabels,
-
-      // Trends
-      weeklyRevenue: isAdmin
-        ? weeklyRevenue
-        : weeklyRevenue.map((d) => ({ ...d, amount: 0 })),
-      monthlyTrend: isAdmin
-        ? monthlyTrend
-        : monthlyTrend.map((d) => ({
-            ...d,
-            hotelRevenue: 0,
-            hallRevenue: 0,
-            total: 0,
-          })),
-
-      // Recent activities
+      hallBookingsThisMonth,
+      overdueCheckouts: await prisma.booking.count({ where: { status: "CHECKED_IN", checkOut: { lt: now }, ...excludeTestingFilter } }),
+      maintenanceRooms,
+      weeklyRevenue,
+      monthlyTrend,
+      bookingsByStatus,
+      bookingsByGuestType,
+      bookingsByGuestTypeThisMonth,
+      roomsByType,
+      avgStayHoursThisMonth,
+      avgBookingValueThisMonth,
+      paymentStatusThisMonth,
       recentBookings,
       recentHallBookings,
-
-      // More analytics
-      paymentStatusThisMonth: paymentStatusThisMonth.reduce(
-        (acc: any, item) => {
-          acc[item.paymentStatus] = item._count;
-          return acc;
-        },
-        {},
-      ),
-      avgStayHoursThisMonth,
-      avgBookingValueThisMonth: isAdmin ? avgBookingValueThisMonth : 0,
-      overdueCheckouts,
-      flexibleCheckoutActive,
-      maintenanceRooms,
-      topRoomsThisMonth: isAdmin
-        ? topRoomsThisMonth
-        : topRoomsThisMonth.map((r) => ({ ...r, revenue: 0 })),
+      topRoomsThisMonth,
+      lowStockAlerts,
+      hallEventTypesThisMonth,
+      upcomingCheckIns: todayBookings,
+      upcomingCheckOuts: await prisma.booking.count({ where: { checkOut: { gte: today, lt: tomorrow }, status: "CHECKED_IN", ...excludeTestingFilter } }),
+      timestamp: nowInIST.toISOString()
     };
 
     return Response.json(successResponse(stats));
   } catch (error) {
-    console.error("Error fetching dashboard:", error);
-    return Response.json(
-      errorResponse("Server error", "Failed to fetch dashboard data"),
-      { status: 500 },
-    );
+    console.error("Dashboard Error:", error);
+    return Response.json(errorResponse("Server error", "Dashboard failed"), { status: 500 });
   }
 }

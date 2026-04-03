@@ -1,12 +1,13 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit } from 'react-icons/fa'
+import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit, FaTrash } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
+import { toast } from 'react-hot-toast'
 
 type PaymentFilter = 'all' | 'PENDING' | 'PARTIAL' | 'PAID'
 
@@ -31,11 +32,31 @@ export default function BillsPage() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
+  const queryClient = useQueryClient()
   const { data: response, isLoading } = useQuery({
     queryKey: ['bills', page, limit, debouncedSearch, paymentFilter],
     queryFn: () => api.get(`/bills?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`),
     staleTime: 5000,
   })
+
+  const deleteBillMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/bills/${id}`),
+    onSuccess: () => {
+      toast.success('Bill deleted successfully')
+      queryClient.invalidateQueries({ queryKey: ['bills'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to delete bill')
+    }
+  })
+
+  const handleDelete = (e: React.MouseEvent, id: string, billNumber: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (window.confirm(`Are you sure you want to permanently delete bill ${billNumber}? This action cannot be undone.`)) {
+      deleteBillMutation.mutate(id)
+    }
+  }
 
   // Data structure from /api/bills is the same array of objects, but consolidated
   const bookings = response?.data || []
@@ -218,6 +239,14 @@ export default function BillsPage() {
                   >
                     <FaEdit className="w-4 h-4" />
                   </Link>
+                  <button
+                    onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Delete Bill"
+                    disabled={deleteBillMutation.isPending}
+                  >
+                    <FaTrash className="w-4 h-4" />
+                  </button>
                   <p className="text-xs text-emerald-400 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
                     View Bill →
                   </p>
@@ -227,7 +256,7 @@ export default function BillsPage() {
           })}
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
+        <div className="hidden md:block rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px]">
               <thead>
@@ -292,6 +321,14 @@ export default function BillsPage() {
                           >
                             <FaEdit className="w-4 h-4" />
                           </Link>
+                          <button
+                            onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                            className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Delete Bill"
+                            disabled={deleteBillMutation.isPending}
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -300,6 +337,67 @@ export default function BillsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Mobile view fallback when 'table' is selected */}
+      {!isLoading && viewMode === 'table' && totalBills > 0 && (
+        <div className="md:hidden grid grid-cols-1 gap-3">
+          {bookings.map((b: any) => {
+            const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
+            const status = b.paymentStatus || 'PENDING'
+            const isConsolidated = b.isConsolidated || b.roomCount > 1
+
+            return (
+              <Link
+                key={b.id}
+                href={`/bills/${b.id}`}
+                className="block rounded-xl border border-white/10 bg-slate-800/80 p-4 relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start gap-2 mb-2">
+                  <span className="text-[10px] font-mono text-slate-500">{b.billNumber || b.id.slice(-6).toUpperCase()}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                      status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}
+                  >
+                    {status}
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-white mb-1">{b.guest?.name}</p>
+                <p className="text-xs text-slate-400 mb-3">
+                  {isConsolidated ? `${b.roomCount} Rooms (${b.displayRoomNumber})` : `${b.room?.roomNumber} • ${b.room?.roomType}`}
+                </p>
+                <div className="flex items-center justify-between py-2 border-t border-white/5 mt-auto">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Paid</span>
+                    <span className="text-sm font-bold text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Remaining</span>
+                    <span className="text-sm font-bold text-amber-400">₹{remaining.toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/5 pt-3">
+                  <Link
+                    href={`/bookings/${b.id}/edit`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400"
+                  >
+                    <FaEdit className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-red-400"
+                    disabled={deleteBillMutation.isPending}
+                  >
+                    <FaTrash className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
 

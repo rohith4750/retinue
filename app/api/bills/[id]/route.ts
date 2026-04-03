@@ -126,16 +126,19 @@ export async function GET(
       ),
     };
 
-    // Determine overall payment status
+    // Determine overall payment status and latest checkout date
     let paymentStatus = "PENDING";
     if (consolidated.balanceAmount <= 0) paymentStatus = "PAID";
     else if (consolidated.paidAmount > 0) paymentStatus = "PARTIAL";
+    
+    const latestCheckOut = new Date(Math.max(...relatedBookings.map(b => new Date(b.checkOut).getTime())));
 
     // Return in a format compatible with old Bill structure for frontend
     const billData = {
       id: booking.id,
       bookingId: booking.id,
       billNumber: primaryBillBooking.billNumber, // Primary bill number (from earliest booking)
+      billDate: latestCheckOut, // Consolidated bill date is the latest check-out
       // Consolidated totals
       subtotal: consolidated.subtotal,
       tax: consolidated.tax,
@@ -808,6 +811,76 @@ export async function PUT(
     console.error("Error updating bill:", error);
     return Response.json(
       errorResponse("Server error", "Failed to update payment"),
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/bills/[id] - Permanent delete of a bill (booking)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const authResult = await requireAuth("ADMIN")(request);
+    if (authResult instanceof Response) return authResult;
+
+    // 1. Find the booking
+    let booking = await prisma.booking.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!booking) {
+      booking = await prisma.booking.findFirst({
+        where: { billNumber: params.id },
+      });
+    }
+
+    if (!booking) {
+      return Response.json(errorResponse("Not found", "Bill not found"), {
+        status: 404,
+      });
+    }
+
+    // 2. Permanent delete - completely remove booking and related records
+    await prisma.$transaction(async (tx: any) => {
+      // Delete booking history
+      await tx.bookingHistory.deleteMany({
+        where: { bookingId: booking!.id },
+      });
+
+      // Delete the booking
+      await tx.booking.delete({
+        where: { id: booking!.id },
+      });
+
+      // Make slot available again if it exists
+      if (booking!.slotId) {
+        await tx.roomSlot
+          .update({
+            where: { id: booking!.slotId },
+            data: { isAvailable: true },
+          })
+          .catch(() => {}); // Ignore if slot doesn't exist
+      }
+
+      // Update room status if it was booked for this booking
+      if (
+        booking!.status === "CHECKED_IN" ||
+        booking!.status === "CONFIRMED"
+      ) {
+        await tx.room.update({
+          where: { id: booking!.roomId },
+          data: { status: "AVAILABLE" },
+        });
+      }
+    });
+
+    return Response.json(successResponse(null, "Bill permanently deleted"));
+  } catch (error: any) {
+    console.error("Error deleting bill:", error);
+    return Response.json(
+      errorResponse("Server error", "Failed to delete bill: " + error.message),
       { status: 500 },
     );
   }

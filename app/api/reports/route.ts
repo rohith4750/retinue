@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import moment from "moment";
+
+export const dynamic = 'force-dynamic';
 import { requireAuth } from "@/lib/api-helpers";
-import {
-  excludeTestingGuestsFilter,
-  excludeTestingHallGuestsFilter,
-} from "@/lib/booking-utils";
 import * as XLSX from "xlsx";
 
 // GET /api/reports - Generate comprehensive Excel report
@@ -18,14 +17,9 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // Default date range - last 2 months
-    const end = endDate ? new Date(endDate) : new Date();
-    end.setHours(23, 59, 59, 999);
-    const start = startDate ? new Date(startDate) : new Date(end);
-    if (!startDate) {
-      start.setMonth(start.getMonth() - 2);
-    }
-    start.setHours(0, 0, 0, 0);
+    // Default date range - last 2 months using IST
+    const end = endDate ? moment(endDate).utcOffset("+05:30").endOf('day').toDate() : moment().utcOffset("+05:30").endOf('day').toDate();
+    const start = startDate ? moment(startDate).utcOffset("+05:30").startOf('day').toDate() : moment(end).subtract(2, 'months').startOf('day').toDate();
 
     const workbook = XLSX.utils.book_new();
 
@@ -48,14 +42,14 @@ export async function GET(request: NextRequest) {
 
       const bookingsData = bookings.map((b: any) => ({
         "Booking ID": b.id,
-        "Booking Date": new Date(b.bookingDate).toLocaleDateString(),
+        "Booking Date": moment(b.bookingDate).format('DD/MM/YYYY'),
         "Guest Name": b.guest?.name || "N/A",
         "Guest Phone": b.guest?.phone || "N/A",
         "Guest Email": b.guest?.email || "N/A",
         "Room Number": b.room?.roomNumber || "N/A",
         "Room Type": b.room?.roomType || "N/A",
-        "Check-in": new Date(b.checkIn).toLocaleDateString(),
-        "Check-out": new Date(b.checkOut).toLocaleDateString(),
+        "Check-in": moment(b.checkIn).format('DD/MM/YYYY'),
+        "Check-out": moment(b.checkOut).format('DD/MM/YYYY'),
         Adults: b.adults || 0,
         Children: b.children || 0,
         "Extra Beds": b.extraBeds || 0,
@@ -85,7 +79,7 @@ export async function GET(request: NextRequest) {
         Capacity: r.capacity,
         "Base Price": r.basePrice,
         Status: r.status,
-        "Created At": new Date(r.createdAt).toLocaleDateString(),
+        "Created At": moment(r.createdAt).format('DD/MM/YYYY'),
       }));
 
       if (roomsData.length > 0) {
@@ -95,12 +89,7 @@ export async function GET(request: NextRequest) {
 
       // 3. Guests Sheet
       const guests = await prisma.guest.findMany({
-        where: {
-          createdAt: {
-            gte: start,
-            lte: end,
-          },
-        },
+        where: {},
         orderBy: { createdAt: "desc" },
       });
 
@@ -112,7 +101,7 @@ export async function GET(request: NextRequest) {
         "ID Type": g.idType || "N/A",
         "ID Number": g.idNumber || g.idProof || "N/A",
         Address: g.address || "N/A",
-        "Created At": new Date(g.createdAt).toLocaleDateString(),
+        "Created At": moment(g.createdAt).format('DD/MM/YYYY'),
       }));
 
       if (guestsData.length > 0) {
@@ -127,7 +116,6 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
-          ...excludeTestingGuestsFilter,
         },
         _sum: {
           totalAmount: true,
@@ -144,7 +132,6 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
-          ...excludeTestingGuestsFilter,
         },
         _count: true,
       });
@@ -189,7 +176,6 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
-            ...excludeTestingHallGuestsFilter,
           },
           include: {
             hall: true,
@@ -208,7 +194,7 @@ export async function GET(request: NextRequest) {
           "Customer Phone": b.customerPhone,
           "Customer Email": b.customerEmail || "N/A",
           "Event Type": b.eventType,
-          "Event Date": new Date(b.eventDate).toLocaleDateString(),
+          "Event Date": moment(b.eventDate).format('DD/MM/YYYY'),
           "Start Time": b.startTime || "N/A",
           "End Time": b.endTime || "N/A",
           "Expected Guests": b.expectedGuests,
@@ -224,7 +210,7 @@ export async function GET(request: NextRequest) {
           "Maintenance Charge": b.maintenanceCharges || 0,
           "Other Charges": b.otherCharges || 0,
           Notes: b.specialRequests || "None",
-          "Created At": new Date(b.createdAt).toLocaleDateString(),
+          "Created At": moment(b.createdAt).format('DD/MM/YYYY'),
         }));
 
         const hallBookingsSheet = XLSX.utils.json_to_sheet(hallBookingsData);
@@ -255,7 +241,7 @@ export async function GET(request: NextRequest) {
           "Price Per Hour": h.pricePerHour || "N/A",
           Amenities: h.amenities || "N/A",
           Status: h.status,
-          "Created At": new Date(h.createdAt).toLocaleDateString(),
+          "Created At": moment(h.createdAt).format('DD/MM/YYYY'),
         }));
 
         const hallsSheet = XLSX.utils.json_to_sheet(hallsData);
@@ -329,7 +315,7 @@ export async function GET(request: NextRequest) {
         Salary: s.salary || "N/A",
         "Business Unit": s.businessUnit || "N/A",
         Status: s.status,
-        "Created At": new Date(s.createdAt).toLocaleDateString(),
+        "Created At": moment(s.createdAt).format('DD/MM/YYYY'),
       }));
 
       if (staffData.length > 0) {
@@ -351,7 +337,7 @@ export async function GET(request: NextRequest) {
         "Min Stock": i.minStock,
         "Is Asset": i.isAsset ? "Yes" : "No",
         Status: i.quantity <= i.minStock ? "Low Stock" : "In Stock",
-        "Created At": new Date(i.createdAt).toLocaleDateString(),
+        "Created At": moment(i.createdAt).format('DD/MM/YYYY'),
       }));
 
       if (inventoryData.length > 0) {
@@ -385,7 +371,7 @@ export async function GET(request: NextRequest) {
           "Location Type": a.roomId ? "Room" : "Function Hall",
           Location: a.room?.roomNumber || a.functionHall?.name || "N/A",
           Notes: a.notes || "None",
-          "Assigned Date": new Date(a.assignedDate).toLocaleDateString(),
+          "Assigned Date": moment(a.assignedDate).format('DD/MM/YYYY'),
         }));
 
         const assetSheet = XLSX.utils.json_to_sheet(assetData);
@@ -412,14 +398,14 @@ export async function GET(request: NextRequest) {
       if (expenses.length > 0) {
         const expensesData = expenses.map((e: any) => ({
           "Expense ID": e.id,
-          Date: new Date(e.date).toLocaleDateString(),
+          Date: moment(e.date).format('DD/MM/YYYY'),
           Category: e.category,
           Description: e.description,
           Amount: e.amount,
           "Business Unit": e.businessUnit,
           "Payment Method": e.paymentMethod || "N/A",
           Notes: e.notes || "None",
-          "Created At": new Date(e.createdAt).toLocaleDateString(),
+          "Created At": moment(e.createdAt).format('DD/MM/YYYY'),
         }));
 
         const expensesSheet = XLSX.utils.json_to_sheet(expensesData);
@@ -456,7 +442,7 @@ export async function GET(request: NextRequest) {
           Bonus: s.bonus,
           Deductions: s.deductions,
           "Net Amount": s.netAmount,
-          "Payment Date": new Date(s.paymentDate).toLocaleDateString(),
+          "Payment Date": moment(s.paymentDate).format('DD/MM/YYYY'),
           "Payment Method": s.paymentMethod || "N/A",
           Notes: s.notes || "None",
         }));
@@ -475,7 +461,6 @@ export async function GET(request: NextRequest) {
             gte: start,
             lte: end,
           },
-          ...excludeTestingGuestsFilter,
         },
         _sum: {
           paidAmount: true,
@@ -491,7 +476,6 @@ export async function GET(request: NextRequest) {
               gte: start,
               lte: end,
             },
-            ...excludeTestingHallGuestsFilter,
           },
           _sum: {
             advanceAmount: true,
@@ -567,7 +551,7 @@ export async function GET(request: NextRequest) {
     const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
     // Set filename based on report type and date range
-    const dateStr = `${start.toISOString().split("T")[0]}_to_${end.toISOString().split("T")[0]}`;
+    const dateStr = `${moment(start).format('YYYY-MM-DD')}_to_${moment(end).format('YYYY-MM-DD')}`;
     let filename = "";
     switch (reportType) {
       case "hotel":

@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
+
+export const dynamic = 'force-dynamic';
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
-import { excludeTestingGuestsFilter, excludeTestingHallGuestsFilter } from '@/lib/booking-utils'
 
 // GET /api/analytics/predictions - Get predictive analytics
 export async function GET(request: NextRequest) {
@@ -9,23 +11,20 @@ export async function GET(request: NextRequest) {
     const authResult = await requireAuth('SUPER_ADMIN')(request)
     if (authResult instanceof Response) return authResult
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = moment().utcOffset("+05:30").startOf('day').toDate()
 
     // Get historical data for the past 12 months
     const monthsOfHistory = 12
     const historicalData: any[] = []
 
     for (let i = monthsOfHistory - 1; i >= 0; i--) {
-      const monthStart = new Date(today.getFullYear(), today.getMonth() - i, 1)
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() - i + 1, 0)
-      monthEnd.setHours(23, 59, 59, 999)
+      const monthStart = moment(today).subtract(i, 'months').startOf('month').toDate()
+      const monthEnd = moment(today).subtract(i, 'months').endOf('month').toDate()
 
       // Hotel bookings and revenue
       const hotelBookings = await prisma.booking.count({
         where: {
           createdAt: { gte: monthStart, lte: monthEnd },
-          ...excludeTestingGuestsFilter
         }
       })
 
@@ -33,7 +32,6 @@ export async function GET(request: NextRequest) {
       const hotelRevenue = await prisma.booking.aggregate({
         where: {
           createdAt: { gte: monthStart, lte: monthEnd },
-          ...excludeTestingGuestsFilter
         },
         _sum: { paidAmount: true }
       })
@@ -46,14 +44,12 @@ export async function GET(request: NextRequest) {
         hallBookings = await prisma.functionHallBooking.count({
           where: {
             createdAt: { gte: monthStart, lte: monthEnd },
-            ...excludeTestingHallGuestsFilter
           }
         })
         // @ts-ignore
         const hallRevenueData = await prisma.functionHallBooking.aggregate({
           where: {
             createdAt: { gte: monthStart, lte: monthEnd },
-            ...excludeTestingHallGuestsFilter
           },
           _sum: { advanceAmount: true }
         })
@@ -137,7 +133,7 @@ export async function GET(request: NextRequest) {
     const n = historicalData.length
 
     for (let i = 1; i <= 6; i++) {
-      const futureMonth = new Date(today.getFullYear(), today.getMonth() + i, 1)
+      const futureMonth = moment(today).add(i, 'months').startOf('month').toDate()
       const monthName = futureMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 
       // Use weighted combination of trend and moving average

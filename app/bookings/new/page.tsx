@@ -50,6 +50,9 @@ function NewBookingContent() {
     if (!checkInValue) return ''
     const checkInDate = new Date(checkInValue)
     const checkoutDate = new Date(checkInDate.getTime() + 24 * 60 * 60 * 1000)
+    // Set standard hotel checkout time: 11:00 AM
+    checkoutDate.setHours(11, 0, 0, 0)
+    
     const year = checkoutDate.getFullYear()
     const month = String(checkoutDate.getMonth() + 1).padStart(2, '0')
     const day = String(checkoutDate.getDate()).padStart(2, '0')

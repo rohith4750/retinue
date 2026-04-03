@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import {
   FaUsers,
   FaMoneyBillWave,
@@ -65,8 +66,8 @@ export default function WorkforcePage() {
   })
 
   // Filters
-  const currentYear = new Date().getFullYear()
-  const currentMonth = new Date().getMonth() + 1
+  const currentYear = moment().year()
+  const currentMonth = moment().month() + 1
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
   const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString())
 
@@ -75,7 +76,7 @@ export default function WorkforcePage() {
     amount: '',
     bonus: '0',
     deductions: '0',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: moment().format('YYYY-MM-DD'),
     paymentMethod: 'CASH',
     notes: '',
   })
@@ -139,14 +140,9 @@ export default function WorkforcePage() {
     return map
   }, [paymentsList])
 
-  // Get today's date at midnight for comparison
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
+  // Get today's date formatted for comparison
   const isFutureDate = (dateStr: string) => {
-    const d = new Date(dateStr)
-    d.setHours(0, 0, 0, 0)
-    return d > today
+    return moment(dateStr).isAfter(moment(), 'day')
   }
 
   // Check if staff has been paid (Strictly PAID, not just scheduled)
@@ -245,7 +241,7 @@ export default function WorkforcePage() {
       amount: '',
       bonus: '0',
       deductions: '0',
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: moment().format('YYYY-MM-DD'),
       paymentMethod: 'CASH',
       notes: '',
     })
@@ -258,7 +254,7 @@ export default function WorkforcePage() {
       amount: (staff.staffType === 'DAILY' ? staff.dailyWage : staff.salary)?.toString() || '',
       bonus: '0',
       deductions: '0',
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: moment().format('YYYY-MM-DD'),
       paymentMethod: 'CASH',
       notes: '',
     })
@@ -271,7 +267,7 @@ export default function WorkforcePage() {
       amount: payment.amount.toString(),
       bonus: payment.bonus.toString(),
       deductions: payment.deductions.toString(),
-      paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
+      paymentDate: moment(payment.paymentDate).format('YYYY-MM-DD'),
       paymentMethod: payment.paymentMethod || 'CASH',
       notes: payment.notes || '',
     })
@@ -606,7 +602,8 @@ export default function WorkforcePage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5">
@@ -630,7 +627,7 @@ export default function WorkforcePage() {
                         </div>
                       </td>
                       <td className="py-2 px-3 text-slate-300">
-                        {new Date(payment.paymentDate).toLocaleDateString()}
+                        {moment(payment.paymentDate).format('DD/MM/YYYY')}
                       </td>
                       <td className="py-2 px-3 text-right text-slate-300">{formatCurrency(payment.amount)}</td>
                       <td className="py-2 px-3 text-right text-emerald-400">
@@ -669,6 +666,63 @@ export default function WorkforcePage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {paymentsList.map((payment: any) => (
+                <div key={payment.id} className="p-4 bg-slate-800/40 border border-white/5 rounded-xl">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-slate-100 font-bold">{payment.staff?.name || 'Unknown'}</p>
+                      <p className="text-xs text-slate-400">{payment.staff?.role}</p>
+                    </div>
+                    <span className="text-xs px-2 py-1 bg-slate-700 text-slate-300 rounded">
+                      {payment.paymentMethod || 'Cash'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-2 text-sm mb-3">
+                    <div className="text-slate-400">Date:</div>
+                    <div className="text-slate-200 text-right">{moment(payment.paymentDate).format('DD/MM/YYYY')}</div>
+                    
+                    <div className="text-slate-400">Base Amount:</div>
+                    <div className="text-slate-200 text-right">{formatCurrency(payment.amount)}</div>
+                    
+                    {payment.bonus > 0 && (
+                      <>
+                        <div className="text-slate-400">Bonus:</div>
+                        <div className="text-emerald-400 text-right">+{formatCurrency(payment.bonus)}</div>
+                      </>
+                    )}
+                    
+                    {payment.deductions > 0 && (
+                      <>
+                        <div className="text-slate-400">Deductions:</div>
+                        <div className="text-red-400 text-right">-{formatCurrency(payment.deductions)}</div>
+                      </>
+                    )}
+                    
+                    <div className="text-slate-100 font-bold">Net Amount:</div>
+                    <div className="text-emerald-400 font-bold text-right">{formatCurrency(payment.netAmount)}</div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-3 border-t border-white/5">
+                    <button
+                      onClick={() => openEditPayment(payment)}
+                      className="flex-1 py-2 bg-sky-500/10 text-sky-400 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      <FaEdit /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeletePayment(payment.id)}
+                      className="flex-1 py-2 bg-red-500/10 text-red-400 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+                    >
+                      <FaTrash /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

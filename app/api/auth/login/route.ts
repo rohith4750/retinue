@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       role: user.role,
       username: user.username,
+      rememberMe: !!rememberMe,
     })
 
     // Set refresh token in httpOnly cookie

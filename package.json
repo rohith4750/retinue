@@ -1,8 +1,10 @@
 {
   "name": "hotel-management-system",
   "version": "1.0.0",
+  "description": "Professional Hotel and Convention Hall Management System",
+  "author": "The Retinue Team",
   "private": true,
-  "main": "electron/main.js",
+  "main": "electron-main.js",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -28,6 +30,7 @@
     "@types/nodemailer": "^7.0.6",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.3",
+    "moment": "^2.30.1",
     "next": "^14.2.18",
     "next-auth": "^4.24.5",
     "nodemailer": "^7.0.12",
@@ -48,6 +51,7 @@
     "autoprefixer": "^10.4.16",
     "concurrently": "^9.2.1",
     "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
     "electron-is-dev": "^3.0.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
@@ -55,36 +59,28 @@
     "prisma": "^5.7.1",
     "tailwindcss": "^3.4.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "wait-on": "^9.0.4"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "build": {
-    "appId": "com.retinue.hotel",
+    "appId": "com.hotel.management",
     "productName": "Retinue Hotel Management",
     "directories": {
       "output": "dist"
     },
     "files": [
-      "app/**/*",
-      "components/**/*",
-      "electron/**/*",
-      "hooks/**/*",
-      "lib/**/*",
-      "prisma/**/*",
+      "electron-main.js",
+      "electron-preload.js",
+      "splash.html",
       "public/**/*",
-      "types/**/*",
-      "next.config.js",
-      "package.json",
-      "postcss.config.js",
-      "tailwind.config.js",
-      "tsconfig.json",
-      ".next/**/*",
-      "node_modules/**/*"
+      "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "public/logo.png"
     }
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   }
 }

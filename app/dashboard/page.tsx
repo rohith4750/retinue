@@ -10,6 +10,7 @@ import {
   FaChartLine, FaUserPlus, FaClipboardList, FaMoneyBillWave, FaPercentage,
   FaCalendarCheck, FaSignOutAlt, FaSignInAlt, FaTachometerAlt, FaUserTag
 } from 'react-icons/fa'
+import moment from 'moment'
 
 const GUEST_TYPE_ORDER = ['WALK_IN', 'CORPORATE', 'OTA', 'REGULAR', 'FAMILY', 'GOVERNMENT', 'AGENT']
 const GUEST_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
@@ -40,17 +41,26 @@ export default function DashboardPage() {
     }
   }, [])
 
+  const [selectedDate, setSelectedDate] = useState<string>(moment().format('YYYY-MM-DD'))
+  const [selectedMonth, setSelectedMonth] = useState<string>(moment().format('YYYY-MM'))
+  const [filterType, setFilterType] = useState<'day' | 'month'>('day')
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => api.get('/dashboard'),
+    queryKey: ['dashboard', selectedDate, selectedMonth, filterType],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (filterType === 'day') params.append('date', selectedDate)
+      else params.append('month', selectedMonth)
+      return api.get(`/dashboard?${params.toString()}`)
+    },
     staleTime: 0,
     refetchOnMount: 'always',
   })
 
   if (isLoading) {
     return (
-      <div className="w-full px-4 lg:px-6 py-4">
-        <div className="space-y-6">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4">
+        <div className="space-y-4 md:space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="bg-slate-800/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
@@ -80,48 +90,106 @@ export default function DashboardPage() {
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
-      <div className="w-full px-4 lg:px-6 py-4 relative z-10 space-y-6">
+      <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10 space-y-4 md:space-y-6">
 
-        {/* Welcome Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <FaTachometerAlt className="text-sky-400" />
-              Dashboard Overview
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Welcome back, {user?.username || 'User'}! Here&apos;s what&apos;s happening today.
-            </p>
+        {/* Welcome Header & Filters */}
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <FaTachometerAlt className="text-sky-400" />
+                Dashboard Overview
+              </h1>
+              <p className="text-sm text-slate-400 mt-1">
+                Welcome back, {user?.username || 'User'}! Here&apos;s what&apos;s happening.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/bookings/new"
+                className="btn-primary flex items-center gap-2 text-sm"
+              >
+                <FaCalendarAlt className="w-4 h-4" />
+                New Booking
+              </Link>
+              <Link
+                href="/function-halls/bookings/new"
+                className="btn-secondary flex items-center gap-2 text-sm"
+              >
+                <FaBuilding className="w-4 h-4" />
+                Hall Booking
+              </Link>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/bookings/new"
-              className="btn-primary flex items-center gap-2 text-sm"
-            >
-              <FaCalendarAlt className="w-4 h-4" />
-              New Booking
-            </Link>
-            <Link
-              href="/function-halls/bookings/new"
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <FaBuilding className="w-4 h-4" />
-              Hall Booking
-            </Link>
+
+          {/* Filter Bar */}
+          <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 p-1 bg-slate-800/50 rounded-xl">
+              <button
+                onClick={() => setFilterType('day')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === 'day' ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/20' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Specific Day
+              </button>
+              <button
+                onClick={() => setFilterType('month')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === 'month' ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/20' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Entire Month
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              {filterType === 'day' ? (
+                <div className="relative flex-1 md:w-48">
+                  <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-400 w-4 h-4 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full bg-slate-800/50 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  />
+                </div>
+              ) : (
+                <div className="relative flex-1 md:w-48">
+                  <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-400 w-4 h-4 pointer-events-none" />
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full bg-slate-800/50 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  />
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedDate(moment().format('YYYY-MM-DD'))
+                  setSelectedMonth(moment().format('YYYY-MM'))
+                }}
+                className="p-2.5 bg-slate-800/50 border border-white/10 rounded-xl text-slate-400 hover:text-sky-400 transition-all"
+                title="Reset to Today"
+              >
+                <FaClock className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Quick Stats - Row 1 */}
-        <div className={`grid grid-cols-2 ${canViewFinance ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+        <div className={`grid grid-cols-2 ${canViewFinance ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-2 md:gap-4`}>
           {/* Occupancy Rate */}
-          <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 backdrop-blur-xl border border-sky-500/20 rounded-2xl p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
+          <div className="bg-gradient-to-br from-sky-600/30 to-sky-800/20 backdrop-blur-xl border border-sky-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
             <div className="absolute top-0 right-0 w-24 h-24 bg-sky-400/20 rounded-full blur-2xl group-hover:bg-sky-400/30 transition-all"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
                 <FaPercentage className="text-sky-400 text-xl" />
-                <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${(stats?.occupancyRate || 0) >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
+                <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 ${(stats?.occupancyRate || 0) >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
                   }`}>
-                  {(stats?.occupancyRate || 0) >= 70 ? 'Good' : 'Low'}
+                  {(stats?.occupancyRate || 0) >= 70 ? 'GOOD' : 'LOW'}
                 </span>
               </div>
               <p className="text-3xl font-bold text-white tracking-tight">{stats?.occupancyRate || 0}%</p>
@@ -130,7 +198,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Available Rooms */}
-          <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-800/20 backdrop-blur-xl border border-emerald-500/20 rounded-2xl p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
+          <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-800/20 backdrop-blur-xl border border-emerald-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300">
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/20 rounded-full blur-2xl group-hover:bg-emerald-400/30 transition-all"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
@@ -138,29 +206,31 @@ export default function DashboardPage() {
                 <span className="text-xs text-emerald-200/70 font-medium">of {stats?.totalRooms || 0}</span>
               </div>
               <p className="text-3xl font-bold text-white tracking-tight">{stats?.availableRooms || 0}</p>
-              <p className="text-xs text-emerald-200/70 mt-1 font-medium">Available Rooms</p>
+              <p className="text-xs text-emerald-200/70 mt-1 font-medium">
+                Available Rooms {filterType === 'day' ? `(on ${moment(selectedDate).format('D MMM')})` : ''}
+              </p>
             </div>
           </div>
 
           {/* Today's Revenue - Only for ADMIN/SUPER_ADMIN */}
           {canViewFinance && (
-            <div className="bg-gradient-to-br from-amber-600/30 to-amber-800/20 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-4 relative overflow-hidden">
+            <div className="bg-gradient-to-br from-amber-600/30 to-amber-800/20 backdrop-blur-xl border border-amber-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/10 rounded-full blur-2xl"></div>
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2">
                   <FaDollarSign className="text-amber-400 text-xl" />
-                  <span className="text-xs text-slate-400">Today</span>
+                  <span className="text-xs text-slate-400">{filterType === 'day' ? 'Selected Day' : 'Month Start'}</span>
                 </div>
                 <p className="text-3xl font-bold text-white">₹{((stats?.todayRevenue || 0) / 1000).toFixed(1)}K</p>
-                <p className="text-xs text-slate-400 mt-1">Today&apos;s Revenue</p>
+                <p className="text-xs text-slate-400 mt-1">{filterType === 'day' ? 'Day Revenue' : 'Date Revenue'}</p>
               </div>
             </div>
           )}
 
           {/* Today's Bookings - click to open bookings page filtered by today (checkout from there) */}
           <Link
-            href={`/bookings?date=${new Date().toISOString().slice(0, 10)}`}
-            className="block bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-4 relative overflow-hidden hover:border-purple-400/40 hover:from-purple-600/40 hover:to-purple-800/30 transition-all"
+            href={`/bookings?date=${moment().format('YYYY-MM-DD')}`}
+            className="block bg-gradient-to-br from-purple-600/30 to-purple-800/20 backdrop-blur-xl border border-purple-500/20 rounded-xl md:rounded-2xl p-3 md:p-4 relative overflow-hidden hover:border-purple-400/40 hover:from-purple-600/40 hover:to-purple-800/30 transition-all"
           >
             <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full blur-2xl"></div>
             <div className="relative z-10">
@@ -177,81 +247,120 @@ export default function DashboardPage() {
 
         {/* Monthly Stats with Growth Indicators - Only for ADMIN/SUPER_ADMIN */}
         {canViewFinance && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Monthly Revenue */}
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-              <div className="flex items-start justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+            {/* Total Revenue */}
+            <Link 
+              href="/dashboard/analytics?view=revenue"
+              className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:bg-slate-800/80 transition-all cursor-pointer block"
+            >
+              <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-2xl"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-2 bg-indigo-500/20 rounded-lg">
+                    <FaMoneyBillWave className="text-indigo-400 text-sm" />
+                  </div>
+                  <p className="text-xs text-indigo-400 uppercase tracking-wider font-bold">Total Revenue (All)</p>
+                </div>
+                <p className="text-3xl font-bold text-white mt-1">₹{(stats?.totalMonthlyRevenue || 0).toLocaleString()}</p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+                  <div className="flex flex-col">
+                    <span className="text-slate-500 text-[8px] uppercase font-bold tracking-tighter">Combined Source</span>
+                    <span className="text-slate-400 font-bold">Hotel + Convention</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <span className="text-indigo-400 font-bold uppercase tracking-tighter">Live Aggregate</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Hotel Revenue */}
+            <Link
+              href="/dashboard/analytics?view=revenue"
+              className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:bg-slate-800/80 transition-all cursor-pointer block"
+            >
+              <div className="flex flex-col h-full justify-between">
                 <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Revenue</p>
-                  <p className="text-2xl font-bold text-white mt-2">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Hotel Revenue</p>
+                    <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                      <FaArrowUp className="text-[10px] text-emerald-400" />
+                      <span className="text-[10px] text-emerald-400 font-bold">{stats?.revenueGrowth || 0}%</span>
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-white tracking-tighter">₹{(stats?.monthRevenue || 0).toLocaleString()}</p>
                 </div>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${(stats?.revenueGrowth || 0) >= 0
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-red-500/20 text-red-400'
-                  }`}>
-                  {(stats?.revenueGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
-                  {Math.abs(stats?.revenueGrowth || 0)}%
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+                  <span className="text-slate-500 font-bold uppercase tracking-tighter">vs last month</span>
+                  <span className="text-slate-400 font-bold">Stay Attribution</span>
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                <span className="text-slate-400">vs last month</span>
-                <span className="text-slate-300">Hotel Revenue</span>
-              </div>
-            </div>
+            </Link>
 
             {/* Monthly Bookings */}
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-              <div className="flex items-start justify-between">
+            <Link
+              href="/dashboard/analytics?view=bookings"
+              className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:bg-slate-800/80 transition-all cursor-pointer block"
+            >
+              <div className="flex flex-col h-full justify-between">
                 <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Monthly Bookings</p>
-                  <p className="text-2xl font-bold text-white mt-2">{stats?.monthBookings || 0}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Monthly Bookings</p>
+                    <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-400/10 border border-emerald-400/20 rounded-full">
+                      <FaArrowUp className="text-[10px] text-emerald-400" />
+                      <span className="text-[10px] text-emerald-400 font-bold">{stats?.bookingGrowth || 0}%</span>
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-white tracking-tighter">{stats?.monthBookings || 0}</p>
                 </div>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${(stats?.bookingGrowth || 0) >= 0
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-red-500/20 text-red-400'
-                  }`}>
-                  {(stats?.bookingGrowth || 0) >= 0 ? <FaArrowUp className="w-3 h-3" /> : <FaArrowDown className="w-3 h-3" />}
-                  {Math.abs(stats?.bookingGrowth || 0)}%
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+                  <span className="text-slate-500 font-bold uppercase tracking-tighter">vs last month</span>
+                  <span className="text-slate-400 font-bold">Room Bookings</span>
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                <span className="text-slate-400">vs last month</span>
-                <span className="text-slate-300">Room Bookings</span>
-              </div>
-            </div>
+            </Link>
 
             {/* Hall Revenue */}
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
-              <div className="flex items-start justify-between">
+            <Link
+              href="/dashboard/analytics?view=halls"
+              className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:bg-slate-800/80 transition-all cursor-pointer block"
+            >
+              <div className="flex flex-col h-full justify-between">
                 <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Hall Revenue</p>
-                  <p className="text-2xl font-bold text-white mt-2">₹{(stats?.hallRevenueThisMonth || 0).toLocaleString()}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Hall Revenue</p>
+                    <div className="p-1 px-2 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                      <span className="text-[10px] text-purple-400 font-bold">{stats?.hallBookingsThisMonth || 0}</span>
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-white tracking-tighter">₹{(stats?.hallRevenueThisMonth || 0).toLocaleString()}</p>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-purple-500/20 text-purple-400">
-                  <FaBuilding className="w-3 h-3" />
-                  {stats?.hallBookingsThisMonth || 0}
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+                  <span className="text-slate-500 font-bold uppercase tracking-tighter">{stats?.totalHalls || 0} halls</span>
+                  <span className="text-slate-400 font-bold">Convention Revenue</span>
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                <span className="text-slate-400">{stats?.totalHalls || 0} halls</span>
-                <span className="text-slate-300">Convention Revenue</span>
-              </div>
-            </div>
+            </Link>
           </div>
         )}
 
         {/* Charts & Analytics Section */}
-        <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
+        <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-4 md:gap-6`}>
           {/* Weekly Revenue Chart - Only for ADMIN/SUPER_ADMIN */}
           {canViewFinance && (
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <FaChartLine className="text-sky-400" />
                     Weekly Revenue
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">Last 7 days performance</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {filterType === 'day' 
+                      ? `7 days up to ${moment(selectedDate).format('D MMM')}` 
+                      : `Last 7 days of ${moment(selectedMonth).format('MMMM')}`}
+                  </p>
                 </div>
               </div>
               <div className="h-48 flex items-end gap-2">
@@ -288,7 +397,7 @@ export default function DashboardPage() {
           )}
 
           {/* Room Status Distribution */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5">
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -303,14 +412,14 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-300 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                    <span className="w-3 h-3 rounded-lg bg-emerald-500"></span>
                     Available
                   </span>
                   <span className="text-sm font-semibold text-white">{stats?.availableRooms || 0}</span>
                 </div>
-                <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-700 rounded-lg overflow-hidden">
                   <div
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    className="h-full bg-emerald-500 rounded-lg transition-all duration-500"
                     style={{ width: `${stats?.totalRooms ? ((stats?.availableRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
                   />
                 </div>
@@ -319,14 +428,14 @@ export default function DashboardPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-300 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                    <span className="w-3 h-3 rounded-lg bg-red-500"></span>
                     Booked
                   </span>
                   <span className="text-sm font-semibold text-white">{stats?.bookedRooms || 0}</span>
                 </div>
-                <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-700 rounded-lg overflow-hidden">
                   <div
-                    className="h-full bg-red-500 rounded-full transition-all duration-500"
+                    className="h-full bg-red-500 rounded-lg transition-all duration-500"
                     style={{ width: `${stats?.totalRooms ? ((stats?.bookedRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
                   />
                 </div>
@@ -379,8 +488,8 @@ export default function DashboardPage() {
                           <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
                           <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
                         </div>
-                        <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
+                        <div className="h-2 bg-slate-700/60 rounded-lg overflow-hidden">
+                          <div className={`h-full rounded-lg transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
                         </div>
                       </div>
                     )
@@ -399,7 +508,7 @@ export default function DashboardPage() {
                       const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
                       return (
                         <div key={type} className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-slate-800/40">
-                          <div className={`w-2 h-7 rounded-full ${colors.bar}`} />
+                          <div className={`w-1.5 h-7 rounded-lg ${colors.bar}`} />
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium ${colors.text}`}>{label}</p>
                             <p className="text-[10px] text-slate-500">{data.count} booking(s)</p>
@@ -436,8 +545,8 @@ export default function DashboardPage() {
                           <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
                           <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
                         </div>
-                        <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
+                        <div className="h-2 bg-slate-700/60 rounded-lg overflow-hidden">
+                          <div className={`h-full rounded-lg transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
                         </div>
                       </div>
                     )
@@ -586,92 +695,108 @@ export default function DashboardPage() {
         {/* Operational & Payment Insights */}
         <div className={`grid grid-cols-1 md:grid-cols-3 ${canViewFinance ? 'lg:grid-cols-4' : ''} gap-4`}>
           {/* Stay Metrics */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-sky-500/20 rounded-xl">
-                  <FaClock className="text-sky-400 text-lg" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Avg stay (this month)</p>
-                  <p className="text-2xl font-bold text-white">{stats?.avgStayHoursThisMonth || 0}h</p>
-                </div>
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-full">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-sky-500/20 rounded-xl">
+                <FaClock className="text-sky-400 text-lg" />
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-slate-500">Avg booking value</p>
-                <p className="text-sm font-semibold text-slate-200">₹{(stats?.avgBookingValueThisMonth || 0).toLocaleString()}</p>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Stay Duration</p>
+                <h3 className="text-sm font-bold text-white">Avg stay (this month)</h3>
+              </div>
+            </div>
+            
+            <div className="mt-4 flex items-end justify-between">
+              <div>
+                <p className="text-4xl font-black text-white leading-none">{stats?.avgStayHoursThisMonth || 0}h</p>
+              </div>
+              <div className="text-right pb-1">
+                <p className="text-[10px] text-slate-500 uppercase font-bold">Avg value</p>
+                <p className="text-sm font-black text-sky-400 leading-tight">₹{(stats?.avgBookingValueThisMonth || 0).toLocaleString()}</p>
               </div>
             </div>
           </div>
 
           {/* Operational Alerts */}
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 h-full flex flex-col">
+            <div className="flex items-center gap-2 mb-4">
               <FaExclamationTriangle className="text-amber-400" />
-              <p className="text-sm font-semibold text-white">Operational Alerts</p>
+              <p className="text-sm font-bold text-white uppercase tracking-wider">Operational Alerts</p>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Overdue checkouts</span>
-                <span className={`font-semibold ${(stats?.overdueCheckouts || 0) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center justify-between text-sm py-1 border-b border-white/5">
+                <span className="text-slate-400 font-medium">Overdue checkouts</span>
+                <span className={`font-black ${(stats?.overdueCheckouts || 0) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                   {stats?.overdueCheckouts || 0}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Flexible checkout (TBD)</span>
-                <span className={`font-semibold ${(stats?.flexibleCheckoutActive || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+              <div className="flex items-center justify-between text-sm py-1 border-b border-white/5">
+                <span className="text-slate-400 font-medium">Flexible checkout (TBD)</span>
+                <span className={`font-black ${(stats?.flexibleCheckoutActive || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
                   {stats?.flexibleCheckoutActive || 0}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Maintenance rooms</span>
-                <span className={`font-semibold ${(stats?.maintenanceRooms || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+              <div className="flex items-center justify-between text-sm py-1">
+                <span className="text-slate-400 font-medium">Maintenance rooms</span>
+                <span className={`font-black ${(stats?.maintenanceRooms || 0) > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
                   {stats?.maintenanceRooms || 0}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Payment Health (Admin only) */}
+          {/* Payment Health (Admin only) - Simplified Clean Design */}
           {canViewFinance && (
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <FaMoneyBillWave className="text-emerald-400" />
-                <p className="text-sm font-semibold text-white">Payment Health</p>
-              </div>
-              <div className="flex items-end justify-between mb-3">
-                <div>
-                  <p className="text-xs text-slate-400">Outstanding</p>
-                  <p className="text-xl font-bold text-white">₹{(stats?.pendingPayments || 0).toLocaleString()}</p>
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <FaMoneyBillWave className="text-emerald-500" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Payment Health</h3>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-slate-500">This month</p>
-                  <p className="text-xs text-slate-300">
-                    Paid: <span className="text-emerald-400 font-semibold">{stats?.paymentStatusThisMonth?.PAID || 0}</span>{' '}
-                    • Partial: <span className="text-amber-400 font-semibold">{stats?.paymentStatusThisMonth?.PARTIAL || 0}</span>{' '}
-                    • Pending: <span className="text-red-400 font-semibold">{stats?.paymentStatusThisMonth?.PENDING || 0}</span>
-                  </p>
+                  <p className="text-[10px] text-slate-500 font-bold mb-1">OUTSTANDING BALANCE</p>
+                  <p className="text-xl font-bold text-white">₹{(stats?.pendingPayments || 0).toLocaleString()}</p>
                 </div>
               </div>
-              <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
-                {(() => {
-                  const paid = stats?.paymentStatusThisMonth?.PAID || 0
-                  const partial = stats?.paymentStatusThisMonth?.PARTIAL || 0
-                  const pending = stats?.paymentStatusThisMonth?.PENDING || 0
-                  const total = paid + partial + pending
-                  const paidPct = total > 0 ? (paid / total) * 100 : 0
-                  const partialPct = total > 0 ? (partial / total) * 100 : 0
-                  const pendingPct = total > 0 ? (pending / total) * 100 : 0
-                  return (
-                    <div className="flex h-full w-full">
-                      <div className="bg-emerald-500" style={{ width: `${paidPct}%` }} />
-                      <div className="bg-amber-500" style={{ width: `${partialPct}%` }} />
-                      <div className="bg-red-500" style={{ width: `${pendingPct}%` }} />
-                    </div>
-                  )
-                })()}
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-slate-800/40 border border-white/5 rounded-lg p-2">
+                    <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Paid</p>
+                    <p className="text-lg font-bold text-emerald-500">{stats?.paymentStatusThisMonth?.PAID || 0}</p>
+                  </div>
+                  <div className="bg-slate-800/40 border border-white/5 rounded-lg p-2">
+                    <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Partial</p>
+                    <p className="text-lg font-bold text-amber-500">{stats?.paymentStatusThisMonth?.PARTIAL || 0}</p>
+                  </div>
+                  <div className="bg-slate-800/40 border border-white/5 rounded-lg p-2">
+                    <p className="text-[9px] text-slate-500 font-bold mb-1 uppercase">Pending</p>
+                    <p className="text-lg font-bold text-red-500">{stats?.paymentStatusThisMonth?.PENDING || 0}</p>
+                  </div>
+                </div>
+
+                <div className="relative pt-2">
+                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden flex">
+                    {(() => {
+                      const paid = stats?.paymentStatusThisMonth?.PAID || 0
+                      const partial = stats?.paymentStatusThisMonth?.PARTIAL || 0
+                      const pending = stats?.paymentStatusThisMonth?.PENDING || 0
+                      const total = paid + partial + pending
+                      const paidPct = total > 0 ? (paid / total) * 100 : 0
+                      const partialPct = total > 0 ? (partial / total) * 100 : 0
+                      const pendingPct = total > 0 ? (pending / total) * 100 : 0
+                      return (
+                        <>
+                          <div className="bg-emerald-500 transition-all duration-700" style={{ width: `${paidPct}%` }} />
+                          <div className="bg-amber-500 transition-all duration-700" style={{ width: `${partialPct}%` }} />
+                          <div className="bg-red-500 transition-all duration-700" style={{ width: `${pendingPct}%` }} />
+                        </>
+                      )
+                    })()}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-2 text-center uppercase tracking-widest font-bold">Split of current month bookings</p>
+                </div>
               </div>
-              <p className="text-[10px] text-slate-500 mt-2">Split of payment statuses for bookings created this month</p>
             </div>
           )}
 
@@ -772,7 +897,11 @@ export default function DashboardPage() {
                     <FaChartLine className="text-emerald-400" />
                     Revenue Trend
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">Last 6 months comparison</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {filterType === 'month' 
+                      ? `6 months up to ${moment(selectedMonth).format('MMM YYYY')}` 
+                      : 'Last 6 months comparison'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-4 text-xs">
                   <span className="flex items-center gap-1">

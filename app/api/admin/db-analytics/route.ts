@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import moment from 'moment'
 import { successResponse, errorResponse, requireAuth } from '@/lib/api-helpers'
 
 // Neon free tier limit
@@ -105,10 +106,10 @@ export async function GET(request: NextRequest) {
     const remainingMB = NEON_FREE_LIMIT_MB - usedMB
     const usagePercent = (usedMB / NEON_FREE_LIMIT_MB) * 100
 
-    // Get archivable data counts (data that can be safely removed)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
-    const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
+    // Get archivable data counts using IST thresholds
+    const thirtyDaysAgo = moment().utcOffset("+05:30").subtract(30, 'days').toDate()
+    const oneYearAgo = moment().utcOffset("+05:30").subtract(365, 'days').toDate()
+    const sixMonthsAgo = moment().utcOffset("+05:30").subtract(6, 'months').toDate()
 
     const [
       expiredPasswordResets,
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest) {
       prisma.passwordReset.count({
         where: {
           OR: [
-            { expiresAt: { lt: new Date() } },
+            { expiresAt: { lt: moment().utcOffset("+05:30").toDate() } },
             { used: true },
           ],
         },
@@ -189,7 +190,7 @@ export async function GET(request: NextRequest) {
       prisma.booking.count({ where: { status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] } } }),
       prisma.booking.count({ where: { paymentStatus: { in: ['PENDING', 'PARTIAL'] } } }),
       prisma.inventory.count({ where: { quantity: { lte: prisma.inventory.fields.minStock } } }),
-      prisma.bankTransaction.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }),
+      prisma.bankTransaction.count({ where: { createdAt: { gte: moment().utcOffset("+05:30").subtract(24, 'hours').toDate() } } }),
     ])
 
     return Response.json(
@@ -222,7 +223,7 @@ export async function GET(request: NextRequest) {
           lowStockItems,
           recentTransactions,
         },
-        timestamp: new Date().toISOString(),
+        timestamp: moment().utcOffset("+05:30").toISOString(),
       })
     )
   } catch (error) {
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest) {
             where: filter === 'old' ? { timestamp: { lt: sixMonthsAgo } } : {},
             orderBy: { timestamp: 'desc' },
           })
-          filename = `booking_history_${new Date().toISOString().split('T')[0]}.json`
+          filename = `booking_history_${moment().format('YYYY-MM-DD')}.json`
           break
 
         case 'inventoryTransactions':
@@ -280,7 +281,7 @@ export async function POST(request: NextRequest) {
             include: { inventory: { select: { itemName: true, category: true } } },
             orderBy: { createdAt: 'desc' },
           })
-          filename = `inventory_transactions_${new Date().toISOString().split('T')[0]}.json`
+          filename = `inventory_transactions_${moment().format('YYYY-MM-DD')}.json`
           break
 
         case 'attendance':
@@ -289,7 +290,7 @@ export async function POST(request: NextRequest) {
             include: { staff: { select: { name: true, role: true } } },
             orderBy: { date: 'desc' },
           })
-          filename = `attendance_${new Date().toISOString().split('T')[0]}.json`
+          filename = `attendance_${moment().format('YYYY-MM-DD')}.json`
           break
 
         case 'bookings':
@@ -301,20 +302,20 @@ export async function POST(request: NextRequest) {
             },
             orderBy: { checkOut: 'desc' },
           })
-          filename = `bookings_${new Date().toISOString().split('T')[0]}.json`
+          filename = `bookings_${moment().format('YYYY-MM-DD')}.json`
           break
 
         case 'passwordResets':
           data = await prisma.passwordReset.findMany({
             where: {
               OR: [
-                { expiresAt: { lt: new Date() } },
+                { expiresAt: { lt: moment().utcOffset("+05:30").toDate() } },
                 { used: true },
               ],
             },
             orderBy: { createdAt: 'desc' },
           })
-          filename = `password_resets_${new Date().toISOString().split('T')[0]}.json`
+          filename = `password_resets_${moment().format('YYYY-MM-DD')}.json`
           break
 
         default:
@@ -332,7 +333,7 @@ export async function POST(request: NextRequest) {
       const { table } = body
       let deletedCount = 0
 
-      const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+      const oneYearAgo = moment().utcOffset("+05:30").subtract(365, 'days').toDate()
       const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
 
       switch (table) {
@@ -340,7 +341,7 @@ export async function POST(request: NextRequest) {
           const result1 = await prisma.passwordReset.deleteMany({
             where: {
               OR: [
-                { expiresAt: { lt: new Date() } },
+                { expiresAt: { lt: moment().utcOffset("+05:30").toDate() } },
                 { used: true },
               ],
             },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import moment from 'moment'
 import { getStoredUser } from '@/lib/auth-storage'
 import { 
   FaFileExcel, FaDownload, FaHotel, FaBuilding, FaChartBar, 
@@ -21,13 +22,12 @@ export default function ReportsPage() {
     setUser(getStoredUser())
 
     // Set default date range - last 2 months
-    const end = new Date()
-    const start = new Date()
-    start.setMonth(start.getMonth() - 2)
+    const end = moment().format('YYYY-MM-DD')
+    const start = moment().subtract(2, 'months').format('YYYY-MM-DD')
     
     setDateRange({
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0]
+      startDate: start,
+      endDate: end
     })
   }, [])
 

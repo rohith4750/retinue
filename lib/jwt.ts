@@ -17,6 +17,7 @@ export interface TokenPayload {
   userId: string;
   role: UserRole;
   username: string;
+  rememberMe?: boolean;
 }
 
 export interface TokenPair {
