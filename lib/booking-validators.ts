@@ -47,8 +47,7 @@ export const createBookingSchema = z.object({
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
-/** Hotel policy: minimum 12 hours stay; multi-day bookings allowed */
-const MIN_STAY_HOURS = 12;
+/** Hotel policy: multi-day bookings allowed, pricing per day (minimum 1 day) */
 
 /**
  * Validate booking dates (multi-day allowed; minimum 12 hours)
@@ -71,13 +70,6 @@ export function validateBookingDates(
       valid: false,
       error: "Check-out date must be after check-in date",
     };
-  }
-
-  const stayMs = checkOut.getTime() - checkIn.getTime();
-  const stayHours = stayMs / (1000 * 60 * 60);
-
-  if (stayHours < MIN_STAY_HOURS) {
-    return { valid: false, error: `Minimum stay is ${MIN_STAY_HOURS} hours` };
   }
 
   return { valid: true };
@@ -200,15 +192,6 @@ export function calculateBookingPrice(
   };
 }
 
-/** Minimum stay hours threshold: below this we charge minimum (half day); 12+ hours = full day(s) */
-const EARLY_CHECKOUT_MINIMUM_HOURS = 12;
-
-/**
- * Calculate final amount for early checkout.
- * - Below 12 hours: minimum charge (half day = 50% of base price).
- * - 12 hours and above: charge by full day(s) (basePrice * ceil(hours/24)).
- * Receptionist uses this to finalize payment at checkout.
- */
 export function calculateEarlyCheckoutAmount(
   checkIn: Date,
   actualCheckOut: Date,
@@ -218,7 +201,7 @@ export function calculateEarlyCheckoutAmount(
   totalAmount: number;
   subtotal: number;
   tax: number;
-  chargeType: "MINIMUM" | "DAILY";
+  chargeType: "DAILY";
   hours: number;
   days: number;
   breakdown: string;
@@ -227,35 +210,21 @@ export function calculateEarlyCheckoutAmount(
   const hours = stayMs / (1000 * 60 * 60);
 
   let subtotal: number;
-  let chargeType: "MINIMUM" | "DAILY";
-  let days = 0;
-
-  if (hours < EARLY_CHECKOUT_MINIMUM_HOURS) {
-    // Minimum charge = half day rate
-    subtotal = basePrice * 0.5;
-    chargeType = "MINIMUM";
-  } else {
-    // Full day(s): ceil(hours/24) days
-    days = Math.ceil(hours / 24);
-    subtotal = basePrice * days;
-    chargeType = "DAILY";
-  }
+  let days = Math.max(1, Math.ceil(hours / 24));
+  subtotal = basePrice * days;
 
   const tax = applyGst ? Math.round(subtotal * 0.18) : 0;
   const totalAmount = subtotal + tax;
 
-  const breakdown =
-    chargeType === "MINIMUM"
-      ? `Early checkout < 12h: minimum (½ day) ₹${subtotal.toFixed(0)} + GST ₹${tax}`
-      : `Early checkout ${days} day(s): ₹${subtotal.toFixed(0)} + GST ₹${tax}`;
+  const breakdown = `Early checkout ${days} day(s): ₹${subtotal.toFixed(0)} + GST ₹${tax}`;
 
   return {
     totalAmount,
     subtotal,
     tax,
-    chargeType,
+    chargeType: "DAILY",
     hours,
-    days: chargeType === "DAILY" ? days : 0,
+    days,
     breakdown,
   };
 }

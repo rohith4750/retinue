@@ -52,7 +52,7 @@ Actual room list and prices come from your database (seed or admin). Typical see
 
 ### Stay rules
 
-- **Minimum stay:** 12 hours  
+- **Minimum stay:** None (charged as minimum 1 day)  
 - **Multi-day:** Allowed (no maximum).  
 - **Check-in:** Today or future date  
 - **Check-out:** Must be after check-in  
@@ -65,12 +65,12 @@ Actual room list and prices come from your database (seed or admin). Typical see
 - **GST:** 18% on (base − discount).  
 - **Total** = (base − discount) + GST.  
 - **Early checkout:**  
-  - Stay **&lt; 12 hours:** minimum charge = **50% of base** (+ GST if applicable).  
-  - Stay **≥ 12 hours:** charged by full day(s): base × ceil(hours ÷ 24) (+ GST).
+  - Stay **< 24 hours:** minimum charge = **1 full day** (+ GST if applicable).  
+  - Stay **≥ 24 hours:** charged by full day(s): base × ceil(hours ÷ 24) (+ GST).
 
 ### What’s included in the rate
 
-- Room for the stay period (minimum 12 hours; multi-day allowed).  
+- Room for the stay period (charged per day; multi-day allowed).  
 - Pricing is **per room per day**, not per person (subject to room capacity).  
 - GST applied as per policy above.  
 - Advance/balance and payment modes (Cash, Card, UPI, etc.) as per your front-end/backend.
@@ -94,10 +94,10 @@ Actual room list and prices come from your database (seed or admin). Typical see
 |------|--------|
 | **Room categories** | Single, Double, Deluxe, Standard, Suite, Suite+ |
 | **Example tariff (from seed)** | Standard ₹2,500, Suite ₹3,500, Suite+ ₹4,000 per day |
-| **Stay** | Min 12 hours; multi-day allowed; charge per full 24h day |
+| **Stay** | No minimum; multi-day allowed; charge per full 24h day |
 | **GST** | 18% on (base − discount) |
 | **Max discount** | 50% of base |
-| **Early checkout** | &lt; 12h: 50% base; ≥ 12h: by full day(s) |
+| **Early checkout** | Minimum 1 full day; ≥ 24h by full day(s) |
 | **Hotel contact** | 7675800901, hoteltheretinue@gmail.com |
 | **Location** | Ramachandrapuram, Andhra Pradesh 533255 |
 
@@ -110,7 +110,7 @@ Actual room list and prices come from your database (seed or admin). Typical see
 
 **What we offer (example)**  
 - **Rooms:** Standard, Suite and Suite+ categories.  
-- **Stay:** Minimum 12 hours; multi-day bookings allowed; charge per full 24h day.  
+- **Stay:** No minimum; multi-day bookings allowed; charge per full 24h day.  
 - **Pricing:** Per room per day, 18% GST; discounts up to 50% of base.  
 - **Conventions:** Function hall(s) for events (contact hotel for booking).  
 - **Contact:** Phone 7675800901, email hoteltheretinue@gmail.com, Main Rd, Ramachandrapuram, Andhra Pradesh 533255.

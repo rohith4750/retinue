@@ -213,8 +213,20 @@ export function EditBookingModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormInput label="Check-in Date & Time *" type="datetime-local" value={formData.checkIn} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckIn = e.target.value; updateField('checkIn', newCheckIn); if (newCheckIn && !formData.checkOut) updateField('checkOut', setDefaultCheckout(newCheckIn)); if (formData.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkIn')} error={getError('checkIn')} />
               <div className="space-y-2">
-                <FormInput label={formData.flexibleCheckout ? 'Expected Check-out (Tentative)' : 'Check-out Date & Time *'} type="datetime-local" value={formData.checkOut} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const newCheckOut = e.target.value; updateField('checkOut', newCheckOut); updateField('flexibleCheckout', false); if (formData.checkIn && newCheckOut) { const checkInTime = new Date(formData.checkIn).getTime(); const hoursDiff = (new Date(newCheckOut).getTime() - checkInTime) / (1000 * 60 * 60); if (hoursDiff < 12) { toast.error('Minimum stay is 12 hours.'); updateField('checkOut', new Date(checkInTime + 12 * 60 * 60 * 1000).toISOString().slice(0, 16)) } }; if (errors.checkOut) setTimeout(() => handleBlur('checkOut'), 100) }} onBlur={() => handleBlur('checkOut')} error={getError('checkOut')} />
-                {formData.checkIn && <p className="text-[10px] text-slate-500">Minimum 12 hours. Multi-day bookings allowed.</p>}
+                <FormInput
+                  label={formData.flexibleCheckout ? 'Expected Check-out (Tentative)' : 'Check-out Date & Time *'}
+                  type="datetime-local"
+                  value={formData.checkOut}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const newCheckOut = e.target.value
+                    updateField('checkOut', newCheckOut)
+                    updateField('flexibleCheckout', false)
+                    if (errors.checkOut) setTimeout(() => handleBlur('checkOut'), 100)
+                  }}
+                  onBlur={() => handleBlur('checkOut')}
+                  error={getError('checkOut')}
+                />
+                {formData.checkIn && <p className="text-[10px] text-slate-500">Multi-day bookings allowed. Charged per day (minimum 1 day).</p>}
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={formData.flexibleCheckout} onChange={(e) => { updateField('flexibleCheckout', e.target.checked); if (e.target.checked && formData.checkIn) updateField('checkOut', setDefaultCheckout(formData.checkIn)) }} className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-800" />
                   <span className="text-xs text-slate-400 group-hover:text-slate-300">Checkout time not confirmed (flexible)</span>

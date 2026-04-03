@@ -517,15 +517,12 @@ function NewBookingContent() {
                       updateField('checkOut', newCheckOut)
                       updateField('flexibleCheckout', false) // Disable flexible if manually changed
 
-                      // Min 12h stay; multi-day allowed
+                      // Multi-day allowed, pricing per day (minimum 1 day)
                       if (formData.checkIn && newCheckOut) {
-                        const checkInTime = new Date(formData.checkIn).getTime()
-                        const checkOutTime = new Date(newCheckOut).getTime()
-                        const hoursDiff = (checkOutTime - checkInTime) / (1000 * 60 * 60)
-                        if (hoursDiff < 12) {
-                          toast.error('Minimum stay is 12 hours.')
-                          const corrected = new Date(checkInTime + 12 * 60 * 60 * 1000)
-                          updateField('checkOut', corrected.toISOString().slice(0, 16))
+                        // Clear room selection when dates change
+                        if (formData.roomIds.length > 0) {
+                          updateField('roomIds', [])
+                          setSelectedRooms([])
                         }
                       }
 
@@ -544,7 +541,7 @@ function NewBookingContent() {
                   />
                   {formData.checkIn && (
                     <p className="text-[10px] text-slate-500">
-                      Minimum stay 12 hours. Multi-day bookings allowed.
+                      Multi-day bookings allowed. Charged per day (minimum 1 day).
                     </p>
                   )}
 

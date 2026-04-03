@@ -219,7 +219,7 @@ export async function PUT(
           }
         }
 
-        // Early checkout: recalculate amount (< 12h = minimum charge, >= 12h = day rate). Receptionist finalizes payment.
+        // Early checkout: recalculate amount (minimum 1 full day charge). Receptionist finalizes payment.
         if (status === "CHECKED_OUT") {
           const actualCheckOut =
             data.actualCheckOut != null
