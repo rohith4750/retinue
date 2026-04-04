@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/moment": "^2.11.29",
     "@types/node": "^20.19.30",
     "@types/prop-types": "^15.7.12",
     "@types/react": "^18.2.46",

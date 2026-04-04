@@ -211,13 +211,14 @@ export default function DashboardPage() {
               </p>
 
               {/* Availability Breakdown */}
-              {stats?.availableRoomsByType && Object.keys(stats.availableRoomsByType).length > 0 && (
+              {stats?.roomsByType && Object.keys(stats.roomsByType).length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5 pt-2 border-t border-emerald-500/10">
-                  {Object.entries(stats.availableRoomsByType).map(([type, count]) => {
+                  {Object.entries(stats.roomsByType).map(([type, total]) => {
+                    const available = stats.availableRoomsByType?.[type] || 0;
                     const colors = ROOM_TYPE_COLORS[type] || { text: 'text-slate-400', bg: 'bg-slate-800/50' };
                     return (
-                      <div key={type} className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${colors.bg} ${colors.text} border border-white/5`}>
-                        {type.replace('_', ' ')}: {count as number}
+                      <div key={type} className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap ${colors.bg} ${colors.text} border border-white/5`}>
+                        {type.replace('_', ' ')}: {available}/{total as number}
                       </div>
                     );
                   })}
