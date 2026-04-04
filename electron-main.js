@@ -39,8 +39,8 @@ function createWindow() {
   // Remove the default menu
   Menu.setApplicationMenu(null);
 
-  // Point to the live hosted site
-  const startUrl = 'https://hoteltheretinue.in';
+  // Point to the live hosted site or local dev server
+  const startUrl = isDev ? 'http://localhost:3000' : 'https://hoteltheretinue.in';
 
   // Restore Ctrl+R and Ctrl+Shift+R since default menu is removed
   mainWindow.webContents.on('before-input-event', (event, input) => {

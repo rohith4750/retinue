@@ -69,8 +69,23 @@ export async function GET(request: NextRequest) {
       return bCheckIn < tomorrow && effectiveCheckOut > today;
     });
 
-    const bookedRooms = new Set(overlappingToday.map((b) => b.roomId)).size;
-    const availableRooms = Math.max(0, totalRooms - maintenanceRooms - bookedRooms);
+    const allRooms = await prisma.room.findMany({ select: { id: true, roomType: true, status: true } });
+    const bookedRoomIds = new Set(overlappingToday.map((b) => b.roomId));
+    
+    const availableRoomsByType: Record<string, number> = {};
+    let availableRooms = 0;
+    
+    allRooms.forEach(room => {
+      const isBooked = bookedRoomIds.has(room.id);
+      const isMaintenance = room.status === "MAINTENANCE";
+      
+      if (!isBooked && !isMaintenance) {
+        availableRooms++;
+        availableRoomsByType[room.roomType] = (availableRoomsByType[room.roomType] || 0) + 1;
+      }
+    });
+
+    const bookedRooms = bookedRoomIds.size;
 
     // Summary counts
     const todayBookings = await prisma.booking.count({
@@ -280,6 +295,7 @@ export async function GET(request: NextRequest) {
     const stats = {
       totalRooms,
       availableRooms,
+      availableRoomsByType,
       bookedRooms,
       occupancyRate: totalRooms > 0 ? Math.round((bookedRooms / totalRooms) * 100) : 0,
       todayBookings,
