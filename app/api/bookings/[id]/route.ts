@@ -248,10 +248,25 @@ export async function PUT(
         }
 
         if (pricingChanged) {
+          // IMPORTANT: Synchronize subtotal and tax with the new totalAmount/discount
+          // Based on model: Net Total = (Subtotal + Tax) - Discount
+          // So Gross Total (Subtotal + Tax) = Net Total + Discount
+          const currentDiscount = updateData.discount !== undefined ? updateData.discount : (currentBooking.discount || 0);
+          const grossTarget = finalTotal + currentDiscount;
+
+          if (currentBooking.applyGst) {
+            const calculatedSubtotal = Math.round((grossTarget / 1.18) * 100) / 100;
+            updateData.subtotal = calculatedSubtotal;
+            updateData.tax = Math.round((grossTarget - calculatedSubtotal) * 100) / 100;
+          } else {
+            updateData.subtotal = grossTarget;
+            updateData.tax = 0;
+          }
+
           const newBalance = finalTotal - finalPaid;
           updateData.balanceAmount = Math.max(0, newBalance);
           updateData.paymentStatus =
-            newBalance <= 0
+            newBalance <= 0.01
               ? "PAID"
               : finalPaid > 0
                 ? "PARTIAL"
@@ -266,6 +281,16 @@ export async function PUT(
              field: "paymentStatus",
              oldValue: currentBooking.paymentStatus,
              newValue: updateData.paymentStatus
+          });
+          changes.push({
+             field: "subtotal",
+             oldValue: currentBooking.subtotal,
+             newValue: updateData.subtotal
+          });
+          changes.push({
+             field: "tax",
+             oldValue: currentBooking.tax,
+             newValue: updateData.tax
           });
         }
         // ------------------------------------------

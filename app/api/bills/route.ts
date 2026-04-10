@@ -30,6 +30,17 @@ export async function GET(request: NextRequest) {
       where.paymentStatus = paymentStatus;
     }
 
+    const month = searchParams.get("month");
+    const year = searchParams.get("year");
+    if (month && year) {
+      const startOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endOfMonth = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+      where.checkIn = {
+        gte: startOfMonth,
+        lte: endOfMonth,
+      };
+    }
+
     if (search) {
       where.OR = [
         { billNumber: { contains: search, mode: "insensitive" } },

@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit, FaTrash } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
@@ -18,6 +18,10 @@ export default function BillsPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
   const [page, setPage] = useState(1)
   const limit = 24 
+
+  // Month/Year Filtering
+  const [selectedMonth, setSelectedMonth] = useState<string>('')
+  const [selectedYear, setSelectedYear] = useState<string>('')
 
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; id: string; billNumber: string }>({
     show: false,
@@ -46,8 +50,14 @@ export default function BillsPage() {
 
   const queryClient = useQueryClient()
   const { data: response, isLoading } = useQuery({
-    queryKey: ['bills', page, limit, debouncedSearch, paymentFilter],
-    queryFn: () => api.get(`/bills?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`),
+    queryKey: ['bills', page, limit, debouncedSearch, paymentFilter, selectedMonth, selectedYear],
+    queryFn: () => {
+      let url = `/bills?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`
+      if (selectedMonth && selectedYear) {
+        url += `&month=${selectedMonth}&year=${selectedYear}`
+      }
+      return api.get(url)
+    },
     staleTime: 5000,
   })
 
@@ -144,6 +154,37 @@ export default function BillsPage() {
               <FaThLarge className="w-4 h-4" />
             </button>
           </div>
+
+          <div className="flex items-center gap-2 bg-slate-800/80 border border-slate-600 rounded-lg px-2 py-1">
+            <select
+              value={selectedMonth}
+              onChange={(e) => { setSelectedMonth(e.target.value); setPage(1); }}
+              className="bg-transparent text-xs text-white border-none focus:ring-0 cursor-pointer"
+            >
+              <option value="">Month</option>
+              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => { setSelectedYear(e.target.value); setPage(1); }}
+              className="bg-transparent text-xs text-white border-none focus:ring-0 cursor-pointer"
+            >
+              <option value="">Year</option>
+              {[2024, 2025, 2026].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            {(selectedMonth || selectedYear) && (
+              <button 
+                onClick={() => { setSelectedMonth(''); setSelectedYear(''); setPage(1); }}
+                className="text-slate-500 hover:text-red-400 p-1"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -207,99 +248,119 @@ export default function BillsPage() {
           )}
         </div>
       ) : viewMode === 'cards' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {bookings.map((b: any) => {
-            const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
-            const status = b.paymentStatus || 'PENDING'
-            const isConsolidated = b.isConsolidated || b.roomCount > 1
+        <div className="space-y-8">
+          {(() => {
+            const groups: { [key: string]: any[] } = {}
+            bookings.forEach((b: any) => {
+              const date = new Date(b.checkIn)
+              const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' })
+              if (!groups[monthYear]) groups[monthYear] = []
+              groups[monthYear].push(b)
+            })
 
-            return (
-              <Link
-                key={b.id}
-                href={`/bills/${b.id}`}
-                className="block rounded-xl border border-white/10 bg-slate-800/80 hover:bg-slate-800 hover:border-emerald-500/30 transition-all p-4 relative overflow-hidden group"
-              >
-                {isConsolidated && (
-                  <div className="absolute top-0 right-0 bg-sky-600/90 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-bl-lg z-10">
-                    Consolidated
-                  </div>
-                )}
-
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <span className="text-xs font-mono text-slate-400 truncate" title={b.billNumber}>
-                    {b.billNumber || b.id.slice(-6).toUpperCase()}
-                  </span>
-                  <span
-                    className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-                      status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                        'bg-red-500/20 text-red-400'
-                      }`}
-                  >
-                    {status}
-                  </span>
+            return Object.entries(groups).map(([monthYear, monthBookings]) => (
+              <div key={monthYear} className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-800/50 px-3 py-1 rounded-full border border-white/5">{monthYear}</h3>
+                  <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {monthBookings.map((b: any) => {
+                    const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
+                    const status = b.paymentStatus || 'PENDING'
+                    const isConsolidated = b.isConsolidated || b.roomCount > 1
 
-                <p className="text-sm font-semibold text-white truncate mb-1">{b.guest?.name}</p>
+                    return (
+                      <Link
+                        key={b.id}
+                        href={`/bills/${b.id}`}
+                        className="block rounded-xl border border-white/10 bg-slate-800/80 hover:bg-slate-800 hover:border-emerald-500/30 transition-all p-4 relative overflow-hidden group"
+                      >
+                        {isConsolidated && (
+                          <div className="absolute top-0 right-0 bg-sky-600/90 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-bl-lg z-10">
+                            Consolidated
+                          </div>
+                        )}
 
-                {isConsolidated ? (
-                  <div className="text-xs text-sky-400 mb-3 flex items-center gap-1">
-                    <span className="px-1.5 py-0.5 rounded bg-sky-900/40 text-sky-300 font-mono">
-                      {b.roomCount} Rooms
-                    </span>
-                    <span className="text-slate-500 truncate max-w-[120px]">
-                      {b.displayRoomNumber || b.roomNumbers?.join(', ')}
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 mb-3">
-                    {b.room?.roomNumber} • {b.room?.roomType}
-                  </p>
-                )}
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <span className="text-xs font-mono text-slate-400 truncate" title={b.billNumber}>
+                            {b.billNumber || b.id.slice(-6).toUpperCase()}
+                          </span>
+                          <span
+                            className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                              status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                                'bg-red-500/20 text-red-400'
+                              }`}
+                          >
+                            {status}
+                          </span>
+                        </div>
 
-                <div className="flex items-center justify-between text-xs border-t border-white/5 pt-3">
-                  <span className="text-slate-500">Total</span>
-                  <span className="font-semibold text-white">₹{(b.totalAmount ?? 0).toLocaleString()}</span>
+                        <p className="text-sm font-semibold text-white truncate mb-1">{b.guest?.name}</p>
+
+                        {isConsolidated ? (
+                          <div className="text-xs text-sky-400 mb-3 flex items-center gap-1">
+                            <span className="px-1.5 py-0.5 rounded bg-sky-900/40 text-sky-300 font-mono">
+                              {b.roomCount} Rooms
+                            </span>
+                            <span className="text-slate-500 truncate max-w-[120px]">
+                              {b.displayRoomNumber || b.roomNumbers?.join(', ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 mb-3">
+                            {b.room?.roomNumber} • {b.room?.roomType}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs border-t border-white/5 pt-3">
+                          <span className="text-slate-500">Total</span>
+                          <span className="font-semibold text-white">₹{(b.totalAmount ?? 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs mt-1">
+                          <span className="text-slate-500">Paid</span>
+                          <span className="text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</span>
+                        </div>
+                        {(b.discount || 0) > 0 && (
+                          <div className="flex items-center justify-between text-xs mt-1">
+                            <span className="text-slate-500">Discount</span>
+                            <span className="text-indigo-400">-₹{(b.discount).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {remaining > 0 && (
+                          <div className="flex items-center justify-between text-xs mt-1">
+                            <span className="text-slate-500">Due</span>
+                            <span className="font-medium text-amber-400">₹{remaining.toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
+                          <Link
+                            href={`/bookings/${b.id}/edit`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                            title="Edit Booking"
+                          >
+                            <FaEdit className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                            className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Delete Bill"
+                            disabled={deleteBillMutation.isPending}
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
+                          <p className="text-xs text-emerald-400 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+                            View Bill →
+                          </p>
+                        </div>
+                      </Link>
+                    )
+                  })}
                 </div>
-                <div className="flex items-center justify-between text-xs mt-1">
-                  <span className="text-slate-500">Paid</span>
-                  <span className="text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</span>
-                </div>
-                {(b.discount || 0) > 0 && (
-                  <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-slate-500">Discount</span>
-                    <span className="text-indigo-400">-₹{(b.discount).toLocaleString()}</span>
-                  </div>
-                )}
-                {remaining > 0 && (
-                  <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-slate-500">Due</span>
-                    <span className="font-medium text-amber-400">₹{remaining.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
-                  <Link
-                    href={`/bookings/${b.id}/edit`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
-                    title="Edit Booking"
-                  >
-                    <FaEdit className="w-4 h-4" />
-                  </Link>
-                  <button
-                    onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
-                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    title="Delete Bill"
-                    disabled={deleteBillMutation.isPending}
-                  >
-                    <FaTrash className="w-4 h-4" />
-                  </button>
-                  <p className="text-xs text-emerald-400 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
-                    View Bill →
-                  </p>
-                </div>
-              </Link>
-            )
-          })}
+              </div>
+            ))
+          })()}
         </div>
       ) : (
         <div className="hidden md:block rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
@@ -319,71 +380,90 @@ export default function BillsPage() {
                 </tr>
               </thead>
               <tbody>
-                {bookings.map((b: any) => {
-                  const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
-                  const status = b.paymentStatus || 'PENDING'
-                  const isConsolidated = b.isConsolidated || b.roomCount > 1
+                {(() => {
+                  const groups: { [key: string]: any[] } = {}
+                  bookings.forEach((b: any) => {
+                    const date = new Date(b.checkIn)
+                    const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' })
+                    if (!groups[monthYear]) groups[monthYear] = []
+                    groups[monthYear].push(b)
+                  })
 
-                  return (
-                    <tr key={b.id} className="border-b border-white/5 hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 text-sm font-mono text-slate-300 truncate max-w-[140px]" title={b.billNumber}>
-                        {b.billNumber || b.id.slice(-6).toUpperCase()}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-200">
-                        {b.guest?.name}
-                        {isConsolidated && <span className="ml-2 text-[10px] bg-sky-900/50 text-sky-400 px-1.5 py-0.5 rounded">CONSOL</span>}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-slate-400">
-                        {isConsolidated ? (
-                          <span className="text-sky-300">{b.roomCount} Rooms ({b.displayRoomNumber})</span>
-                        ) : (
-                          <>{b.room?.roomNumber} ({b.room?.roomType})</>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-right text-slate-200">₹{(b.totalAmount ?? 0).toLocaleString()}</td>
-                      <td className="py-3 px-4 text-sm text-right text-indigo-400">
-                        {b.discount > 0 ? `-₹${(b.discount).toLocaleString()}` : '—'}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-right text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</td>
-                      <td className="py-3 px-4 text-sm text-right font-medium text-amber-400">₹{remaining.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-                          status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                            'bg-red-500/20 text-red-400'
-                          }`}>
-                          {status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Link
-                            href={`/bills/${b.id}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30"
-                            title="View Bill"
-                          >
-                            <FaReceipt className="w-3.5 h-3.5" />
-                            View
-                          </Link>
-                          <Link
-                            href={`/bookings/${b.id}/edit`}
-                            className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
-                            title="Edit Booking"
-                          >
-                            <FaEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
-                            className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Delete Bill"
-                            disabled={deleteBillMutation.isPending}
-                          >
-                            <FaTrash className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                  return Object.entries(groups).map(([monthYear, monthBookings]) => (
+                    <React.Fragment key={monthYear}>
+                      <tr className="bg-slate-800/30">
+                        <td colSpan={9} className="py-2 px-4">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{monthYear}</span>
+                        </td>
+                      </tr>
+                      {monthBookings.map((b: any) => {
+                        const remaining = Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0))
+                        const status = b.paymentStatus || 'PENDING'
+                        const isConsolidated = b.isConsolidated || b.roomCount > 1
+
+                        return (
+                          <tr key={b.id} className="border-b border-white/5 hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-4 text-sm font-mono text-slate-300 truncate max-w-[140px]" title={b.billNumber}>
+                              {b.billNumber || b.id.slice(-6).toUpperCase()}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-slate-200">
+                              {b.guest?.name}
+                              {isConsolidated && <span className="ml-2 text-[10px] bg-sky-900/50 text-sky-400 px-1.5 py-0.5 rounded">CONSOL</span>}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-slate-400">
+                              {isConsolidated ? (
+                                <span className="text-sky-300">{b.roomCount} Rooms ({b.displayRoomNumber})</span>
+                              ) : (
+                                <>{b.room?.roomNumber} ({b.room?.roomType})</>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-right text-slate-200">₹{(b.totalAmount ?? 0).toLocaleString()}</td>
+                            <td className="py-3 px-4 text-sm text-right text-indigo-400">
+                              {b.discount > 0 ? `-₹${(b.discount).toLocaleString()}` : '—'}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-right text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</td>
+                            <td className="py-3 px-4 text-sm text-right font-medium text-amber-400">₹{remaining.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
+                                status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                                  'bg-red-500/20 text-red-400'
+                                }`}>
+                                {status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <Link
+                                  href={`/bills/${b.id}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30"
+                                  title="View Bill"
+                                >
+                                  <FaReceipt className="w-3.5 h-3.5" />
+                                  View
+                                </Link>
+                                <Link
+                                  href={`/bookings/${b.id}/edit`}
+                                  className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                                  title="Edit Booking"
+                                >
+                                  <FaEdit className="w-4 h-4" />
+                                </Link>
+                                <button
+                                  onClick={(e) => handleDelete(e, b.id, b.billNumber || b.id.slice(-6).toUpperCase())}
+                                  className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                  title="Delete Bill"
+                                  disabled={deleteBillMutation.isPending}
+                                >
+                                  <FaTrash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </React.Fragment>
+                  ))
+                })()}
               </tbody>
             </table>
           </div>
