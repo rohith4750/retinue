@@ -209,13 +209,16 @@ export async function GET(
                   amt =
                     Number(changes.paidAmount.to) -
                     Number(changes.paidAmount.from);
-                else if (merged.action === "CREATED" && changes?.paidAmount)
-                  amt = Number(changes.paidAmount);
+                else if (merged.action === "CREATED" && (changes?.paidAmount?.to ?? changes?.paidAmount) != null)
+                  amt = Number(changes?.paidAmount?.to ?? changes?.paidAmount);
                 else if (
                   merged.action === "BILL_ADJUSTED" &&
                   (changes?.discount?.to != null || changes?.discount != null)
                 ) {
                   amt = Number(changes?.discount?.to ?? changes?.discount);
+                } else if (merged.action === "PAYMENT_CORRECTED" && changes?.paidAmount?.to != null) {
+                  // For consolidated correction, we show the absolute value of change
+                  amt = Number(changes.paidAmount.to) - Number(changes.paidAmount.from || 0);
                 }
                 return sum + (amt || 0);
               }, 0);
@@ -230,8 +233,11 @@ export async function GET(
                       ? totalAmount
                       : (merged.changes as any).paymentReceived,
                   paidAmount:
-                    merged.action === "CREATED"
-                      ? totalAmount
+                    merged.action === "CREATED" || merged.action === "PAYMENT_CORRECTED"
+                      ? { 
+                          to: group.reduce((s, h) => s + (Number((h.changes as any)?.paidAmount?.to) || 0), 0),
+                          from: group.reduce((s, h) => s + (Number((h.changes as any)?.paidAmount?.from) || 0), 0)
+                        }
                       : (merged.changes as any).paidAmount,
                   discount:
                     merged.action === "BILL_ADJUSTED"
@@ -248,9 +254,11 @@ export async function GET(
                 };
 
                 if (merged.action === "PAYMENT_RECEIVED") {
-                  merged.notes = `Consolidated payment: ₹${totalAmount.toLocaleString()} (${(merged.changes as any).paymentMode || "CASH"})`;
+                  merged.notes = `Consolidated payment: \u20B9${totalAmount.toLocaleString()} (${(merged.changes as any).paymentMode || "CASH"})`;
                 } else if (merged.action === "BILL_ADJUSTED") {
-                  merged.notes = `Consolidated bill adjustment: Discount set to ₹${totalAmount.toLocaleString()}`;
+                  merged.notes = `Consolidated bill adjustment: Discount set to \u20B9${totalAmount.toLocaleString()}`;
+                } else if (merged.action === "PAYMENT_CORRECTED") {
+                  merged.notes = `Consolidated correction: set to \u20B9${(merged.changes as any).paidAmount.to.toLocaleString()}`;
                 }
               }
             }
@@ -288,6 +296,7 @@ export async function GET(
           totalAmount: b.totalAmount,
           subtotal: b.subtotal,
           tax: b.tax,
+          basePrice: b.room.basePrice,
         })),
       },
       // Flag to tell frontend this is a consolidated view
@@ -395,18 +404,22 @@ export async function PATCH(
             updateData.discount = discountPerRoom;
 
             const subtotal = b.subtotal || 0;
-            const newSubtotal =
-              Math.round((subtotal - discountPerRoom) * 100) / 100;
+            // Tax is calculated on (Subtotal - Discount)
+            const taxableAmount = Math.max(0, subtotal - discountPerRoom);
             const newTax = b.applyGst
-              ? Math.round(newSubtotal * 0.18 * 100) / 100
+              ? Math.round(taxableAmount * 0.18 * 100) / 100
               : 0;
             const newTotalAmount =
-              Math.round((newSubtotal + newTax) * 100) / 100;
+              Math.round((taxableAmount + newTax) * 100) / 100;
+            
+            // If the bill amount is reduced, balance could become negative (overpaid)
             const newBalanceAmount =
               Math.round((newTotalAmount - b.paidAmount) * 100) / 100;
 
             updateData.totalAmount = newTotalAmount;
-            updateData.balanceAmount = Math.max(0, newBalanceAmount);
+            // We allow negative balanceAmount for internal accounting/UI, 
+            // even if some other parts of the system might cap it.
+            updateData.balanceAmount = newBalanceAmount;
             updateData.tax = newTax;
             updateData.paymentStatus =
               newBalanceAmount <= 0.01

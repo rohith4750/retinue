@@ -113,12 +113,13 @@ export default function BillPage() {
   const paidAmount = bill.paidAmount ?? 0
 
   const netPayable = subtotal + tax - discount
-  const balanceDue = Math.max(0, netPayable - paidAmount)
+  const balanceDue = Math.round((netPayable - paidAmount) * 100) / 100
   const isPending = balanceDue > 0
 
   // Build payment transactions from booking onwards (meaningful timeline)
   type TxRow = { type: string; label: string; amount: number; date: string; mode?: string; notes?: string; historyId?: string }
   const paymentTransactions: TxRow[] = []
+  
   if (advanceAmount > 0) {
     paymentTransactions.push({
       type: 'ADVANCE',
@@ -168,7 +169,7 @@ export default function BillPage() {
             label: now > prev ? 'Additional discount applied' : 'Discount reduced',
             amount: Math.abs(now - prev),
             date: new Date(h.timestamp).toLocaleString('en-IN'),
-            notes: `Discount changed from ₹${prev.toLocaleString()} to ₹${now.toLocaleString()}`,
+            notes: `Discount changed from \u20B9${prev.toLocaleString()} to \u20B9${now.toLocaleString()}`,
           })
         }
       }
@@ -190,10 +191,16 @@ export default function BillPage() {
           label: 'Payment edited',
           amount: newAmt,
           date: new Date(h.timestamp).toLocaleString('en-IN'),
-          notes: h.notes || `Was ₹${prev.toLocaleString()}, now ₹${newAmt.toLocaleString()}`,
+          notes: h.notes || `Was \u20B9${prev.toLocaleString()}, now \u20B9${newAmt.toLocaleString()}`,
         })
       }
     })
+
+  const totalTransactionsSum = paymentTransactions.reduce((sum, tx) => {
+    if (tx.type === 'CORRECTION') return tx.amount // Correction is an absolute set
+    if (tx.type === 'PAYMENT' || tx.type === 'ADVANCE') return sum + tx.amount
+    return sum
+  }, 0)
 
   const handleDownloadPDF = async () => {
     try {
@@ -232,6 +239,7 @@ export default function BillPage() {
       toast.error('Failed to prepare print document')
     }
   }
+
   const handleDownloadReceipt = async (tx: TxRow) => {
     try {
       const blob = await pdf(<PaymentReceiptPDF bill={bill} transaction={tx} />).toBlob()
@@ -275,7 +283,7 @@ export default function BillPage() {
       <div className="glow-sky top-20 right-20" />
       <div className="glow-emerald bottom-20 left-20" />
       <div className="w-full max-w-4xl mx-auto px-4 lg:px-6 py-6 relative z-10">
-        {/* Header: Back to Bills (direct approach) + Actions */}
+        {/* Header: Back to Bills + Actions */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <Link
             href="/bills"
@@ -302,7 +310,7 @@ export default function BillPage() {
           </div>
         </div>
 
-        {/* Summary: Advance, Total, Paid, Remaining */}
+        {/* Summary: Gross, Discount, Net, Paid, Balance */}
         <div className="mb-6 rounded-2xl border border-white/10 bg-slate-800/60 p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">Amount summary</h2>
@@ -334,68 +342,63 @@ export default function BillPage() {
               <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Amount Paid</p>
               <p className="text-lg font-bold text-emerald-400">₹{paidAmount.toLocaleString()}</p>
             </div>
-            <div className="bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-              <p className="text-xs text-amber-500 mb-0.5 font-bold uppercase tracking-tight">Balance Due</p>
-              <p className={`text-xl font-black ${balanceDue > 0 ? 'text-amber-400' : 'text-slate-200'}`}>
-                ₹{balanceDue.toLocaleString()}
+            <div className={`${balanceDue > 0 ? 'bg-amber-500/10 border-amber-500/20' : balanceDue < 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/5 border-white/5'} p-2 rounded-lg border`}>
+              <p className="text-xs text-slate-500 mb-0.5 font-bold uppercase tracking-tight">
+                {balanceDue < 0 ? 'Overpaid' : 'Balance Due'}
+              </p>
+              <p className={`text-xl font-black ${balanceDue > 0 ? 'text-amber-400' : balanceDue < 0 ? 'text-emerald-400' : 'text-slate-200'}`}>
+                ₹{Math.abs(balanceDue).toLocaleString()}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Amount pending banner + Record payment (all bill operations here) */}
+        {/* Status banners */}
         {isPending && booking.status !== 'CANCELLED' && (
           <div className="mb-6 rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-6">
             <div className="flex items-center gap-2 mb-4">
               <FaMoneyBillWave className="w-5 h-5 text-amber-400" />
               <h2 className="text-lg font-bold text-amber-200">Amount pending: ₹{balanceDue.toLocaleString()}</h2>
             </div>
-            <p className="text-sm text-slate-300 mb-4">Record payment below. All bill operations are done on this page.</p>
-
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1.5">How did the guest pay?</label>
-                <select
-                  value={paymentMode}
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                  className="w-full max-w-xs py-2.5 px-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="CARD">Card</option>
-                  <option value="UPI">UPI</option>
-                  <option value="NET_BANKING">Net Banking</option>
-                  <option value="WALLET">Wallet</option>
-                  <option value="CHEQUE">Cheque</option>
-                </select>
-              </div>
               <div className="flex flex-wrap items-end gap-3">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Amount</label>
-                  <div className="relative">
-                    <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                    <input
-                      type="number"
-                      value={paymentInput}
-                      onChange={(e) => setPaymentInput(e.target.value)}
-                      placeholder="Enter amount"
-                      className="w-40 pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-600 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
-                    />
-                  </div>
+                  <label className="block text-xs text-slate-400 mb-1.5">How did the guest pay?</label>
+                  <select
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full max-w-xs py-2 px-3 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="CARD">Card</option>
+                    <option value="UPI">UPI</option>
+                    <option value="NET_BANKING">Net Banking</option>
+                    <option value="WALLET">Wallet</option>
+                    <option value="CHEQUE">Cheque</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Amount (₹)</label>
+                  <input
+                    type="number"
+                    value={paymentInput}
+                    onChange={(e) => setPaymentInput(e.target.value)}
+                    className="w-32 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
+                  />
                 </div>
                 <button
                   onClick={() => paymentMutation.mutate({ amount: parseFloat(paymentInput) || 0, paymentMode })}
                   disabled={paymentMutation.isPending || !paymentInput}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-900 font-semibold text-sm hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 rounded-lg bg-amber-500 text-slate-900 font-bold text-sm hover:bg-amber-400 transition-colors"
                 >
-                  {paymentMutation.isPending ? 'Recording...' : 'Record Payment'}
+                  Record Payment
                 </button>
                 <button
                   onClick={() => paymentMutation.mutate({ amount: balanceDue, paymentMode })}
                   disabled={paymentMutation.isPending}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-500 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-500 transition-colors"
                 >
-                  <FaCheckCircle className="w-4 h-4" />
-                  Pay Full Balance (₹{balanceDue.toLocaleString()})
+                  Full Balance
                 </button>
               </div>
             </div>
@@ -403,25 +406,21 @@ export default function BillPage() {
         )}
 
         {!isPending && (
-          <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center gap-3">
-            <FaCheckCircle className="w-6 h-6 text-emerald-400" />
+          <div className={`mb-6 rounded-2xl border ${balanceDue < 0 ? 'border-sky-500/30 bg-sky-500/10' : 'border-emerald-500/30 bg-emerald-500/10'} p-4 flex items-center gap-3`}>
+            {balanceDue < 0 ? <FaHistory className="w-6 h-6 text-sky-400" /> : <FaCheckCircle className="w-6 h-6 text-emerald-400" />}
             <div>
-              <p className="font-semibold text-emerald-200">Fully paid</p>
-              <p className="text-sm text-slate-400">No pending amount. Download or print invoice below.</p>
+              <p className={`font-semibold ${balanceDue < 0 ? 'text-sky-200' : 'text-emerald-200'}`}>{balanceDue < 0 ? 'Overpaid Bill' : 'Fully paid'}</p>
+              <p className="text-sm text-slate-400">{balanceDue < 0 ? `The guest has paid ₹${Math.abs(balanceDue).toLocaleString()} extra.` : 'No pending amount. Download or print invoice below.'}</p>
             </div>
           </div>
         )}
 
-        {/* Wrong entry? Correct total paid */}
+        {/* Correction section */}
         {booking.status !== 'CANCELLED' && (
-          <div className="mb-6 rounded-2xl border border-slate-600/80 bg-slate-800/50 overflow-hidden">
+          <div className="mb-6 rounded-2xl border border-slate-600 bg-slate-800/50 overflow-hidden">
             <button
-              type="button"
-              onClick={() => {
-                setShowCorrectSection(!showCorrectSection)
-                if (!showCorrectSection) setCorrectPaidInput(String(bill.paidAmount ?? 0))
-              }}
-              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-700/30 transition-colors"
+              onClick={() => setShowCorrectSection(!showCorrectSection)}
+              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-700/30"
             >
               <span className="flex items-center gap-2 text-sm font-medium text-slate-300">
                 <FaExclamationTriangle className="w-4 h-4 text-amber-400" />
@@ -431,48 +430,34 @@ export default function BillPage() {
             </button>
             {showCorrectSection && (
               <div className="px-4 pb-4 pt-0 space-y-3 border-t border-white/5">
-                <p className="text-xs text-slate-500 mt-3">Set the correct total paid amount (e.g. if a payment was entered wrong). Current total paid: ₹{(bill.paidAmount ?? 0).toLocaleString()}. Max: ₹{(bill.totalAmount ?? 0).toLocaleString()}.</p>
+                <p className="text-xs text-slate-500 mt-3">Set correct total paid amount. Current: ₹{paidAmount.toLocaleString()}</p>
                 <div className="flex flex-wrap items-end gap-3">
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">Correct total paid (₹)</label>
-                    <div className="relative">
-                      <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                      <input
-                        type="number"
-                        min="0"
-                        max={netPayable}
-                        step="0.01"
-                        value={correctPaidInput}
-                        onChange={(e) => setCorrectPaidInput(e.target.value)}
-                        placeholder={String(bill.paidAmount ?? 0)}
-                        className="w-40 pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-600 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs text-slate-400 mb-1">Reason (optional)</label>
                     <input
-                      type="text"
-                      value={correctReason}
-                      onChange={(e) => setCorrectReason(e.target.value)}
-                      placeholder="e.g. Wrong amount entered"
-                      className="w-full px-3 py-2.5 bg-slate-800 border border-slate-600 rounded-xl text-white text-sm focus:border-amber-500 focus:outline-none"
+                      type="number"
+                      value={correctPaidInput}
+                      onChange={(e) => setCorrectPaidInput(e.target.value)}
+                      className="w-40 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
                     />
                   </div>
+                  <input
+                    type="text"
+                    value={correctReason}
+                    onChange={(e) => setCorrectReason(e.target.value)}
+                    placeholder="Reason (optional)"
+                    className="flex-1 min-w-[200px] px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm"
+                  />
                   <button
                     onClick={() => {
                       const amount = parseFloat(correctPaidInput)
-                      if (isNaN(amount) || amount < 0 || amount > netPayable) {
-                        toast.error('Enter an amount between 0 and total amount')
-                        return
-                      }
+                      if (isNaN(amount) || amount < 0) { toast.error('Check amount'); return; }
                       correctPaymentMutation.mutate({ correctPaidAmount: amount, reason: correctReason || undefined })
                     }}
-                    disabled={correctPaymentMutation.isPending || correctPaidInput === ''}
-                    className="px-5 py-2.5 rounded-xl bg-amber-600 text-white font-semibold text-sm hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    disabled={correctPaymentMutation.isPending}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 transition-colors"
                   >
-                    <FaEdit className="w-3.5 h-3.5" />
-                    {correctPaymentMutation.isPending ? 'Updating...' : 'Update total paid'}
+                    Update
                   </button>
                 </div>
               </div>
@@ -480,18 +465,15 @@ export default function BillPage() {
           </div>
         )}
 
-        {/* Invoice card */}
-        <div className="card print:shadow-none">
-          <div className="border-b border-white/10 pb-6 mb-6">
-            <div className="text-center mb-4">
+        {/* Invoice Card */}
+        <div className="bg-slate-800 border border-white/5 rounded-2xl p-6 mb-8">
+           <div className="border-b border-white/10 pb-6 mb-6 text-center">
               <h1 className="text-3xl font-bold text-blue-400 mb-1">THE RETINUE</h1>
               <p className="text-sm text-slate-400">Luxury Hotel & Hospitality</p>
-            </div>
-            <div className="text-center text-xs text-slate-500">
-              <p>{HOTEL_INFO.address}</p>
-              <p>{HOTEL_INFO.landmark}</p>
-              <p>Email: {HOTEL_INFO.email}</p>
-            </div>
+              <div className="text-xs text-slate-500 mt-2">
+                <p>{HOTEL_INFO.address}</p>
+                <p>Email: {HOTEL_INFO.email}</p>
+              </div>
           </div>
 
           <div className="flex justify-between items-start mb-6">
@@ -500,342 +482,162 @@ export default function BillPage() {
               <p className="text-xs text-slate-400 mt-1">Bill # {bill.billNumber}</p>
               <p className="text-xs text-slate-400">Date: {new Date(bill.billDate || booking.checkOut).toLocaleString('en-IN')}</p>
             </div>
-            <span className={`px-3 py-1 rounded-lg text-sm font-bold ${bill.paymentStatus === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' :
-              bill.paymentStatus === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                'bg-red-500/20 text-red-400'
-              }`}>
+            <span className={`px-3 py-1 rounded-lg text-sm font-bold ${bill.paymentStatus === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
               {bill.paymentStatus}
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-slate-800/40 p-4 rounded-xl">
-              <h3 className="font-semibold text-slate-100 mb-3 border-b border-white/10 pb-2">Guest</h3>
-              <p className="text-slate-200">{guest.name}</p>
+            <div className="bg-slate-900/40 p-4 rounded-xl">
+              <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Guest</h3>
+              <p className="font-semibold text-slate-200">{guest.name}</p>
               <p className="text-sm text-slate-400">{guest.phone}</p>
-              {guest.address && <p className="text-sm text-slate-400 mt-1">{guest.address}</p>}
-              {guest.idProof && <p className="text-xs text-slate-500 mt-1">ID: {guest.idProof}</p>}
             </div>
-            <div className="bg-slate-800/40 p-4 rounded-xl">
-              <h3 className="font-semibold text-slate-100 mb-3 border-b border-white/10 pb-2">Booking</h3>
-              <p className="text-slate-200">Room {room.roomNumber} ({room.roomType}) • Floor {room.floor}</p>
-              <p className="text-sm text-slate-400">Check-in: {new Date(booking.checkIn).toLocaleString('en-IN')}</p>
-              <p className="text-sm text-slate-400">Check-out: {new Date(booking.checkOut).toLocaleString('en-IN')}</p>
-              {(bill.bookedByUser ?? booking.bookedByUser) && (
-                <p className="text-sm text-slate-400 mt-1">Booked by: <span className="text-sky-400 font-medium">{(bill.bookedByUser ?? booking.bookedByUser).username}</span></p>
+            <div className="bg-slate-900/40 p-4 rounded-xl">
+              <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Booking</h3>
+              <p className="font-semibold text-slate-200">Room {room.roomNumber} ({room.roomType})</p>
+              <p className="text-sm text-slate-400">Check-in: {new Date(booking.checkIn).toLocaleDateString('en-IN')}</p>
+              <p className="text-sm text-slate-400">Check-out: {new Date(booking.checkOut).toLocaleDateString('en-IN')}</p>
+            </div>
+          </div>
+
+          <table className="w-full text-sm mb-6">
+            <thead>
+              <tr className="border-b border-white/5 text-slate-500">
+                <th className="text-left py-2 font-medium">Description</th>
+                <th className="text-right py-2 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              { (bill.booking.items || [bill.booking]).map((item: any, idx: number) => (
+                <tr key={idx} className="border-b border-white/5 text-slate-300">
+                  <td className="py-3">Room charges - {item.roomType || room.roomType} {item.roomNumber || room.roomNumber}</td>
+                  <td className="py-3 text-right">₹{(item.subtotal || bill.subtotal).toLocaleString()}</td>
+                </tr>
+              ))}
+              {tax > 0 && (
+                <tr className="border-b border-white/5 text-slate-300">
+                  <td className="py-3">GST (18%)</td>
+                  <td className="py-3 text-right">₹{tax.toLocaleString()}</td>
+                </tr>
               )}
-              <p className="text-xs text-slate-500 mt-1">Booking ID: {booking.id}</p>
-            </div>
+              {discount > 0 && (
+                <tr className="border-b border-white/5 text-emerald-400">
+                  <td className="py-3">Discount</td>
+                  <td className="py-3 text-right">-₹{discount.toLocaleString()}</td>
+                </tr>
+              )}
+              <tr className="text-lg font-bold text-white">
+                <td className="py-4">Total</td>
+                <td className="py-4 text-right">₹{netPayable.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="grid grid-cols-3 gap-4 p-4 bg-slate-900/60 rounded-xl">
+             <div>
+                <p className="text-[10px] text-slate-500 uppercase">Paid</p>
+                <p className="text-emerald-400 font-bold">₹{paidAmount.toLocaleString()}</p>
+             </div>
+             <div>
+                <p className="text-[10px] text-slate-500 uppercase">{balanceDue < 0 ? 'Surplus' : 'Balance'}</p>
+                <p className={balanceDue > 0 ? 'text-amber-400 font-bold' : 'text-sky-400 font-bold'}>₹{Math.abs(balanceDue).toLocaleString()}</p>
+             </div>
+             <div>
+                <p className="text-[10px] text-slate-500 uppercase">Status</p>
+                <p className="text-slate-300 font-bold">{bill.paymentStatus}</p>
+             </div>
           </div>
+        </div>
 
-          {(() => {
-            const subtotal = bill.subtotal ?? 0
-            const discount = bill.discount ?? 0
-            const totalAmount = bill.totalAmount ?? 0
-            const storedTax = bill.tax ?? 0
-            const displayTax = bill.tax ?? 0
-
-            // Check for consolidated items
-            const items = bill.booking.items || [bill.booking]
-            const isConsolidated = items.length > 1
-
-            return (
-              <div className="mb-6">
-                {isConsolidated && (
-                  <div className="mb-4 p-3 bg-sky-500/10 border border-sky-500/20 rounded-lg text-sm text-sky-300">
-                    <span className="font-semibold">Consolidated Bill:</span> This bill includes charges for {items.length} rooms.
-                  </div>
-                )}
-
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/5">
-                      <th className="text-left py-2 text-slate-400 font-medium">Description</th>
-                      <th className="text-right py-2 text-slate-400 font-medium">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item: any, idx: number) => {
-                      // Fallback for single legacy booking
-                      const rNum = item.room?.roomNumber || item.roomNumber || booking.room.roomNumber
-                      const rType = item.room?.roomType || item.roomType || booking.room.roomType
-                      const iSubtotal = item.subtotal ?? (bill.subtotal || 0)
-                      return (
-                        <tr key={idx} className="border-b border-white/5">
-                          <td className="py-3 text-slate-300">
-                            Room charges - {rType} {rNum}
-                            {item.days && <span className="text-xs text-slate-500 block">({item.days} days)</span>}
-                          </td>
-                          <td className="py-3 text-right text-slate-100">₹{iSubtotal.toLocaleString()}</td>
-                        </tr>
-                      )
-                    })}
-
-                    <tr className="border-b border-white/5">
-                      <td className="py-3 text-slate-300">GST (18%)</td>
-                      <td className="py-3 text-right text-slate-100">₹{displayTax.toLocaleString()}</td>
-                    </tr>
-                    {discount > 0 && (
-                      <tr className="border-b border-white/5">
-                        <td className="py-3 text-slate-300">Discount</td>
-                        <td className="py-3 text-right text-emerald-400">-₹{discount.toLocaleString()}</td>
-                      </tr>
-                    )}
-                    <tr className="bg-slate-800/40">
-                      <td className="py-3 font-semibold text-slate-100">Total</td>
-                      <td className="py-3 text-right font-semibold text-slate-100">₹{netPayable.toLocaleString()}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )
-          })()}
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div>
-              <p className="text-xs text-slate-400">Advance</p>
-              <p className="text-lg font-semibold text-sky-400">₹{advanceAmount.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">Paid</p>
-              <p className="text-lg font-semibold text-emerald-400">₹{paidAmount.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">Balance due</p>
-              <p className={`text-lg font-semibold ${balanceDue > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                ₹{balanceDue.toLocaleString()}
-                {balanceDue <= 0 && ' (Fully paid)'}
-              </p>
-            </div>
-          </div>
-
-          {/* Payment transactions – from booking onwards (meaningful view) */}
-          <div className="border-t border-white/5 pt-6">
-            <h3 className="font-semibold text-slate-100 mb-4 flex items-center gap-2">
-              <FaHistory className="w-4 h-4 text-sky-400" />
-              Payment transactions
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">All payments for this customer from booking onwards.</p>
-            <div className="rounded-xl border border-white/10 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-800/60 border-b border-white/10">
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">#</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Type</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Date & time</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">How paid</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Amount</th>
-                    {booking.status !== 'CANCELLED' && (
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase w-20">Action</th>
-                    )}
+        {/* Payment History */}
+        <div className="border-t border-white/5 pt-8">
+           <h3 className="font-bold text-slate-200 mb-4 flex items-center gap-2">
+             <FaHistory className="text-sky-400" /> Transaction History
+           </h3>
+           <div className="rounded-xl border border-white/10 overflow-hidden text-sm">
+              <table className="w-full">
+                <thead className="bg-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3 text-left">#</th>
+                    <th className="px-4 py-3 text-left">Type</th>
+                    <th className="px-4 py-3 text-left">Date</th>
+                    <th className="px-4 py-3 text-right">Amount</th>
+                    <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-white/5">
                   {paymentTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={booking.status !== 'CANCELLED' ? 6 : 5} className="py-8 text-center text-slate-500">
-                        No payments recorded yet
-                      </td>
-                    </tr>
+                    <tr><td colSpan={5} className="py-8 text-center text-slate-600">No transactions recorded</td></tr>
                   ) : (
                     paymentTransactions.map((tx, i) => (
-                      <tr key={i} className="border-b border-white/5 hover:bg-slate-800/30">
-                        <td className="py-3 px-4 text-slate-400">{i + 1}</td>
-                        <td className="py-3 px-4 text-slate-200 font-medium">{tx.label}</td>
-                        <td className="py-3 px-4 text-slate-400">{tx.date}</td>
-                        <td className="py-3 px-4 text-slate-400">{tx.mode ?? '–'}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-emerald-400">
-                          {tx.type === 'CORRECTION' ? `Set to ₹${tx.amount.toLocaleString()}` : tx.type === 'EDIT' ? `₹${tx.amount.toLocaleString()}` : `+₹${tx.amount.toLocaleString()}`}
+                      <tr key={i} className="hover:bg-white/5 transition-colors">
+                        <td className="px-4 py-3 text-slate-500">{i+1}</td>
+                        <td className="px-4 py-3 font-medium text-slate-200">{tx.label}</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{tx.date}</td>
+                        <td className="px-4 py-3 text-right font-bold text-emerald-400">
+                          {tx.type === 'CORRECTION' ? `Set to ₹${tx.amount.toLocaleString()}` : `+₹${tx.amount.toLocaleString()}`}
                         </td>
-                        {booking.status !== 'CANCELLED' && (
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {(tx.type === 'PAYMENT' || tx.type === 'ADVANCE' || tx.type === 'CORRECTION') && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => handlePrintReceipt(tx)}
-                                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
-                                    title="Print Receipt"
-                                  >
-                                    <FaPrint className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDownloadReceipt(tx)}
-                                    className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-                                    title="Download Receipt"
-                                  >
-                                    <FaDownload className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
+                        <td className="px-4 py-3 text-right">
+                           <div className="flex justify-end gap-2">
+                              {tx.historyId && tx.type === 'PAYMENT' && (
+                                <button onClick={() => { setEditPaymentTx({ historyId: tx.historyId!, amount: tx.amount }); setEditPaymentAmount(String(tx.amount)) }} className="text-sky-400 hover:text-sky-300"><FaEdit /></button>
                               )}
-                              {tx.type === 'PAYMENT' && tx.historyId && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditPaymentTx({ historyId: tx.historyId!, amount: tx.amount })
-                                    setEditPaymentAmount(String(tx.amount))
-                                    setEditPaymentReason('')
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-600 text-slate-200 text-xs font-medium hover:bg-sky-600 hover:text-white transition-colors"
-                                >
-                                  <FaEdit className="w-3 h-3" />
-                                  Edit
-                                </button>
-                              )}
-                              {tx.type === 'EDIT' || tx.type === 'ADJUSTMENT' ? (
-                                <span className="text-slate-600">–</span>
-                              ) : null}
-                            </div>
-                          </td>
-                        )}
+                              <button onClick={() => handlePrintReceipt(tx)} className="text-slate-500 hover:text-white"><FaPrint /></button>
+                           </div>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
-                <tfoot>
-                  <tr className="bg-slate-800/60 border-t-2 border-white/10">
-                    <td colSpan={booking.status !== 'CANCELLED' ? 5 : 4} className="py-3 px-4 font-semibold text-slate-200">Total received</td>
-                    <td className="py-3 px-4 text-right font-bold text-emerald-400">₹{(bill.paidAmount ?? 0).toLocaleString()}</td>
-                    {booking.status !== 'CANCELLED' && <td />}
+                <tfoot className="bg-slate-800/60 font-bold">
+                  <tr>
+                    <td colSpan={3} className="px-4 py-3 text-slate-400 text-[10px]">TOTAL RECORDED</td>
+                    <td className="px-4 py-3 text-right text-[10px] text-slate-500">Rows: ₹{totalTransactionsSum.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-emerald-400">Total: ₹{paidAmount.toLocaleString()}</td>
                   </tr>
                 </tfoot>
               </table>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-white/5">
-            <Link
-              href="/bills"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-200 text-sm font-medium hover:bg-slate-600 transition-colors"
-            >
-              <FaArrowLeft className="w-4 h-4" />
-              Back to Bills
-            </Link>
-          </div>
+           </div>
         </div>
 
-        {/* Edit Payment Transaction modal */}
+        {/* Modals */}
         {editPaymentTx && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => !editPaymentMutation.isPending && setEditPaymentTx(null)}>
-            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 border-b border-white/10">
-                <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-                  <FaEdit className="w-5 h-5 text-sky-400" />
-                  Edit payment transaction
-                </h3>
-                <p className="text-sm text-slate-400 mt-1">Change the amount for this recorded payment. Original: ₹{editPaymentTx.amount.toLocaleString()}.</p>
+           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+              <div className="bg-slate-800 border border-white/10 p-6 rounded-2xl w-full max-w-sm">
+                 <h3 className="font-bold text-white mb-4">Edit Transaction</h3>
+                 <div className="space-y-4 mb-6">
+                    <input type="number" value={editPaymentAmount} onChange={(e) => setEditPaymentAmount(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
+                    <input type="text" value={editPaymentReason} onChange={(e) => setEditPaymentReason(e.target.value)} placeholder="Reason" className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
+                 </div>
+                 <div className="flex justify-end gap-3">
+                    <button onClick={() => setEditPaymentTx(null)} className="text-slate-400">Cancel</button>
+                    <button onClick={() => editPaymentMutation.mutate({ historyId: editPaymentTx.historyId, newAmount: parseFloat(editPaymentAmount) || 0, reason: editPaymentReason })} className="bg-sky-600 text-white px-4 py-2 rounded-lg font-bold">Save</button>
+                 </div>
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">New amount (₹)</label>
-                  <div className="relative">
-                    <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editPaymentAmount}
-                      onChange={(e) => setEditPaymentAmount(e.target.value)}
-                      placeholder={String(editPaymentTx.amount)}
-                      className="w-full pl-9 pr-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Reason (optional)</label>
-                  <input
-                    type="text"
-                    value={editPaymentReason}
-                    onChange={(e) => setEditPaymentReason(e.target.value)}
-                    placeholder="e.g. Wrong amount entered"
-                    className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-              <div className="p-6 pt-0 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditPaymentTx(null)}
-                  disabled={editPaymentMutation.isPending}
-                  className="px-4 py-2.5 rounded-xl bg-slate-600 text-slate-200 text-sm font-medium hover:bg-slate-500 disabled:opacity-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const amount = parseFloat(editPaymentAmount)
-                    if (isNaN(amount) || amount < 0) {
-                      toast.error('Enter a valid non-negative amount')
-                      return
-                    }
-                    editPaymentMutation.mutate({
-                      historyId: editPaymentTx.historyId,
-                      newAmount: amount,
-                      reason: editPaymentReason || undefined,
-                    })
-                  }}
-                  disabled={editPaymentMutation.isPending || editPaymentAmount === ''}
-                  className="px-5 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                >
-                  {editPaymentMutation.isPending ? 'Updating...' : 'Update payment'}
-                </button>
-              </div>
-            </div>
-          </div>
+           </div>
         )}
-        {/* Edit Bill Modal */}
+
         {showEditBillModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => !editBillMutation.isPending && setShowEditBillModal(false)}>
-            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 border-b border-white/10">
-                <h3 className="text-lg font-semibold text-slate-100">Edit bill details</h3>
-                <p className="text-sm text-slate-400 mt-1">Update the bill number or apply a discount.</p>
+           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+              <div className="bg-slate-800 border border-white/10 p-6 rounded-2xl w-full max-w-sm">
+                 <h3 className="font-bold text-white mb-4">Edit Bill Details</h3>
+                 <div className="space-y-4 mb-6">
+                    <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Bill Number</label>
+                        <input type="text" value={editBillData.billNumber} onChange={(e) => setEditBillData({...editBillData, billNumber: e.target.value})} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
+                    </div>
+                    <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Discount (₹)</label>
+                        <input type="number" value={editBillData.discount} onChange={(e) => setEditBillData({...editBillData, discount: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
+                    </div>
+                 </div>
+                 <div className="flex justify-end gap-3">
+                    <button onClick={() => setShowEditBillModal(false)} className="text-slate-400">Cancel</button>
+                    <button onClick={() => editBillMutation.mutate(editBillData)} className="bg-sky-600 text-white px-4 py-2 rounded-lg font-bold">Save</button>
+                 </div>
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Bill Number</label>
-                  <input
-                    type="text"
-                    value={editBillData.billNumber}
-                    onChange={(e) => setEditBillData({ ...editBillData, billNumber: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Discount (₹)</label>
-                  <div className="relative">
-                    <FaRupeeSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                    <input
-                      type="number"
-                      min="0"
-                      value={editBillData.discount}
-                      onChange={(e) => setEditBillData({ ...editBillData, discount: parseFloat(e.target.value) || 0 })}
-                      className="w-full pl-9 pr-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white text-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="p-6 pt-0 flex justify-end gap-3">
-                <button
-                  onClick={() => setShowEditBillModal(false)}
-                  disabled={editBillMutation.isPending}
-                  className="px-4 py-2.5 rounded-xl bg-slate-600 text-slate-200 text-sm font-medium hover:bg-slate-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => editBillMutation.mutate(editBillData)}
-                  disabled={editBillMutation.isPending}
-                  className="px-5 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-500 disabled:opacity-50"
-                >
-                  {editBillMutation.isPending ? 'Saving...' : 'Save changes'}
-                </button>
-              </div>
-            </div>
-          </div>
+           </div>
         )}
       </div>
     </>
