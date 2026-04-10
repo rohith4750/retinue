@@ -324,7 +324,7 @@ export function BillPDF({ bill }: BillPDFProps) {
   const days = getNumberOfDays(booking.checkIn, booking.checkOut)
 
   // Calculate display values based on official room base prices
-  let displaySubtotal = 0
+  // However, we rely on DB values for final totals to match the UI Dashboard
   const items = bill.booking.items || [bill.booking]
   
   const processedItems = items.map((item: any) => {
@@ -332,9 +332,10 @@ export function BillPDF({ bill }: BillPDFProps) {
     const itemRoom = isFallback ? booking.room : { roomNumber: item.roomNumber, roomType: item.roomType, basePrice: item.basePrice || (item.room?.basePrice) }
     const itemDays = isFallback ? days : (item.days || getNumberOfDays(item.checkIn, item.checkOut))
     const itemBasePrice = item.basePrice || itemRoom.basePrice || 0
-    const itemFullAmount = itemBasePrice * itemDays
     
-    displaySubtotal += itemFullAmount
+    // We use the ACTUAL subtotal from the DB for the amount
+    // If it's missing (legacy), we fall back to calculation
+    const itemSubtotal = item.subtotal ?? (itemBasePrice * itemDays)
     
     return {
       ...item,
@@ -342,16 +343,17 @@ export function BillPDF({ bill }: BillPDFProps) {
       roomType: itemRoom.roomType,
       basePrice: itemBasePrice,
       days: itemDays,
-      fullAmount: itemFullAmount
+      rowAmount: itemSubtotal
     }
   })
 
-  // The total discount is the difference between the full base price subtotal and the final amount (before tax)
-  // actual net = bill.subtotal - bill.discount
-  const actualNetBeforeTax = (bill.subtotal || 0) - (bill.discount || 0)
-  const displayDiscount = Math.max(0, displaySubtotal - actualNetBeforeTax)
+  // The summary section must match the Dashboard UI exactly.
+  // Gross Bill in UI = DB Subtotal
+  const displaySubtotal = bill.subtotal || 0
+  const displayDiscount = bill.discount || 0
+  const displayTax = bill.tax || 0
 
-  const grandTotal = (bill.subtotal || 0) + (bill.tax || 0) - (bill.discount || 0)
+  const grandTotal = bill.totalAmount || (displaySubtotal + displayTax - displayDiscount)
   const balance = grandTotal - (bill.paidAmount || 0)
 
   const formatDate = (dateString: string) =>
@@ -360,7 +362,7 @@ export function BillPDF({ bill }: BillPDFProps) {
   return (
     <PDFDocument>
       <Page size="A4" style={styles.page}>
-        {/* Top contact bar - dark red */}
+        {/* Top contact bar */}
         <View style={styles.contactBar}>
           <PDFText style={styles.contactBarText} hyphenationCallback={() => []}>📞 {HOTEL_INFO.phone}</PDFText>
           <PDFText style={styles.contactBarText} hyphenationCallback={() => []}>{HOTEL_INFO.email}</PDFText>
@@ -392,9 +394,9 @@ export function BillPDF({ bill }: BillPDFProps) {
           {guest.address && <PDFText style={styles.billToText}>{guest.address}</PDFText>}
         </View>
 
-        {/* Item details table - white header */}
+        {/* Item details table */}
         <View style={styles.itemTable}>
-          <View style={styles.itemTableHeader}>
+          <View style={[styles.itemTableHeader, { paddingVertical: 10 }]}>
             <PDFText style={[styles.itemTableHeaderText, styles.col1]}>S.No</PDFText>
             <PDFText style={[styles.itemTableHeaderText, styles.col2]}>Particulars</PDFText>
             <PDFText style={[styles.itemTableHeaderText, styles.col3]}>Check In</PDFText>
@@ -404,25 +406,25 @@ export function BillPDF({ bill }: BillPDFProps) {
             <PDFText style={[styles.itemTableHeaderText, styles.col7]}>Amount</PDFText>
           </View>
 
-          {/* Render items (for consolidated bills) */}
+          {/* Render items */}
           {processedItems.map((item: any, index: number) => {
             const currentCheckIn = item.checkIn || booking.checkIn
             const currentCheckOut = item.checkOut || booking.checkOut
 
             return (
-              <View key={index} style={styles.itemTableRow}>
+              <View key={index} style={[styles.itemTableRow, { paddingVertical: 10 }]}>
                 <PDFText style={[styles.col1, { fontSize: 9 }]} hyphenationCallback={() => []}>{index + 1}</PDFText>
                 <PDFText style={[styles.col2, { fontSize: 9 }]} hyphenationCallback={() => []}>{item.roomType} Room {item.roomNumber}</PDFText>
                 <PDFText style={[styles.col3, { fontSize: 9 }]} hyphenationCallback={() => []}>{formatShortDate(currentCheckIn)}</PDFText>
                 <PDFText style={[styles.col4, { fontSize: 9 }]} hyphenationCallback={() => []}>{formatShortDate(currentCheckOut)}</PDFText>
                 <PDFText style={[styles.col5, { fontSize: 9 }]} hyphenationCallback={() => []}>{item.days}</PDFText>
                 <PDFText style={[styles.col6, { fontSize: 9 }]} hyphenationCallback={() => []}>{(item.basePrice || 0).toFixed(2)}</PDFText>
-                <PDFText style={[styles.col7, { fontSize: 9 }]} hyphenationCallback={() => []}>{(item.fullAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
+                <PDFText style={[styles.col7, { fontSize: 9 }]} hyphenationCallback={() => []}>{(item.rowAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
               </View>
             )
           })}
 
-          <View style={styles.itemTableTotalRow}>
+          <View style={[styles.itemTableTotalRow, { paddingVertical: 10 }]}>
             <PDFText style={[styles.itemTableTotalText, styles.col1]} hyphenationCallback={() => []}></PDFText>
             <PDFText style={[styles.itemTableTotalText, styles.col2]} hyphenationCallback={() => []}>Total</PDFText>
             <PDFText style={[styles.itemTableTotalText, styles.col3]} hyphenationCallback={() => []}></PDFText>
@@ -440,7 +442,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             {/* List rooms briefly in description using base prices */}
             {processedItems.map((item: any, i: number) => (
               <PDFText key={i} style={styles.descText} hyphenationCallback={() => []}>
-                • {item.roomType} - {item.roomNumber}: {`\u20B9`}{(item.fullAmount || 0).toLocaleString('en-IN')}/-
+                • {item.roomType} - {item.roomNumber}: {`\u20B9`}{(item.rowAmount || 0).toLocaleString('en-IN')}/-
               </PDFText>
             ))}
             <PDFText style={[styles.descText, { marginTop: 4 }]} hyphenationCallback={() => []}>
@@ -452,10 +454,10 @@ export function BillPDF({ bill }: BillPDFProps) {
               <PDFText style={styles.paymentSummaryLabel}>Sub Total</PDFText>
               <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(displaySubtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
             </View>
-            {bill.tax > 0 && (
+            {displayTax > 0 && (
               <View style={styles.paymentSummaryRow}>
                 <PDFText style={styles.paymentSummaryLabel}>GST (18%)</PDFText>
-                <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(bill.tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
+                <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(displayTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
               </View>
             )}
             {displayDiscount > 0 && (
