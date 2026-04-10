@@ -25,6 +25,15 @@ export default function BillsPage() {
     billNumber: '',
   })
 
+  const [user, setUser] = useState<any>(null)
+  useEffect(() => {
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    }
+  }, [])
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+
   // Debounce search query to prevent excessive API calls
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
   useEffect(() => {
@@ -138,16 +147,45 @@ export default function BillsPage() {
         </div>
       </div>
 
-      {/* Summary strip */}
-      <div className="flex flex-wrap items-center gap-4 mb-4 py-3 px-4 rounded-xl bg-slate-800/50 border border-white/5">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4 py-3 px-4 rounded-xl bg-slate-800/50 border border-white/5 shadow-inner">
         <span className="text-sm text-slate-400">
           <span className="font-semibold text-white">{totalBills}</span> bill{totalBills !== 1 ? 's' : ''} found
         </span>
-        {response?.summary && (
-          <span className="text-sm text-amber-400 ml-auto sm:ml-0">
-            <FaRupeeSign className="inline w-3 h-3 mr-0.5" />
-            <span className="font-semibold">{(response.summary.totalRevenue || 0).toLocaleString()}</span> total revenue
-          </span>
+        
+        {response?.summary && isSuperAdmin && (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 ml-auto sm:ml-0">
+            <div className="flex items-center gap-2 group" title="Cash collected">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 group-hover:border-emerald-500/40 transition-colors">
+                <FaRupeeSign className="text-emerald-400 text-xs" />
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider leading-none mb-1">Total Paid</p>
+                <p className="text-sm font-bold text-emerald-400 leading-none">{(response.summary.totalRevenue || 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 group" title="Outstanding balance">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:border-amber-500/40 transition-colors">
+                <FaRupeeSign className="text-amber-400 text-xs" />
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider leading-none mb-1">Total Pending</p>
+                <p className="text-sm font-bold text-amber-400 leading-none">{(response.summary.totalPending || 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            {(response.summary.totalDiscount || 0) > 0 && (
+              <div className="flex items-center gap-2 group" title="Revenue lost to discounts">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 group-hover:border-indigo-500/40 transition-colors">
+                  <FaRupeeSign className="text-indigo-400 text-xs" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider leading-none mb-1">Total Discount</p>
+                  <p className="text-sm font-bold text-indigo-400 leading-none">{(response.summary.totalDiscount || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -226,6 +264,12 @@ export default function BillsPage() {
                   <span className="text-slate-500">Paid</span>
                   <span className="text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</span>
                 </div>
+                {(b.discount || 0) > 0 && (
+                  <div className="flex items-center justify-between text-xs mt-1">
+                    <span className="text-slate-500">Discount</span>
+                    <span className="text-indigo-400">-₹{(b.discount).toLocaleString()}</span>
+                  </div>
+                )}
                 {remaining > 0 && (
                   <div className="flex items-center justify-between text-xs mt-1">
                     <span className="text-slate-500">Due</span>
@@ -267,6 +311,7 @@ export default function BillsPage() {
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Guest</th>
                   <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Room(s)</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Total</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Discount</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Paid</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Due</th>
                   <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">Status</th>
@@ -296,6 +341,9 @@ export default function BillsPage() {
                         )}
                       </td>
                       <td className="py-3 px-4 text-sm text-right text-slate-200">₹{(b.totalAmount ?? 0).toLocaleString()}</td>
+                      <td className="py-3 px-4 text-sm text-right text-indigo-400">
+                        {b.discount > 0 ? `-₹${(b.discount).toLocaleString()}` : '—'}
+                      </td>
                       <td className="py-3 px-4 text-sm text-right text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</td>
                       <td className="py-3 px-4 text-sm text-right font-medium text-amber-400">₹{remaining.toLocaleString()}</td>
                       <td className="py-3 px-4 text-center">
@@ -376,6 +424,12 @@ export default function BillsPage() {
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Paid</span>
                     <span className="text-sm font-bold text-emerald-400">₹{(b.paidAmount ?? 0).toLocaleString()}</span>
                   </div>
+                  {(b.discount || 0) > 0 && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold">Discount</span>
+                      <span className="text-sm font-bold text-indigo-400">₹{(b.discount).toLocaleString()}</span>
+                    </div>
+                  )}
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Remaining</span>
                     <span className="text-sm font-bold text-amber-400">₹{remaining.toLocaleString()}</span>

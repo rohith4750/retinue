@@ -101,9 +101,24 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Calculate Summary Stats (Optional - returning 0 for now to keep it lightweight)
+    // Calculate Summary Stats
+    const stats = uniqueGroups.reduce((acc, siblings) => {
+      const groupTotal = siblings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+      const groupPaid = siblings.reduce((sum, b) => sum + (b.paidAmount || 0), 0);
+      const groupDiscount = siblings.reduce((sum, b) => sum + (b.discount || 0), 0);
+      const groupPending = Math.max(0, groupTotal - groupPaid);
+      
+      return {
+        totalPaid: acc.totalPaid + groupPaid,
+        totalPending: acc.totalPending + groupPending,
+        totalDiscount: acc.totalDiscount + groupDiscount
+      };
+    }, { totalPaid: 0, totalPending: 0, totalDiscount: 0 });
+
     const summary = {
-      totalRevenue: 0,
+      totalRevenue: stats.totalPaid,
+      totalPending: stats.totalPending,
+      totalDiscount: stats.totalDiscount
     };
 
     return Response.json(
