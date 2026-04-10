@@ -55,6 +55,7 @@ const initialFormData = {
   checkOut: '',
   flexibleCheckout: false,
   paymentMode: 'CASH',
+  totalAmount: '0',
   advanceAmount: '0',
   discount: '0',
   applyGst: false,
@@ -114,7 +115,9 @@ export function EditBookingModal({
       checkIn: toDatetimeLocal(booking.checkIn),
       checkOut: toDatetimeLocal(booking.checkOut),
       flexibleCheckout: !!booking.flexibleCheckout,
+      totalAmount: String(booking.totalAmount ?? 0),
       discount: String(booking.discount ?? 0),
+      advanceAmount: String(booking.advanceAmount ?? 0),
       applyGst: !!booking.applyGst,
     })
   }, [booking, setFormData])
@@ -150,6 +153,9 @@ export function EditBookingModal({
       checkIn: checkInDate.toISOString(),
       checkOut: checkOutDate.toISOString(),
       roomId: selectedRoomId,
+      totalAmount: parseFloat(formData.totalAmount) || 0,
+      advanceAmount: parseFloat(formData.advanceAmount) || 0,
+      discount: parseFloat(formData.discount) || 0,
     })
   }
 
@@ -250,6 +256,53 @@ export function EditBookingModal({
             ) : (
               <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-center"><p className="text-sm text-slate-400">No room assigned</p></div>
             )}
+          </div>
+          
+          {/* Pricing & Payment */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-100 mb-4 flex items-center">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold mr-2">3</span>
+              Pricing & Payment
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-slate-800/40 p-4 rounded-xl border border-white/5">
+              <FormInput 
+                label="Total Amount (₹) *" 
+                type="number" 
+                value={formData.totalAmount} 
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('totalAmount', e.target.value)} 
+                onBlur={() => handleBlur('totalAmount')} 
+                error={getError('totalAmount')} 
+                placeholder="0.00" 
+              />
+              <FormInput 
+                label="Advance Amount (₹)" 
+                type="number" 
+                value={formData.advanceAmount} 
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('advanceAmount', e.target.value)} 
+                onBlur={() => handleBlur('advanceAmount')} 
+                error={getError('advanceAmount')} 
+                placeholder="0.00" 
+              />
+              <FormInput 
+                label="Discount (₹)" 
+                type="number" 
+                value={formData.discount} 
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('discount', e.target.value)} 
+                onBlur={() => handleBlur('discount')} 
+                error={getError('discount')} 
+                placeholder="0.00" 
+              />
+              <div className="flex items-center gap-2 pt-6">
+                 <input 
+                    type="checkbox" 
+                    id="edit-apply-gst"
+                    checked={formData.applyGst} 
+                    onChange={(e) => updateField('applyGst', e.target.checked)} 
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-sky-500"
+                 />
+                 <label htmlFor="edit-apply-gst" className="text-sm text-slate-300">Apply GST (18%)</label>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4 border-t border-white/5">

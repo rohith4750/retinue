@@ -1,13 +1,13 @@
 'use client'
 
-import { FaExclamationTriangle, FaTrash, FaCheckCircle, FaEdit } from 'react-icons/fa'
+import { FaExclamationTriangle, FaTrash, FaCheckCircle, FaEdit, FaTimes, FaInfoCircle } from 'react-icons/fa'
 
 interface ConfirmationModalProps {
   show: boolean
   title: string
   message: string
-  action: string
-  type?: 'delete' | 'update' | 'warning' | 'info'
+  action?: string
+  type?: 'delete' | 'update' | 'warning' | 'info' | 'danger'
   onConfirm: () => void
   onCancel: () => void
   isLoading?: boolean
@@ -32,62 +32,85 @@ export function ConfirmationModal({
   const getIcon = () => {
     switch (type) {
       case 'delete':
-        return <FaTrash className="mr-2 w-4 h-4 text-red-400" />
+      case 'danger':
+        return <FaTrash className="w-6 h-6 text-red-500" />
       case 'update':
-        return <FaEdit className="mr-2 w-4 h-4 text-sky-400" />
+        return <FaEdit className="w-6 h-6 text-sky-500" />
       case 'warning':
-        return <FaExclamationTriangle className="mr-2 w-4 h-4 text-yellow-400" />
+        return <FaExclamationTriangle className="w-6 h-6 text-amber-500" />
+      case 'info':
+        return <FaInfoCircle className="w-6 h-6 text-sky-500" />
       default:
-        return <FaCheckCircle className="mr-2 w-4 h-4 text-sky-400" />
+        return <FaCheckCircle className="w-6 h-6 text-emerald-500" />
     }
   }
 
-  const getConfirmButtonClass = () => {
+  const getTypeStyles = () => {
     switch (type) {
       case 'delete':
-        return 'btn-danger'
+      case 'danger':
+        return {
+          buttonClass: 'bg-red-600 hover:bg-red-500',
+          glow: 'shadow-[0_0_20px_rgba(239,68,68,0.2)]',
+          border: 'border-red-500/20'
+        }
+      case 'update':
+      case 'info':
+        return {
+          buttonClass: 'bg-sky-600 hover:bg-sky-500',
+          glow: 'shadow-[0_0_20px_rgba(14,165,233,0.2)]',
+          border: 'border-sky-500/20'
+        }
+      case 'warning':
       default:
-        return 'btn-primary'
+        return {
+          buttonClass: 'bg-amber-600 hover:bg-amber-500',
+          glow: 'shadow-[0_0_20px_rgba(245,158,11,0.2)]',
+          border: 'border-amber-500/20'
+        }
     }
   }
 
+  const { buttonClass, glow, border } = getTypeStyles()
+
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="p-4 relative z-10">
-          <div className="card-header">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center">
-              {getIcon()}
-              {title}
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">{message}</p>
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+        onClick={onCancel} 
+      />
+      <div className={`relative bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm overflow-hidden ${glow}`}>
+        <div className="flex items-start gap-4 mb-6">
+          <div className="p-3 bg-slate-800 rounded-xl border border-white/5">
+            {getIcon()}
           </div>
-
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-slate-300">
-              This action cannot be undone. Please confirm to proceed.
-            </p>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t border-white/5 mt-4">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-secondary text-sm px-4 py-2"
-              disabled={isLoading}
-            >
-              {cancelText}
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              className={`${getConfirmButtonClass()} text-sm px-4 py-2`}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Processing...' : confirmText || `Confirm ${action}`}
-            </button>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-white mb-1">{title}</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">{message}</p>
           </div>
         </div>
+        
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex-1 py-2.5 text-sm font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-white/5 disabled:opacity-50"
+          >
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className={`flex-1 py-2.5 text-sm font-bold text-white rounded-xl transition-all ${buttonClass} shadow-lg shadow-black/20 disabled:opacity-50`}
+          >
+            {isLoading ? 'Wait...' : confirmText || (action ? `Confirm ${action}` : 'Confirm')}
+          </button>
+        </div>
+        
+        {/* Subtle accent line */}
+        <div className={`absolute bottom-0 left-0 right-0 h-1 ${buttonClass.split(' ')[0]}`} />
       </div>
     </div>
   )

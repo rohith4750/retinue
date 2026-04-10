@@ -86,6 +86,9 @@ export async function PUT(
       guestType,
       numberOfGuests,
       flexibleCheckout,
+      totalAmount,
+      advanceAmount,
+      discount,
     } = data;
 
     // Phase 2: Transaction management with extended timeout for slow connections
@@ -199,6 +202,73 @@ export async function PUT(
             newValue: flexibleCheckout,
           });
         }
+
+        // --- Pricing & Payment Manual Overrides ---
+        let finalTotal = currentBooking.totalAmount;
+        let finalPaid = currentBooking.paidAmount;
+        let pricingChanged = false;
+
+        if (totalAmount != null && Number(totalAmount) !== currentBooking.totalAmount) {
+          updateData.totalAmount = Number(totalAmount);
+          finalTotal = Number(totalAmount);
+          pricingChanged = true;
+          changes.push({
+            field: "totalAmount",
+            oldValue: currentBooking.totalAmount,
+            newValue: finalTotal,
+          });
+        }
+
+        if (advanceAmount != null && Number(advanceAmount) !== currentBooking.advanceAmount) {
+          // In Edit, treating "Advance" manual field as a core payment update
+          updateData.advanceAmount = Number(advanceAmount);
+          updateData.paidAmount = Number(advanceAmount); // Syncing paidAmount for this UI logic
+          finalPaid = Number(advanceAmount);
+          pricingChanged = true;
+          changes.push({
+            field: "advanceAmount",
+            oldValue: currentBooking.advanceAmount,
+            newValue: Number(advanceAmount),
+          });
+          changes.push({
+            field: "paidAmount",
+            oldValue: currentBooking.paidAmount,
+            newValue: Number(advanceAmount),
+          });
+        }
+
+        if (discount != null && Number(discount) !== currentBooking.discount) {
+          updateData.discount = Number(discount);
+          pricingChanged = true;
+          changes.push({
+            field: "discount",
+            oldValue: currentBooking.discount,
+            newValue: Number(discount),
+          });
+        }
+
+        if (pricingChanged) {
+          const newBalance = finalTotal - finalPaid;
+          updateData.balanceAmount = Math.max(0, newBalance);
+          updateData.paymentStatus =
+            newBalance <= 0
+              ? "PAID"
+              : finalPaid > 0
+                ? "PARTIAL"
+                : "PENDING";
+          
+          changes.push({
+             field: "balanceAmount",
+             oldValue: currentBooking.balanceAmount,
+             newValue: updateData.balanceAmount
+          });
+          changes.push({
+             field: "paymentStatus",
+             oldValue: currentBooking.paymentStatus,
+             newValue: updateData.paymentStatus
+          });
+        }
+        // ------------------------------------------
 
         // Phase 2: Status update with state machine validation
         if (status && status !== currentBooking.status) {

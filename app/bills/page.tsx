@@ -8,6 +8,7 @@ import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDolla
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
 import { toast } from 'react-hot-toast'
+import { ConfirmationModal } from '@/components/ConfirmationModal'
 
 type PaymentFilter = 'all' | 'PENDING' | 'PARTIAL' | 'PAID'
 
@@ -16,11 +17,13 @@ export default function BillsPage() {
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all')
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
   const [page, setPage] = useState(1)
-  const limit = 24 // Multiple of 2 and 3 for nice grid
+  const limit = 24 
 
-  // Debounce search (optional, but good practice; here relying on standard input, effectively searches on type)
-  // For better UX during typing, might want to use a debounced value or SearchInput's onSearch if available.
-  // Assuming SearchInput updates state immediately.
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; id: string; billNumber: string }>({
+    show: false,
+    id: '',
+    billNumber: '',
+  })
 
   // Debounce search query to prevent excessive API calls
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
@@ -43,6 +46,7 @@ export default function BillsPage() {
     mutationFn: (id: string) => api.delete(`/bills/${id}`),
     onSuccess: () => {
       toast.success('Bill deleted successfully')
+      setDeleteModal({ show: false, id: '', billNumber: '' })
       queryClient.invalidateQueries({ queryKey: ['bills'] })
     },
     onError: (error: any) => {
@@ -53,9 +57,7 @@ export default function BillsPage() {
   const handleDelete = (e: React.MouseEvent, id: string, billNumber: string) => {
     e.preventDefault()
     e.stopPropagation()
-    if (window.confirm(`Are you sure you want to permanently delete bill ${billNumber}? This action cannot be undone.`)) {
-      deleteBillMutation.mutate(id)
-    }
+    setDeleteModal({ show: true, id, billNumber })
   }
 
   // Data structure from /api/bills is the same array of objects, but consolidated
@@ -423,6 +425,17 @@ export default function BillsPage() {
           </button>
         </div>
       )}
+
+      <ConfirmationModal
+        show={deleteModal.show}
+        title="Delete Bill"
+        message={`Are you sure you want to permanently delete bill ${deleteModal.billNumber}? This action cannot be undone and will remove all financial records associated.`}
+        type="delete"
+        onConfirm={() => deleteBillMutation.mutate(deleteModal.id)}
+        onCancel={() => setDeleteModal({ show: false, id: '', billNumber: '' })}
+        isLoading={deleteBillMutation.isPending}
+        confirmText="Delete Permanently"
+      />
     </div>
   )
 }
