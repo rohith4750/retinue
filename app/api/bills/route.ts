@@ -61,14 +61,18 @@ export async function GET(request: NextRequest) {
       orderBy: { checkIn: "desc" },
     });
 
-    // 2. Group by Guest Phone
+    // 2. Group by Guest Phone + ID Proof Type + ID Proof Value
     const groups = new Map<string, any[]>();
     allBookings.forEach((b) => {
       const phone = b.guest?.phone || b.guestId;
-      if (!groups.has(phone)) {
-        groups.set(phone, []);
+      const idType = b.guest?.idProofType || "AADHAR";
+      const idValue = b.guest?.idProof || "";
+      const key = `${phone}-${idType}-${idValue}`;
+      
+      if (!groups.has(key)) {
+        groups.set(key, []);
       }
-      groups.get(phone)!.push(b);
+      groups.get(key)!.push(b);
     });
 
     const uniqueGroups = Array.from(groups.values());

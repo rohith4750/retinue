@@ -62,11 +62,15 @@ export async function GET(
 
     let relatedBookings: any[] = [];
 
-    // AUTOMATIC CONSOLIDATION: Find other bookings for the same customer (linked by Phone Number)
-    // Logic: Same guest phone + Not Cancelled + Active/Recent (within 60 days of this stay)
+    // AUTOMATIC CONSOLIDATION: Find other bookings for the same customer (linked by Phone + ID Proof)
+    // Logic: Same guest phone + ID Match + Not Cancelled + Active/Recent (within 60 days of this stay)
     const siblings = await prisma.booking.findMany({
       where: {
-        guest: { phone: booking.guest.phone },
+        guest: { 
+          phone: booking.guest.phone,
+          idProofType: booking.guest.idProofType,
+          idProof: booking.guest.idProof
+        },
         id: { not: booking.id }, // Exclude self
         status: { notIn: ["CANCELLED"] },
         // Only group bookings that are somewhat related in time (within +/- 60 days of this check-in)
@@ -355,7 +359,11 @@ export async function PATCH(
     // 2. Find ALL related bookings in the group (same consolidation logic as GET)
     const siblings = await prisma.booking.findMany({
       where: {
-        guest: { phone: booking.guest.phone },
+        guest: { 
+          phone: booking.guest.phone,
+          idProofType: booking.guest.idProofType,
+          idProof: booking.guest.idProof
+        },
         id: { not: booking.id },
         status: { notIn: ["CANCELLED"] },
         checkIn: {
@@ -518,10 +526,14 @@ export async function PUT(
       );
     }
 
-    // 2. Find Related Bookings (Consolidated Group by Phone)
+    // 2. Find Related Bookings (Consolidated Group by Phone + ID Match)
     const siblings = await prisma.booking.findMany({
       where: {
-        guest: { phone: booking.guest.phone },
+        guest: { 
+          phone: booking.guest.phone,
+          idProofType: booking.guest.idProofType,
+          idProof: booking.guest.idProof
+        },
         id: { not: booking.id },
         status: { notIn: ["CANCELLED"] },
         checkIn: {
