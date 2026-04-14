@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       prisma.booking.count({ where: { status: { in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] } } }),
       prisma.booking.count({ where: { paymentStatus: { in: ['PENDING', 'PARTIAL'] } } }),
-      prisma.inventory.count({ where: { quantity: { lte: prisma.inventory.fields.minStock } } }),
+      (await prisma.inventory.findMany({ select: { quantity: true, minStock: true } })).filter(item => item.quantity <= item.minStock).length,
       prisma.bankTransaction.count({ where: { createdAt: { gte: moment().utcOffset("+05:30").subtract(24, 'hours').toDate() } } }),
     ])
 

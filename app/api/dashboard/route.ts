@@ -288,9 +288,10 @@ export async function GET(request: NextRequest) {
     }).then(res => res.map(r => ({ eventType: r.eventType, count: r._count })));
 
     // Inventory Alerts
-    const lowStockAlerts = await prisma.inventory.count({
-      where: { quantity: { lte: prisma.inventory.fields.minStock } }
+    const inventory = await prisma.inventory.findMany({
+      select: { quantity: true, minStock: true }
     });
+    const lowStockAlerts = inventory.filter(item => item.quantity <= item.minStock).length;
 
     const stats = {
       totalRooms,
