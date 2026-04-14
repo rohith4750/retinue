@@ -14,6 +14,7 @@ import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidatio
 import { SearchInput } from '@/components/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut'
+import { ListFilterBar } from '@/components/ListFilterBar'
 import moment from 'moment'
 
 export default function BookingsPage() {
@@ -60,6 +61,10 @@ export default function BookingsPage() {
 
   // Quick filter: client-side focus (All | Check-in today | Check-out today | In-house)
   type QuickFilter = 'all' | 'checkin_today' | 'checkout_today' | 'in_house'
+  // Filtering state
+  const [selectedDate, setSelectedDate] = useState(dateFilter)
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all')
 
   useEffect(() => { setMounted(true) }, [])
@@ -100,7 +105,7 @@ export default function BookingsPage() {
 
   // Staff bookings only (online bookings are on /bookings/online)
   const { data: bookingsResponse, isLoading } = useQuery({
-    queryKey: ['bookings', page, debouncedSearch, dateFilter],
+    queryKey: ['bookings', page, debouncedSearch, selectedDate, selectedMonth, selectedYear],
     queryFn: () => {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -109,8 +114,12 @@ export default function BookingsPage() {
       if (debouncedSearch) {
         params.append('search', debouncedSearch)
       }
-      if (dateFilter) {
-        params.append('date', dateFilter)
+      if (selectedDate) {
+        params.append('date', selectedDate)
+      }
+      if (selectedMonth && selectedYear) {
+        params.append('month', selectedMonth)
+        params.append('year', selectedYear)
       }
       return api.get(`/bookings?${params.toString()}`)
     },
@@ -118,14 +127,19 @@ export default function BookingsPage() {
     refetchOnMount: 'always', // Refetch when component mounts
   })
 
-  // Handle new API response format: { data: [...], pagination: {...} }
-  const bookings = Array.isArray(bookingsResponse)
-    ? bookingsResponse
-    : (bookingsResponse?.data || [])
-  const pagination = bookingsResponse?.pagination || {
+  // Handle new API response format: { data: { data: [], pagination: ... } }
+  const bookingsData = bookingsResponse as any
+  const bookings = Array.isArray(bookingsData)
+    ? bookingsData
+    : (bookingsData?.data || bookingsData?.bookings || [])
+  
+  // If it's the paginated format, bookingsData is the actual array, otherwise it might be wrapped
+  const actualBookings = Array.isArray(bookings) ? bookings : (bookings?.data || [])
+
+  const pagination = bookingsData?.pagination || {
     page: 1,
     limit: 12,
-    total: Array.isArray(bookingsResponse) ? bookingsResponse.length : (bookingsResponse?.data?.length || 0),
+    total: actualBookings.length,
     totalPages: 1
   }
 
@@ -279,7 +293,7 @@ export default function BookingsPage() {
     )
   }
 
-    return (
+  return (
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
@@ -379,30 +393,92 @@ export default function BookingsPage() {
 
         {bookings && bookings.length > 0 ? (
           <>
-            {/* Quick filter chips – focus on what matters */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-xs text-slate-500 mr-1">Show:</span>
-              {(['all', 'checkin_today', 'checkout_today', 'in_house'] as const).map((filter) => (
+        <ListFilterBar
+          searchPlaceholder="Search bookings..."
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          
+          quickFilters={[
+            { id: 'all', label: 'All' },
+            { id: 'checkin_today', label: `Check-in today (${actualBookings.filter(isCheckInToday).length})` },
+            { id: 'checkout_today', label: `Check-out today (${actualBookings.filter(isCheckOutToday).length})` },
+            { id: 'in_house', label: `In-house (${actualBookings.filter((b: any) => b.status === 'CHECKED_IN').length})` },
+          ]}
+          activeQuickFilter={quickFilter}
+          onQuickFilterChange={(id: string) => setQuickFilter(id as any)}
+          
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          selectedMonth={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          selectedYear={selectedYear}
+          onYearChange={setSelectedYear}
+
+          extraActions={
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-slate-800/60 rounded-xl border border-white/5 p-1">
                 <button
-                  key={filter}
-                  onClick={() => setQuickFilter(filter)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${quickFilter === filter
-                    ? 'bg-sky-600 text-white'
-                    : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700/60 border border-white/5'
-                    }`}
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
+                  title="List View"
                 >
-                  {filter === 'all' && 'All'}
-                  {filter === 'checkin_today' && `Check-in today (${bookings.filter(isCheckInToday).length})`}
-                  {filter === 'checkout_today' && `Check-out today (${bookings.filter(isCheckOutToday).length})`}
-                  {filter === 'in_house' && `In-house (${bookings.filter((b: any) => b.status === 'CHECKED_IN').length})`}
+                  <FaList className="w-3.5 h-3.5" />
                 </button>
-              ))}
-              {quickFilter !== 'all' && (
-                <span className="text-xs text-slate-500 ml-2">
-                  Showing {filteredBookings.length} of {bookings.length}
-                </span>
-              )}
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
+                  title="Cards View"
+                >
+                  <FaThLarge className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('board')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'board' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
+                  title="Board View"
+                >
+                  <FaColumns className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('timeline')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'timeline' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
+                  title="Timeline View"
+                >
+                  <FaCalendarWeek className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <button
+                onClick={handleExportCSV}
+                className="p-2.5 bg-slate-800/60 text-slate-300 rounded-xl border border-white/5 hover:bg-slate-700 transition-all"
+                title="Export CSV"
+              >
+                <FaDownload className="w-4 h-4" />
+              </button>
+              <Link
+                href="/bookings/new"
+                className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-500 shadow-lg shadow-sky-600/20 transition-all text-sm"
+              >
+                <FaPlus className="w-3 h-3" />
+                <span>New</span>
+              </Link>
             </div>
+          }
+        />
+
+        {/* When opened from dashboard "Today's Bookings": show filter badge and link to clear */}
+        {selectedDate === moment().format('YYYY-MM-DD') && (
+          <div className="mb-4 flex items-center gap-2 flex-wrap animate-in slide-in-from-top-2 duration-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 text-xs border border-sky-500/30 backdrop-blur-sm font-medium">
+              <FaCalendarAlt className="w-3.5 h-3.5" />
+              Showing today&apos;s activity
+            </span>
+            <button
+              onClick={() => setSelectedDate('')}
+              className="text-xs text-slate-500 hover:text-white transition-colors underline decoration-slate-700 underline-offset-4"
+            >
+              Show all bookings
+            </button>
+          </div>
+        )}
 
             {/* Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">

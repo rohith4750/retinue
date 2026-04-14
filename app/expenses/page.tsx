@@ -24,6 +24,7 @@ import {
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
+import { ListFilterBar } from '@/components/ListFilterBar'
 
 const EXPENSE_CATEGORIES = [
   { value: 'MAINTENANCE', label: 'Maintenance' },
@@ -141,6 +142,8 @@ export default function ExpensesPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
   const [selectedMonth, setSelectedMonth] = useState(currentMonth.toString())
   const [selectedBusinessUnit, setSelectedBusinessUnit] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -193,11 +196,13 @@ export default function ExpensesPage() {
 
   // Fetch expenses list
   const { data: expenses, isLoading: expensesLoading, error: expensesError, status: expensesStatus } = useQuery({
-    queryKey: ['expenses', selectedYear, selectedMonth, selectedBusinessUnit],
+    queryKey: ['expenses', selectedYear, selectedMonth, selectedBusinessUnit, selectedDate, searchQuery],
     queryFn: async () => {
       let url = `/expenses?year=${selectedYear}`
       if (selectedMonth) url += `&month=${selectedMonth}`
       if (selectedBusinessUnit) url += `&businessUnit=${selectedBusinessUnit}`
+      if (selectedDate) url += `&date=${selectedDate}`
+      if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`
       const result = await api.get(url)
       return result
     },
@@ -507,6 +512,7 @@ export default function ExpensesPage() {
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10">
         {/* Header */}
+        {/* Header */}
         <div className="mb-4 md:mb-6">
           <h1 className="text-xl font-bold text-slate-100">
             {canViewFinancials ? 'Revenue & Expenses' : 'Record Expenses'}
@@ -517,6 +523,29 @@ export default function ExpensesPage() {
               : 'Add expense records for the business'}
           </p>
         </div>
+
+        {/* Global Filter Bar */}
+        <ListFilterBar
+          searchPlaceholder="Search expenses..."
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          
+          quickFilters={[
+            { id: '', label: 'All Units' },
+            { id: 'HOTEL', label: 'Hotel' },
+            { id: 'CONVENTIONAL', label: 'Convention' },
+            { id: 'BOTH', label: 'Shared' },
+          ]}
+          activeQuickFilter={selectedBusinessUnit}
+          onQuickFilterChange={setSelectedBusinessUnit}
+          
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          selectedMonth={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          selectedYear={selectedYear}
+          onYearChange={setSelectedYear}
+        />
 
         {/* Mode Toggle */}
         {!editingExpense && (
