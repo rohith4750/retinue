@@ -50,8 +50,9 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // 1. Fetch ALL matching bookings (non-cancelled and potentially non-checked-out)
+    // 1. Fetch matching bookings (non-cancelled)
     // We group in memory because Prisma distinct doesn't support nested fields like guest.phone
+    // We limit to 1000 items as a safety measure for in-memory processing
     const allBookings = await prisma.booking.findMany({
       where,
       include: {
@@ -59,14 +60,16 @@ export async function GET(request: NextRequest) {
         room: true,
       },
       orderBy: { checkIn: "desc" },
+      take: 1000, 
     });
 
     // 2. Group by Guest Phone + ID Proof Type + ID Proof Value
     const groups = new Map<string, any[]>();
     allBookings.forEach((b) => {
-      const phone = b.guest?.phone || b.guestId;
-      const idType = b.guest?.idProofType || "AADHAR";
-      const idValue = b.guest?.idProof || "";
+      // Robust null check for guest relation
+      const phone = b.guest?.phone || b.guestId || "no-phone";
+      const idType = b.guest?.idProofType || "no-type";
+      const idValue = b.guest?.idProof || "no-id";
       const key = `${phone}-${idType}-${idValue}`;
       
       if (!groups.has(key)) {
@@ -95,9 +98,12 @@ export async function GET(request: NextRequest) {
       else if (paidAmount > 0) status = "PARTIAL";
 
       const roomNumbers = siblings
-        .map((b) => b.room.roomNumber)
+        .map((b) => b.room?.roomNumber)
+        .filter(Boolean)
         .sort()
         .filter((v, i, a) => a.indexOf(v) === i); // Unique room numbers
+
+      const primaryRoomNumber = header.room?.roomNumber || "N/A";
 
       return {
         ...header,
@@ -111,8 +117,8 @@ export async function GET(request: NextRequest) {
         primaryRoom: header.room,
         displayRoomNumber:
           siblings.length > 1
-            ? `${header.room.roomNumber} + ${siblings.length - 1}`
-            : header.room.roomNumber,
+            ? `${primaryRoomNumber} + ${siblings.length - 1}`
+            : primaryRoomNumber,
       };
     });
 
