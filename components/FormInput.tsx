@@ -1,13 +1,8 @@
-'use client'
-
-'use client'
-
-import React from 'react'
-
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string
+  label?: string | React.ReactNode
   error?: string | null
   helperText?: string
+  containerClassName?: string
 }
 
 export function FormInput({
@@ -15,13 +10,17 @@ export function FormInput({
   error,
   helperText,
   className = '',
+  containerClassName = '',
   id,
   ...props
 }: FormInputProps) {
-  const inputId = id || `input-${label?.toLowerCase().replace(/\s+/g, '-')}`
+  const generatedId = typeof label === 'string' 
+    ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` 
+    : `input-${Math.random().toString(36).substring(2, 9)}`
+  const inputId = id || generatedId
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${containerClassName}`}>
       {label && (
         <label htmlFor={inputId} className="form-label">
           {label}

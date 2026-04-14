@@ -119,24 +119,29 @@ export const ListFilterBar: React.FC<ListFilterBarProps> = ({
             </button>
 
             {showMonthPicker && (
-              <div className="absolute top-full left-0 mt-2 p-4 bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl z-[100] w-64 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between mb-4 px-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Period</span>
-                  <div className="flex gap-1">
-                    {years.map(y => (
-                      <button
-                        key={y}
-                        onClick={() => onYearChange?.(y)}
-                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
-                          selectedYear === y ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                        }`}
-                      >
-                        {y}
-                      </button>
-                    ))}
+              <div className="absolute top-full left-0 mt-3 p-5 bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl z-[100] w-72 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex flex-col gap-4 mb-5">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Select Year</span>
+                    <div className="flex gap-1.5">
+                      {years.map(y => (
+                        <button
+                          key={y}
+                          onClick={() => onYearChange?.(y)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                            selectedYear === y 
+                              ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20 ring-1 ring-sky-400/50' 
+                              : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                          }`}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+
+                <div className="grid grid-cols-3 gap-2">
                   {months.map((m, i) => (
                     <button
                       key={m}
@@ -144,22 +149,35 @@ export const ListFilterBar: React.FC<ListFilterBarProps> = ({
                         handleMonthSelect(i)
                         setShowMonthPicker(false)
                       }}
-                      className={`py-2 rounded-lg text-xs font-medium transition-all ${
+                      className={`py-2.5 rounded-xl text-xs font-semibold transition-all ${
                         selectedMonth === (i + 1).toString()
-                          ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20'
-                          : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700 hover:text-white'
+                          ? 'bg-gradient-to-br from-sky-500 to-sky-600 text-white shadow-lg shadow-sky-500/25 ring-1 ring-sky-400/50'
+                          : 'bg-slate-800/40 text-slate-400 hover:bg-slate-700/60 hover:text-white border border-white/[0.03]'
                       }`}
                     >
                       {m}
                     </button>
                   ))}
                 </div>
-                <button
-                  onClick={() => setShowMonthPicker(false)}
-                  className="w-full mt-4 py-2 bg-slate-800 text-slate-400 hover:text-white text-xs font-semibold rounded-lg transition-colors border border-white/5"
-                >
-                  Apply
-                </button>
+
+                <div className="mt-5 pt-4 border-t border-white/5 flex gap-2">
+                   <button
+                    onClick={() => {
+                      onMonthChange?.('')
+                      onYearChange?.('')
+                      setShowMonthPicker(false)
+                    }}
+                    className="flex-1 py-2.5 bg-slate-800/50 text-slate-500 hover:text-red-400 hover:bg-red-500/10 text-xs font-bold rounded-xl transition-all border border-white/5"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={() => setShowMonthPicker(false)}
+                    className="flex-[2] py-2.5 bg-sky-600 text-white hover:bg-sky-500 text-xs font-bold rounded-xl transition-all shadow-lg shadow-sky-600/20"
+                  >
+                    Apply Filter
+                  </button>
+                </div>
               </div>
             )}
           </div>

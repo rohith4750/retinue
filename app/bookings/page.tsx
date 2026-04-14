@@ -298,103 +298,12 @@ export default function BookingsPage() {
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10">
-        {/* Header: Search/Export on left, History/New Booking on right */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          {/* Left: Search, View Toggle, Export */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <SearchInput
-              placeholder="Search bookings..."
-              value={searchQuery}
-              onChange={setSearchQuery}
-              className="w-48"
-            />
-            <div className="flex items-center bg-slate-800/60 rounded-lg border border-white/5 p-0.5">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                title="List view"
-              >
-                <FaList className="w-3 h-3" />
-                List
-              </button>
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'cards' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                title="Cards view"
-              >
-                <FaThLarge className="w-3 h-3" />
-                Cards
-              </button>
-              <button
-                onClick={() => setViewMode('board')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'board' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                title="Board view by status"
-              >
-                <FaColumns className="w-3 h-3" />
-                Board
-              </button>
-              <button
-                onClick={() => setViewMode('timeline')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'timeline' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                title="Timeline – rooms × days"
-              >
-                <FaCalendarWeek className="w-3 h-3" />
-                Timeline
-              </button>
-            </div>
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center space-x-2 px-3 py-2 bg-slate-800/60 text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors border border-white/5"
-              title="Export to CSV"
-            >
-              <FaDownload className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
-          </div>
 
-          {/* Right: History and New Booking */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push('/bookings/history')}
-              className="flex items-center space-x-2 px-3 py-2 bg-slate-800 text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
-            >
-              <FaHistory className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">History</span>
-            </button>
-            <Link
-              href="/bookings/new"
-              className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
-            >
-              <FaPlus className="w-3 h-3" />
-              <span>New Booking</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* When opened from dashboard "Today's Bookings": show filter badge and link to clear */}
-        {dateFilter && (
-          <div className="mb-4 flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30">
-              <FaCalendarAlt className="w-3.5 h-3.5" />
-              Today&apos;s check-ins — click a card to Check Out
-            </span>
-            <Link
-              href="/bookings"
-              className="text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              Show all bookings
-            </Link>
-          </div>
-        )}
 
         {bookings && bookings.length > 0 ? (
           <>
         <ListFilterBar
-          searchPlaceholder="Search bookings..."
+          searchPlaceholder="Search bookings by guest, phone or bill..."
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           
@@ -407,7 +316,7 @@ export default function BookingsPage() {
           activeQuickFilter={quickFilter}
           onQuickFilterChange={(id: string) => setQuickFilter(id as any)}
           
-          selectedDate={selectedDate}
+          selectedDate={selectedDate || dateFilter}
           onDateChange={setSelectedDate}
           selectedMonth={selectedMonth}
           onMonthChange={setSelectedMonth}
@@ -417,35 +326,31 @@ export default function BookingsPage() {
           extraActions={
             <div className="flex items-center gap-2">
               <div className="flex items-center bg-slate-800/60 rounded-xl border border-white/5 p-1">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
-                  title="List View"
-                >
-                  <FaList className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('cards')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
-                  title="Cards View"
-                >
-                  <FaThLarge className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('board')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'board' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
-                  title="Board View"
-                >
-                  <FaColumns className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('timeline')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'timeline' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
-                  title="Timeline View"
-                >
-                  <FaCalendarWeek className="w-3.5 h-3.5" />
-                </button>
+                {[
+                  { id: 'list', icon: FaList, title: 'List View' },
+                  { id: 'cards', icon: FaThLarge, title: 'Cards View' },
+                  { id: 'board', icon: FaColumns, title: 'Board View' },
+                  { id: 'timeline', icon: FaCalendarWeek, title: 'Timeline View' }
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setViewMode(mode.id as any)}
+                    className={`p-2 rounded-lg transition-all ${viewMode === mode.id ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
+                    title={mode.title}
+                  >
+                    <mode.icon className="w-3.5 h-3.5" />
+                  </button>
+                ))}
               </div>
+
+              <button
+                onClick={() => router.push('/bookings/history')}
+                className="p-2.5 bg-slate-800/60 text-slate-300 rounded-xl border border-white/5 hover:bg-slate-700 transition-all"
+                title="Booking History"
+              >
+                <FaHistory className="w-4 h-4" />
+              </button>
+
               <button
                 onClick={handleExportCSV}
                 className="p-2.5 bg-slate-800/60 text-slate-300 rounded-xl border border-white/5 hover:bg-slate-700 transition-all"
@@ -453,26 +358,31 @@ export default function BookingsPage() {
               >
                 <FaDownload className="w-4 h-4" />
               </button>
+              
               <Link
                 href="/bookings/new"
                 className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-500 shadow-lg shadow-sky-600/20 transition-all text-sm"
               >
                 <FaPlus className="w-3 h-3" />
-                <span>New</span>
+                <span className="hidden sm:inline">New Booking</span>
+                <span className="sm:hidden">New</span>
               </Link>
             </div>
           }
         />
 
         {/* When opened from dashboard "Today's Bookings": show filter badge and link to clear */}
-        {selectedDate === moment().format('YYYY-MM-DD') && (
+        {(selectedDate === moment().format('YYYY-MM-DD') || dateFilter) && (
           <div className="mb-4 flex items-center gap-2 flex-wrap animate-in slide-in-from-top-2 duration-300">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 text-xs border border-sky-500/30 backdrop-blur-sm font-medium">
               <FaCalendarAlt className="w-3.5 h-3.5" />
-              Showing today&apos;s activity
+              {dateFilter ? "Focusing on today's check-ins" : "Showing today's activity"}
             </span>
             <button
-              onClick={() => setSelectedDate('')}
+              onClick={() => {
+                setSelectedDate('')
+                if (dateFilter) router.push('/bookings')
+              }}
               className="text-xs text-slate-500 hover:text-white transition-colors underline decoration-slate-700 underline-offset-4"
             >
               Show all bookings

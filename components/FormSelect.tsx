@@ -3,10 +3,11 @@
 import React from 'react'
 
 interface FormSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string
+  label?: string | React.ReactNode
   error?: string | null
   helperText?: string
   options: Array<{ value: string; label: string }>
+  containerClassName?: string
 }
 
 export function FormSelect({
@@ -15,13 +16,17 @@ export function FormSelect({
   helperText,
   options,
   className = '',
+  containerClassName = '',
   id,
   ...props
 }: FormSelectProps) {
-  const selectId = id || `select-${label?.toLowerCase().replace(/\s+/g, '-')}`
+  const generatedId = typeof label === 'string'
+    ? `select-${label.toLowerCase().replace(/\s+/g, '-')}`
+    : `select-${Math.random().toString(36).substring(2, 9)}`
+  const selectId = id || generatedId
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${containerClassName}`}>
       {label && (
         <label htmlFor={selectId} className="form-label">
           {label}

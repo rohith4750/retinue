@@ -3,9 +3,10 @@
 import React from 'react'
 
 interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string
+  label?: string | React.ReactNode
   error?: string | null
   helperText?: string
+  containerClassName?: string
 }
 
 export function FormTextarea({
@@ -13,13 +14,17 @@ export function FormTextarea({
   error,
   helperText,
   className = '',
+  containerClassName = '',
   id,
   ...props
 }: FormTextareaProps) {
-  const textareaId = id || `textarea-${label?.toLowerCase().replace(/\s+/g, '-')}`
+  const generatedId = typeof label === 'string'
+    ? `textarea-${label.toLowerCase().replace(/\s+/g, '-')}`
+    : `textarea-${Math.random().toString(36).substring(2, 9)}`
+  const textareaId = id || generatedId
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${containerClassName}`}>
       {label && (
         <label htmlFor={textareaId} className="form-label">
           {label}

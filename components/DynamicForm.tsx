@@ -12,7 +12,7 @@ export type FormFieldType = 'text' | 'tel' | 'email' | 'select' | 'textarea' | '
 
 export interface FormField {
   name: string
-  label: string
+  label: string | React.ReactNode
   type: FormFieldType
   placeholder?: string
   options?: FormFieldOption[]
@@ -68,7 +68,7 @@ export function DynamicForm({
           onBlur: field.onBlur || (() => handleBlur(field.name)),
           error: errors[field.name] || undefined,
           placeholder: field.placeholder,
-          className: field.className,
+          containerClassName: field.className,
           maxLength: field.maxLength,
           minLength: field.minLength,
           pattern: field.pattern,

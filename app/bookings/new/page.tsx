@@ -5,7 +5,11 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, FaTag, FaEye, FaUsers, FaPercent } from 'react-icons/fa'
+import { 
+  FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, 
+  FaTag, FaEye, FaUsers, FaPercent, FaUser, FaPhone, 
+  FaEnvelope, FaGlobe, FaMapMarkerAlt 
+} from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { FormInput, FormSelect, FormTextarea, DynamicForm } from '@/components/FormComponents'
@@ -339,10 +343,25 @@ function NewBookingContent() {
 
   // --- FORM CONFIGURATIONS ---
   const guestInfoSchema: FormField[] = [
-    { name: 'guestName', label: 'Guest Name *', type: 'text', placeholder: 'Full name' },
+    { 
+      name: 'guestName', 
+      label: (
+        <span className="flex items-center gap-2">
+          <FaUser className="w-3 h-3 text-slate-400" />
+          Guest Name *
+        </span>
+      ), 
+      type: 'text', 
+      placeholder: 'Full name' 
+    },
     {
       name: 'guestPhone',
-      label: 'Phone Number *',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaPhone className="w-3 h-3 text-slate-400" />
+          Phone Number *
+        </span>
+      ),
       type: 'tel',
       placeholder: '10-digit mobile number',
       onChange: (e: any) => {
@@ -352,13 +371,23 @@ function NewBookingContent() {
     },
     {
       name: 'guestEmail',
-      label: 'Guest Email',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaEnvelope className="w-3 h-3 text-slate-400" />
+          Guest Email
+        </span>
+      ),
       type: 'email',
       placeholder: 'email@example.com'
     },
     {
       name: 'guestType',
-      label: 'Guest Type *',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaGlobe className="w-3 h-3 text-slate-400" />
+          Guest Type *
+        </span>
+      ),
       type: 'select',
       options: [
         { value: 'WALK_IN', label: 'Walk-in' },
@@ -426,7 +455,12 @@ function NewBookingContent() {
     },
     {
       name: 'numberOfGuests',
-      label: 'Number of Guests *',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaUsers className="w-3 h-3 text-slate-400" />
+          Number of Guests *
+        </span>
+      ),
       type: 'select',
       options: [
         ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ value: n.toString(), label: `${n} ${n === 1 ? 'Guest' : 'Guests'}` })),
@@ -435,10 +469,15 @@ function NewBookingContent() {
     },
     {
       name: 'guestAddress',
-      label: 'Address',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaMapMarkerAlt className="w-3 h-3 text-slate-400" />
+          Permanent Address
+        </span>
+      ),
       type: 'textarea',
-      rows: 2,
-      placeholder: 'Guest address',
+      rows: 3,
+      placeholder: 'Enter complete address with city and state',
       className: 'md:col-span-2 lg:col-span-3'
     }
   ]

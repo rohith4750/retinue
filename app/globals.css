@@ -87,6 +87,18 @@
            transition-all duration-200 backdrop-blur-sm;
   }
 
+  .form-textarea {
+    @apply w-full px-3 py-2 text-sm bg-slate-950/70 border border-white/5 rounded-lg
+           text-slate-100 placeholder:text-slate-500
+           focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/30
+           transition-all duration-200 backdrop-blur-sm;
+  }
+
+  .form-select:focus,
+  .form-textarea:focus {
+    @apply shadow-[0_0_20px_rgba(14,165,233,0.3)];
+  }
+
   .btn-primary {
     @apply px-6 py-2.5 bg-sky-600 text-white font-semibold rounded-lg
            focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:ring-offset-2 focus:ring-offset-slate-950
