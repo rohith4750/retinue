@@ -146,34 +146,29 @@ export async function GET(request: NextRequest) {
       prisma.booking.count({ where }),
     ]);
 
-    // Calculate Global Stats (Independent of pagination/filters, but respecting source restrictions if any)
-    // We want these stats to reflect the "whole hotel state" mostly, or at least be useful context.
-    // Usually, dashboard stats should be global (e.g. Total Revenue for today, or Total In-House).
-    // Let's calculate standard dashboard metrics:
-    const statsWhere: any = forCalendar ? {} : { source: { not: "ONLINE" } };
-
+    // Calculate Summary Stats based on the EXACT same filters (where clause) but across ALL pages
     const [confirmedCount, checkedInCount, checkedOutCount, revenueAgg] =
       await Promise.all([
         prisma.booking.count({
           where: {
-            ...statsWhere,
+            ...where,
             status: "CONFIRMED",
           },
         }),
         prisma.booking.count({
           where: {
-            ...statsWhere,
+            ...where,
             status: "CHECKED_IN",
           },
         }),
         prisma.booking.count({
           where: {
-            ...statsWhere,
+            ...where,
             status: "CHECKED_OUT",
           },
         }),
         prisma.booking.aggregate({
-          where: { ...statsWhere },
+          where,
           _sum: { totalAmount: true },
         }),
       ]);

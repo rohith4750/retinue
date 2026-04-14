@@ -480,35 +480,35 @@ export default function BookingsPage() {
           </div>
         )}
 
-            {/* Summary Stats */}
+            {/* Summary Stats (From API Summary - respects filters but ignores pagination) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
               <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <FaCheckCircle className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs text-emerald-400 font-medium">Confirmed</span>
                 </div>
-                <p className="text-2xl font-bold text-white">{bookings.filter((b: any) => b.status === 'CONFIRMED').length}</p>
+                <p className="text-2xl font-bold text-white">{bookingsData?.summary?.confirmed ?? 0}</p>
               </div>
               <div className="bg-gradient-to-br from-sky-500/10 to-sky-600/5 border border-sky-500/20 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <FaDoorOpen className="w-4 h-4 text-sky-400" />
                   <span className="text-xs text-sky-400 font-medium">Checked In</span>
                 </div>
-                <p className="text-2xl font-bold text-white">{bookings.filter((b: any) => b.status === 'CHECKED_IN').length}</p>
+                <p className="text-2xl font-bold text-white">{bookingsData?.summary?.checkedIn ?? 0}</p>
               </div>
               <div className="bg-gradient-to-br from-slate-500/10 to-slate-600/5 border border-slate-500/20 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <FaClock className="w-4 h-4 text-slate-400" />
                   <span className="text-xs text-slate-400 font-medium">Checked Out</span>
                 </div>
-                <p className="text-2xl font-bold text-white">{bookings.filter((b: any) => b.status === 'CHECKED_OUT').length}</p>
+                <p className="text-2xl font-bold text-white">{bookingsData?.summary?.checkedOut ?? 0}</p>
               </div>
               <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <FaMoneyBillWave className="w-4 h-4 text-amber-400" />
                   <span className="text-xs text-amber-400 font-medium">Total Revenue</span>
                 </div>
-                <p className="text-xl font-bold text-white">₹{bookings.reduce((sum: number, b: any) => sum + (b.totalAmount || 0), 0).toLocaleString()}</p>
+                <p className="text-xl font-bold text-white">₹{(bookingsData?.summary?.totalRevenue ?? 0).toLocaleString()}</p>
               </div>
             </div>
 

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import moment from 'moment'
-import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaClock, FaFilter, FaList, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import { FaHome, FaEdit, FaTrash, FaPlus, FaCalendarAlt, FaClock, FaFilter, FaList, FaChevronLeft, FaChevronRight, FaDoorOpen, FaCheckCircle, FaMoneyBillWave } from 'react-icons/fa'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
@@ -42,10 +42,8 @@ export default function RoomsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
-  // Default date filter should be "today"
   const [filterCheckIn, setFilterCheckIn] = useState(() => getDefaultAvailabilityWindow().checkIn)
   const [filterCheckOut, setFilterCheckOut] = useState(() => getDefaultAvailabilityWindow().checkOut)
-  // Always show today's availability by default (no extra "Check Availability" click)
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(true)
   const [showDateFilter, setShowDateFilter] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{
@@ -56,7 +54,6 @@ export default function RoomsPage() {
     roomId: null,
   })
 
-  // Calendar view state
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [calendarStartDate, setCalendarStartDate] = useState(() => {
     return moment().startOf('day')
@@ -70,41 +67,34 @@ export default function RoomsPage() {
     }
   }, [])
 
-  // Calculate end date for the 7-day view
-  const calendarEndDate = moment(calendarStartDate).add(8, 'days') // +8 days to cover slightly more than the week to be safe with timezone/overlap
+  const calendarEndDate = moment(calendarStartDate).add(8, 'days')
 
-  // Fetch bookings for calendar view (include ONLINE so grid shows correct Free/Booked for all sources)
   const { data: bookingsResponse } = useQuery({
     queryKey: ['bookings-calendar', calendarStartDate.toISOString()],
     queryFn: () => {
       const from = calendarStartDate.toISOString()
       const to = calendarEndDate.toISOString()
-      // Use efficient date range filter backend instead of fetching all
       return api.get(`/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&forCalendar=1&limit=1000`)
     },
     staleTime: 0,
   })
-  // Handle both { data: [...], pagination } and direct array from API
+
   const bookings = Array.isArray(bookingsResponse?.data)
     ? bookingsResponse.data
     : Array.isArray(bookingsResponse)
       ? bookingsResponse
       : []
 
-  // Generate 7 days for calendar
   const calendarDays = Array.from({ length: 7 }, (_, i) => {
     return moment(calendarStartDate).add(i, 'days')
   })
 
-  // In calendar: show "Checked In" only on today's column, not future days.
   const getBookingDisplayStatusForDate = (booking: any, date: any) => {
     if (!booking) return null
     if (booking.status !== 'CHECKED_IN') return booking.status
-
     return moment(date).isSame(moment(), 'day') ? 'CHECKED_IN' : 'CONFIRMED'
   }
 
-  // Check if a room is booked on a specific date
   const getRoomBookingForDate = (roomId: string, date: any) => {
     const dateStart = moment(date).startOf('day')
     const dateEnd = moment(date).endOf('day')
@@ -119,7 +109,6 @@ export default function RoomsPage() {
     })
   }
 
-  // Navigate calendar
   const navigateCalendar = (direction: 'prev' | 'next') => {
     setCalendarStartDate(prev => {
       return moment(prev).add(direction === 'next' ? 7 : -7, 'days')
@@ -130,13 +119,11 @@ export default function RoomsPage() {
     setCalendarStartDate(moment().startOf('day'))
   }
 
-  // Check if user can manage rooms (ADMIN or SUPER_ADMIN only)
   const canManageRooms = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN'
 
   const queryClient = useQueryClient()
 
-  // Fetch rooms - refetch on mount, window focus (so list updates after checkout in another tab), and when filters change
-  const { data: rooms, isLoading, refetch } = useQuery({
+  const { data: rooms, isLoading } = useQuery({
     queryKey: ['rooms', debouncedSearch, filterCheckIn, filterCheckOut, isCheckingAvailability],
     queryFn: () => {
       const params = new URLSearchParams()
@@ -151,22 +138,18 @@ export default function RoomsPage() {
       return api.get(`/rooms?${params.toString()}`)
     },
     staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true, // Refetch when user returns to tab so list updates after checkout elsewhere
   })
 
-  // Extract rooms array from response (handles both /rooms and /rooms/available responses)
   const roomsData = rooms?.rooms || rooms || []
 
   const handleClearFilter = () => {
-    const { checkIn, checkOut } = getDefaultAvailabilityWindow()
-    setFilterCheckIn(checkIn)
-    setFilterCheckOut(checkOut)
+    const defaultWindow = getDefaultAvailabilityWindow()
+    setFilterCheckIn(defaultWindow.checkIn)
+    setFilterCheckOut(defaultWindow.checkOut)
     setIsCheckingAvailability(true)
     setShowDateFilter(false)
   }
 
-  // Filter rooms client-side if needed (for additional filtering)
   const filteredRooms = roomsData?.filter((room: any) => {
     if (!debouncedSearch) return true
     const search = debouncedSearch.toLowerCase()
@@ -177,7 +160,6 @@ export default function RoomsPage() {
     )
   }) || []
 
-  // Group rooms by category (roomType) – only categories that have rooms
   const categoryOrder = ['STANDARD', 'SUITE', 'SUITE_PLUS']
   const roomsByCategory = (() => {
     const map: Record<string, any[]> = {}
@@ -198,10 +180,8 @@ export default function RoomsPage() {
     return keys.map((key) => ({ category: key, rooms: map[key] }))
   })()
 
-  // Get unique floors for filter
   const uniqueFloors = Array.from(new Set(filteredRooms.map((r: any) => r.floor))).sort((a: any, b: any) => a - b)
 
-  // Calendar shows the SAME rooms as the list (optionally by floor)
   const calendarRooms = calendarFloorFilter === 'all'
     ? filteredRooms
     : filteredRooms.filter((r: any) => r.floor === parseInt(calendarFloorFilter))
@@ -228,7 +208,6 @@ export default function RoomsPage() {
     }
   }
 
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -237,14 +216,12 @@ export default function RoomsPage() {
     )
   }
 
-    return (
+  return (
     <>
       <div className="glow-sky top-20 right-20"></div>
       <div className="glow-emerald bottom-20 left-20"></div>
       <div className="w-full px-2 lg:px-6 py-2 md:py-4 relative z-10">
-        {/* Header: Search/Filter on left, Add Room on right */}
         <div className="flex flex-wrap items-start justify-between gap-3 md:gap-4 mb-3 md:mb-4">
-          {/* Left: Search and Date Filter Toggle */}
           <div className="flex flex-wrap items-center gap-3">
             <SearchInput
               placeholder="Search rooms..."
@@ -254,13 +231,14 @@ export default function RoomsPage() {
             />
             <button
               onClick={() => setShowDateFilter(!showDateFilter)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${isCheckingAvailability
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+                isCheckingAvailability
                   ? 'bg-sky-600/20 border-sky-500 text-sky-400'
                   : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-slate-600'
-                }`}
+              }`}
             >
               <FaFilter className="w-3 h-3" />
-              <span className="text-sm">Date & Time Filter</span>
+              <span className="text-sm">Filter</span>
               {isCheckingAvailability && (
                 <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded">
                   {filteredRooms.length}
@@ -272,39 +250,39 @@ export default function RoomsPage() {
                 onClick={handleClearFilter}
                 className="px-3 py-1.5 bg-red-500/20 text-red-400 text-xs font-medium rounded-lg hover:bg-red-500/30 transition-colors border border-red-500/30"
               >
-                Clear Filter
+                Clear
               </button>
             )}
 
-            {/* View Mode Toggle */}
             <div className="flex items-center bg-slate-800/60 rounded-lg border border-white/5 p-0.5">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
               >
                 <FaList className="w-3 h-3" />
                 List
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'calendar' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'calendar' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
               >
                 <FaCalendarAlt className="w-3 h-3" />
-                Calendar
+                Grid
               </button>
             </div>
           </div>
 
-          {/* Right: Add Room button */}
           {canManageRooms && (
             <button
               onClick={() => {
                 setEditingRoom(null)
                 setShowModal(true)
               }}
-              className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors shadow-lg shadow-sky-900/20"
             >
               <FaPlus className="w-3 h-3" />
               <span>Add Room</span>
@@ -312,26 +290,22 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {/* Date & Time Filter Panel */}
         {showDateFilter && (
-          <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-white/10">
+          <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-white/10 backdrop-blur-md">
             <div className="flex flex-wrap items-end gap-4">
-              {/* Single Date & Time */}
               <div className="flex-1 min-w-[240px]">
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">
                   <FaCalendarAlt className="inline w-3 h-3 mr-1" />
-                  Date & Time
+                  Availability Check
                 </label>
                 <input
                   type="datetime-local"
                   value={filterCheckIn}
                   min={getStartOfTodayLocal()}
                   onChange={(e) => {
-                    // Prevent selecting past dates (before today)
                     const min = getStartOfTodayLocal()
                     const nextValue = e.target.value && e.target.value < min ? min : e.target.value
                     setFilterCheckIn(nextValue)
-                    // Always auto-set checkout to +24h (hidden)
                     if (nextValue) {
                       setFilterCheckOut(getCheckOutPlus24h(nextValue))
                     } else {
@@ -341,411 +315,158 @@ export default function RoomsPage() {
                   }}
                   className="w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">* Availability by check-in / check-out dates</p>
               </div>
             </div>
-
-            {/* Show selected filter info */}
-            {isCheckingAvailability && filterCheckIn && filterCheckOut && (
-              <div className="mt-3 pt-3 border-t border-white/5">
-                <p className="text-xs text-slate-400">
-                  Showing rooms available from{' '}
-                  <span className="text-sky-400 font-medium">
-                    {moment(filterCheckIn).format('DD MMM, YYYY [at] hh:mm A')}
-                  </span>
-                  {' to '}
-                  <span className="text-sky-400 font-medium">
-                    {moment(filterCheckOut).format('DD MMM, YYYY [at] hh:mm A')}
-                  </span>
-                </p>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Calendar View - same rooms as list, more interesting UI */}
         {viewMode === 'calendar' && (
           <div className="rounded-2xl border border-white/10 overflow-hidden mb-4 bg-gradient-to-b from-slate-800/80 to-slate-900/80 shadow-xl">
             {calendarRooms.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-4">
                 <FaCalendarAlt className="w-14 h-14 text-slate-500 mb-4" />
-                <p className="text-base font-semibold text-slate-300 mb-1">No rooms to show</p>
-                <p className="text-sm text-slate-500">Same rooms as the list. Add or adjust filters to see rooms here.</p>
+                <p className="text-base font-semibold text-slate-300 mb-1">No rooms</p>
               </div>
             ) : (
-              <>
-                {/* Calendar Header */}
-                <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 bg-slate-900/60 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 rounded-xl bg-slate-800/80 p-1 border border-white/10">
-                      <button
-                        onClick={() => navigateCalendar('prev')}
-                        className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
-                      >
-                        <FaChevronLeft className="w-4 h-4" />
-                      </button>
-                      <h3 className="text-base font-bold text-white min-w-[120px] text-center">
-                        {calendarStartDate.format('MMM YYYY')}
-                      </h3>
-                      <button
-                        onClick={() => navigateCalendar('next')}
-                        className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-all"
-                      >
-                        <FaChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <button
-                      onClick={goToToday}
-                      className="px-3 py-2 text-xs font-semibold text-sky-300 bg-sky-500/20 hover:bg-sky-500/30 rounded-xl border border-sky-500/40 transition-all"
-                    >
-                      Today
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-white/5">
-                      {calendarRooms.length} room{calendarRooms.length !== 1 ? 's' : ''}
-                    </span>
-                    <select
-                      value={calendarFloorFilter}
-                      onChange={(e) => setCalendarFloorFilter(e.target.value)}
-                      className="px-3 py-2 text-xs bg-slate-800 border border-slate-600 rounded-xl text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 outline-none"
-                    >
-                      <option value="all">All Floors</option>
-                      {uniqueFloors.map((floor: any) => (
-                        <option key={floor} value={floor}>Floor {floor}</option>
+              <div className="overflow-x-auto sidebar-scrollbar">
+                <table className="w-full min-w-[800px] border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900/40">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-36 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">Room</th>
+                      {calendarDays.map((date, i) => (
+                        <th key={i} className={`px-2 py-3 text-center min-w-[110px] border-r border-white/5 ${date.isSame(moment(), 'day') ? 'bg-sky-500/15' : ''}`}>
+                          <div className="text-[10px] uppercase text-slate-500">{date.format('ddd')}</div>
+                          <div className="text-lg font-bold text-white">{date.date()}</div>
+                          <div className="text-[10px] text-slate-500">{date.format('MMM')}</div>
+                        </th>
                       ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Calendar Grid */}
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[800px]">
-                    <thead>
-                      <tr className="bg-slate-900/40">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 w-36 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">Room</th>
-                        {calendarDays.map((date, i) => (
-                            <th key={i} className={`px-2 py-3 text-center min-w-[110px] border-r border-white/5 last:border-r-0 ${date.isSame(moment(), 'day') ? 'bg-sky-500/15 ring-inset ring-1 ring-sky-500/30' : ''}`}>
-                              <div className={`text-[10px] uppercase tracking-wider font-medium ${date.isSame(moment(), 'day') ? 'text-sky-400' : 'text-slate-500'}`}>
-                                {date.format('ddd')}
-                              </div>
-                              <div className={`text-lg font-bold mt-0.5 ${date.isSame(moment(), 'day') ? 'text-sky-300' : 'text-slate-300'}`}>
-                                {date.date()}
-                              </div>
-                              <div className={`text-[10px] ${date.isSame(moment(), 'day') ? 'text-sky-400/80' : 'text-slate-500'}`}>
-                                {date.format('MMM')}
-                              </div>
-                            </th>
-                        ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calendarRooms.map((room: any) => (
+                      <tr key={room.id} className="border-t border-white/5 hover:bg-slate-700/10">
+                        <td className="px-3 py-2 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">
+                          <p className="text-sm font-bold text-white mb-0.5">{room.roomNumber}</p>
+                          <p className="text-[10px] text-slate-500">{room.roomType}</p>
+                        </td>
+                        {calendarDays.map((date, i) => {
+                          const booking = getRoomBookingForDate(room.id, date)
+                          const displayStatus = booking ? getBookingDisplayStatusForDate(booking, date) : null
+                          return (
+                            <td key={i} className="px-1 py-1 border-r border-white/5">
+                              {booking ? (
+                                <div className={`px-1 py-2 rounded text-center text-[10px] font-bold ${
+                                  displayStatus === 'CHECKED_IN' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30' :
+                                  'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                }`}>
+                                  {booking.guest?.name?.split(' ')[0] || 'Booked'}
+                                </div>
+                              ) : (
+                                <div className="py-2 text-center text-[10px] text-slate-600">Free</div>
+                              )}
+                            </td>
+                          )
+                        })}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {calendarRooms.map((room: any) => (
-                        <tr key={room.id} className="border-t border-white/5 hover:bg-slate-700/10 transition-colors">
-                          <td className="px-3 py-2.5 sticky left-0 bg-slate-800/95 z-10 border-r border-white/5">
-                            <div className={`inline-flex items-center gap-2.5 px-3 py-2 rounded-xl border-2 w-full ${room.status === 'AVAILABLE' ? 'bg-emerald-500/10 border-emerald-500/40' :
-                                room.status === 'BOOKED' ? 'bg-red-500/10 border-red-500/40' :
-                                  'bg-amber-500/10 border-amber-500/40'
-                              }`}>
-                              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                                  room.status === 'BOOKED' ? 'bg-red-400' :
-                                    'bg-amber-400'
-                                }`} />
-                              <div className="min-w-0">
-                                <p className="text-sm font-bold text-white">{room.roomNumber}</p>
-                                <p className="text-[10px] text-slate-400">{room.roomType} • F{room.floor} • ₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
-                                {room.status === 'MAINTENANCE' && room.maintenanceReason && (
-                                  <p className="text-[9px] text-amber-300/90 mt-0.5 truncate" title={room.maintenanceReason}>{room.maintenanceReason}</p>
-                                )}
-                                {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
-                                  <div className="text-[9px] text-red-300/90 mt-0.5 space-y-0.5">
-                                    {room.checkInAt && (
-                                      <p title="Check-in time">In: {moment(room.checkInAt).format('DD MMM, hh:mm A')}</p>
-                                    )}
-                                    {room.checkOutAt && (
-                                      <p title="Check-out time">Out: {moment(room.checkOutAt).format('DD MMM, hh:mm A')}</p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          {calendarDays.map((date: any, i) => {
-                            const booking = getRoomBookingForDate(room.id, date)
-                            const isToday = date.isSame(moment(), 'day')
-                            const displayStatus = booking ? getBookingDisplayStatusForDate(booking, date) : null
-                            return (
-                              <td key={i} className={`px-1.5 py-1.5 align-top border-r border-white/5 last:border-r-0 ${isToday ? 'bg-sky-500/8' : ''}`}>
-                                {booking ? (
-                                  <div
-                                    className={`px-2 py-2 rounded-lg text-center cursor-pointer transition-all hover:scale-[1.03] shadow-sm ${displayStatus === 'CHECKED_IN' ? 'bg-sky-500/25 border border-sky-500/50 shadow-sky-500/10' :
-                                        displayStatus === 'CONFIRMED' ? 'bg-emerald-500/25 border border-emerald-500/50 shadow-emerald-500/10' :
-                                          'bg-amber-500/25 border border-amber-500/50 shadow-amber-500/10'
-                                      }`}
-                                    title={`${booking.guest?.name || 'Guest'} - ${displayStatus}${booking.source === 'ONLINE' ? ' (Online)' : ' (Staff)'}`}
-                                  >
-                                    <p className={`text-[11px] font-semibold truncate ${displayStatus === 'CHECKED_IN' ? 'text-sky-200' :
-                                        displayStatus === 'CONFIRMED' ? 'text-emerald-200' :
-                                          'text-amber-200'
-                                      }`}>
-                                      {booking.guest?.name?.split(' ')[0] || 'Guest'}
-                                    </p>
-                                    <p className={`text-[9px] font-medium mt-0.5 ${displayStatus === 'CHECKED_IN' ? 'text-sky-400' :
-                                        displayStatus === 'CONFIRMED' ? 'text-emerald-400' :
-                                          'text-amber-400'
-                                      }`}>
-                                      {displayStatus === 'CHECKED_IN' ? 'Checked In' : displayStatus === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
-                                    </p>
-                                    <p className={`text-[8px] mt-0.5 font-medium ${booking.source === 'ONLINE' ? 'text-violet-300/90' : 'text-slate-400/90'
-                                      }`}>
-                                      {booking.source === 'ONLINE' ? 'Online' : 'Staff'}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="px-2 py-2 rounded-xl text-center bg-slate-700/15 border border-slate-600/30">
-                                    <p className="text-[10px] font-medium text-slate-500">Free</p>
-                                  </div>
-                                )}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Legend */}
-                <div className="px-5 py-3 bg-slate-900/40 border-t border-white/10 flex flex-wrap items-center gap-6">
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded-lg bg-emerald-500/30 border border-emerald-500/50 shadow-sm" />
-                    <span className="text-slate-400 font-medium">Confirmed</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded-lg bg-sky-500/30 border border-sky-500/50 shadow-sm" />
-                    <span className="text-slate-400 font-medium">Checked In</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded-lg bg-amber-500/30 border border-amber-500/50 shadow-sm" />
-                    <span className="text-slate-400 font-medium">Pending</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded-lg bg-slate-700/40 border border-slate-600/50" />
-                    <span className="text-slate-400 font-medium">Free</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs ml-2 pl-2 border-l border-white/10">
-                    <span className="text-violet-400 font-medium">Online</span>
-                    <span className="text-slate-500">= public site</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-slate-400 font-medium">Staff</span>
-                    <span className="text-slate-500">= staff booking</span>
-                  </div>
-                </div>
-              </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
 
-        {/* List View – category-wise (only categories that have rooms) */}
-        {viewMode === 'list' && roomsByCategory.length > 0 ? (
-          <div className="flex flex-col gap-6">
-            {roomsByCategory.map(({ category, rooms: categoryRooms }) => (
-              <div key={category} className="rounded-xl border border-white/5 bg-slate-900/40 overflow-hidden">
-                {/* Category header */}
-                <div className="px-4 py-3 bg-slate-800/60 border-b border-white/5">
-                  <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
-                    {category.replace(/_/g, ' ')}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {categoryRooms.length} room{categoryRooms.length !== 1 ? 's' : ''}
-                  </p>
-                             {/* Room list (Responsive: Cards on mobile, Chips on desktop) */}
-                <div className="p-4">
-                  {/* Desktop Chips */}
-                  <div className="hidden sm:flex flex-wrap gap-3">
-                    {categoryRooms.map((room: any) => (
-                      <div
-                        key={room.id}
-                        className={`inline-flex items-center px-4 py-2.5 rounded-xl border-2 cursor-pointer transition-all hover:scale-[1.02] ${room.status === 'AVAILABLE'
-                            ? 'bg-emerald-500/20 border-emerald-500 hover:bg-emerald-500/30'
-                            : room.status === 'BOOKED'
-                              ? 'bg-red-500/20 border-red-500 hover:bg-red-500/30'
-                              : 'bg-yellow-500/20 border-yellow-500 hover:bg-yellow-500/30'
-                          }`}
-                        onClick={() => {
-                          if (canManageRooms) {
-                            setEditingRoom(room)
-                            setShowModal(true)
-                          }
-                        }}
-                      >
-                        <span className={`text-sm font-bold ${room.status === 'AVAILABLE' ? 'text-emerald-300' :
-                            room.status === 'BOOKED' ? 'text-red-300' :
-                              'text-yellow-300'
-                          }`}>{room.roomNumber}</span>
-                        <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                            room.status === 'BOOKED' ? 'bg-red-400' :
-                              'bg-yellow-400'
-                          }`} />
-                        <span className="text-sm font-semibold text-white">₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</span>
-                        <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                            room.status === 'BOOKED' ? 'bg-red-400' :
-                              'bg-yellow-400'
-                          }`} />
-                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${room.status === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-400' :
-                            room.status === 'BOOKED' ? 'bg-red-500/20 text-red-400' :
-                              'bg-yellow-500/20 text-yellow-400'
-                          }`}>{room.status}</span>
-                        {room.status === 'MAINTENANCE' && room.maintenanceReason && (
-                          <>
-                            <span className="w-px h-5 mx-3 bg-yellow-400" />
-                            <span className="text-[10px] text-amber-200/90 max-w-[120px] truncate" title={room.maintenanceReason}>
-                              {room.maintenanceReason}
-                            </span>
-                          </>
-                        )}
-                        {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
-                          <>
-                            {room.checkInAt && (
-                              <>
-                                <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
-                                <span className="text-[10px] text-slate-400" title="Check-in time">
-                                  In: {moment(room.checkInAt).format('DD MMM, hh:mm A')}
-                                </span>
-                              </>
-                            )}
-                            {room.checkOutAt && (
-                              <>
-                                <span className={`w-px h-5 mx-3 ${room.status === 'BOOKED' ? 'bg-red-400' : 'bg-yellow-400'}`} />
-                                <span className="text-[10px] text-slate-400" title="Check-out time">
-                                  Out: {moment(room.checkOutAt).format('DD MMM, hh:mm A')}
-                                </span>
-                              </>
-                            )}
-                          </>
-                        )}
-                        {canManageRooms && (
-                          <>
-                            <span className={`w-px h-5 mx-3 ${room.status === 'AVAILABLE' ? 'bg-emerald-400' :
-                                room.status === 'BOOKED' ? 'bg-red-400' :
-                                  'bg-yellow-400'
-                              }`} />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(room.id)
-                              }}
-                              className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/30"
-                              title="Delete"
-                            >
-                              <FaTrash className="w-3 h-3" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ))}
+        {viewMode === 'list' && (
+          <div className="space-y-8">
+            {roomsByCategory.length > 0 ? (
+              roomsByCategory.map(({ category, rooms: categoryRooms }) => (
+                <div key={category} className="space-y-6">
+                  <div className="floor-layer-header">
+                    <h3 className="flex items-center gap-4">
+                      <span>{category.replace(/_/g, ' ')}</span>
+                      <span className="text-sm font-medium text-sky-400 opacity-60 uppercase tracking-widest leading-none">
+                        {categoryRooms.length} Spaces
+                      </span>
+                    </h3>
                   </div>
-
-                  {/* Mobile Cards */}
-                  <div className="sm:hidden grid grid-cols-1 gap-4">
-                    {categoryRooms.map((room: any) => (
-                      <div
-                        key={room.id}
-                        className={`rounded-xl border-2 p-4 cursor-pointer transition-all active:scale-[0.98] ${room.status === 'AVAILABLE'
-                            ? 'bg-emerald-500/5 border-emerald-500/50 hover:bg-emerald-500/10'
-                            : room.status === 'BOOKED'
-                              ? 'bg-red-500/5 border-red-500/50 hover:bg-red-500/10'
-                              : 'bg-yellow-500/5 border-yellow-500/50 hover:bg-yellow-500/10'
-                          }`}
-                        onClick={() => {
-                          if (canManageRooms) {
-                            setEditingRoom(room)
-                            setShowModal(true)
-                          }
-                        }}
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <p className="text-lg font-bold text-white">Room {room.roomNumber}</p>
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ${room.status === 'AVAILABLE' ? 'text-emerald-400' :
-                                room.status === 'BOOKED' ? 'text-red-400' :
-                                  'text-yellow-400'
-                              }`}>{room.status}</span>
+                  <div className="perspective-1000 pb-12">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-12 gap-y-16">
+                      {categoryRooms.map((room: any) => (
+                        <div
+                          key={room.id}
+                          className="relative group preserve-3d isometric-card cursor-pointer h-44"
+                          onClick={() => {
+                            if (canManageRooms) {
+                              setEditingRoom(room)
+                              setShowModal(true)
+                            }
+                          }}
+                        >
+                          <div className="room-slab-side-right" />
+                          <div className="room-slab-side-bottom" />
+                          <div className={`room-slab-top p-5 flex flex-col justify-between transition-all duration-500 ${
+                            room.status === 'AVAILABLE' ? 'glow-available' :
+                            room.status === 'BOOKED' ? 'glow-booked' :
+                            'shadow-amber-500/10'
+                          }`}>
+                            <div className="flex justify-between items-start">
+                              <div className="bg-slate-900/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
+                                <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest block mb-0.5">Room</span>
+                                <p className="text-2xl font-black text-white leading-none">{room.roomNumber}</p>
+                              </div>
+                              <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter border shadow-sm ${
+                                room.status === 'AVAILABLE' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' :
+                                room.status === 'BOOKED' ? 'bg-red-500/20 border-red-500/50 text-red-400' :
+                                'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                              }`}>
+                                {room.status}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-end justify-between mt-auto">
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">{room.roomType}</p>
+                                <p className="text-2xl font-black text-white leading-none">₹{room.basePrice?.toLocaleString()}</p>
+                              </div>
+                              {canManageRooms && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setEditingRoom(room)
+                                      setShowModal(true)
+                                    }}
+                                    className="w-8 h-8 flex items-center justify-center bg-sky-600/80 text-white hover:bg-sky-500 rounded-full border border-white/10 transition-all hover:scale-110"
+                                  >
+                                    <FaEdit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleDelete(room.id)
+                                    }}
+                                    className="w-8 h-8 flex items-center justify-center bg-red-600/80 text-white hover:bg-red-500 rounded-full border border-white/10 transition-all hover:scale-110"
+                                  >
+                                    <FaTrash className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-xl font-bold text-white">₹{room.basePrice?.toLocaleString?.() ?? room.basePrice}</p>
                         </div>
-
-                        {(room.status === 'MAINTENANCE' && room.maintenanceReason) && (
-                          <div className="mb-3 p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                            <p className="text-[10px] text-yellow-300 font-medium">Maintenance Reason:</p>
-                            <p className="text-xs text-slate-300">{room.maintenanceReason}</p>
-                          </div>
-                        )}
-
-                        {room.status === 'BOOKED' && (room.checkInAt || room.checkOutAt) && (
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div className="p-2 bg-slate-900/40 rounded-lg border border-white/5">
-                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Check In</p>
-                              <p className="text-[10px] text-slate-300 font-medium">
-                                {room.checkInAt ? moment(room.checkInAt).format('DD MMM, hh:mm A') : 'N/A'}
-                              </p>
-                            </div>
-                            <div className="p-2 bg-slate-900/40 rounded-lg border border-white/5">
-                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Check Out</p>
-                              <p className="text-[10px] text-slate-300 font-medium">
-                                {room.checkOutAt ? moment(room.checkOutAt).format('DD MMM, hh:mm A') : 'N/A'}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {canManageRooms && (
-                          <div className="flex gap-2 justify-end pt-2 border-t border-white/5 mt-2">
-                             <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(room.id)
-                              }}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold uppercase transition-all"
-                            >
-                              <FaTrash className="w-3 h-3" />
-                              Delete Room
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
-     </div>
+              ))
+            ) : (
+              <div className="card text-center py-20 bg-slate-900/40 border border-white/5 rounded-2xl">
+                <FaHome className="text-5xl mx-auto mb-4 text-slate-700" />
+                <p className="text-xl font-bold text-slate-400">No rooms found matching your search</p>
               </div>
-            ))}
+            )}
           </div>
-        ) : viewMode === 'list' ? (
-          <div className="card text-center py-12">
-            <div className="flex flex-col items-center">
-              <FaHome className="text-4xl mb-3 text-slate-500" />
-              <p className="text-base font-semibold text-slate-300 mb-1.5">No rooms found</p>
-              {canManageRooms ? (
-                <>
-                  <p className="text-xs text-slate-500 mb-4">Click "Add Room" to create your first room</p>
-                  <button
-                    onClick={() => {
-                      setEditingRoom(null)
-                      setShowModal(true)
-                    }}
-                    className="btn-primary text-sm px-4 py-2"
-                  >
-                    <span>Create Your First Room</span>
-                  </button>
-                </>
-              ) : (
-                <p className="text-xs text-slate-500">No rooms available at the moment</p>
-              )}
-            </div>
-          </div>
-        ) : null}
+        )}
 
         {showModal && canManageRooms && (
           <RoomModal
@@ -760,7 +481,7 @@ export default function RoomsPage() {
         <ConfirmationModal
           show={confirmModal.show}
           title="Delete Room"
-          message="Are you sure you want to delete this room? This action cannot be undone."
+          message="Are you sure you want to delete this room?"
           action="Delete"
           type="delete"
           onConfirm={confirmDelete}
@@ -778,7 +499,7 @@ const MAINTENANCE_PRESETS = ['Electronics', 'AC', 'Fans', 'Carpenter', 'Plumbing
 function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
   const [formData, setFormData] = useState({
     roomNumber: room?.roomNumber || '',
-    roomType: room?.roomType || 'SINGLE',
+    roomType: room?.roomType || 'STANDARD',
     floor: room?.floor || '',
     basePrice: room?.basePrice || '',
     capacity: room?.capacity || '',
@@ -793,11 +514,9 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
       onClose()
-      toast.success('Room created successfully')
+      toast.success('Room created')
     },
-    onError: () => {
-      toast.error('Failed to create room')
-    },
+    onError: () => toast.error('Creation failed'),
   })
 
   const updateMutation = useMutation({
@@ -805,182 +524,75 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
       onClose()
-      toast.success('Room updated successfully')
+      toast.success('Room updated')
     },
-    onError: () => {
-      toast.error('Failed to update room')
-    },
+    onError: () => toast.error('Update failed'),
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const payload = { ...formData }
-    if (formData.status !== 'MAINTENANCE') payload.maintenanceReason = ''
-    if (room) {
-      updateMutation.mutate(payload)
-    } else {
-      createMutation.mutate(payload)
-    }
-  }
-
-  const addMaintenancePreset = (preset: string) => {
-    const current = (formData.maintenanceReason || '').trim()
-    const parts = current ? current.split(',').map((s: string) => s.trim()).filter(Boolean) : []
-    if (parts.includes(preset)) return
-    setFormData((prev) => ({
-      ...prev,
-      maintenanceReason: [...parts, preset].join(', '),
-    }))
+    if (room) updateMutation.mutate(formData)
+    else createMutation.mutate(formData)
   }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="p-4 relative z-10">
-          <div className="card-header">
-            <h2 className="text-2xl font-bold text-slate-100 flex items-center">
-              {room ? <FaEdit className="mr-2 w-6 h-6" /> : <FaPlus className="mr-2 w-6 h-6" />}
-              {room ? 'Edit Room' : 'Create New Room'}
-            </h2>
-            <p className="text-sm text-slate-400 mt-1">
-              {room ? 'Update room information' : 'Add a new room to the system'}
-            </p>
+      <div className="modal-content max-w-2xl bg-slate-900 border border-white/10 rounded-2xl overflow-hidden p-6" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
+          {room ? <FaEdit className="text-sky-500" /> : <FaPlus className="text-sky-500" />}
+          {room ? `Edit Room ${room.roomNumber}` : 'Add New Room'}
+        </h2>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6">
+          <div className="space-y-1.5 text-left">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Room Number</label>
+            <input
+              type="text"
+              required
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-sky-500 transition-colors"
+              value={formData.roomNumber}
+              onChange={e => setFormData({ ...formData, roomNumber: e.target.value })}
+            />
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="form-label">Room Number *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.roomNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, roomNumber: e.target.value })
-                  }
-                  className="form-input"
-                  placeholder="e.g., 101, 102"
-                />
-              </div>
-              <div>
-                <label className="form-label">Room Type *</label>
-                <select
-                  value={formData.roomType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, roomType: e.target.value })
-                  }
-                  className="form-select"
-                >
-                  <option value="SINGLE">Single</option>
-                  <option value="DOUBLE">Double</option>
-                  <option value="DELUXE">Deluxe</option>
-                  <option value="STANDARD">Standard</option>
-                  <option value="SUITE">Suite</option>
-                  <option value="SUITE_PLUS">Suite+</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Floor *</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={formData.floor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, floor: e.target.value })
-                  }
-                  className="form-input"
-                  placeholder="Floor number"
-                />
-              </div>
-              <div>
-                <label className="form-label">Base Price (₹) *</label>
-                <input
-                  type="number"
-                  required
-                  step="0.01"
-                  min="0"
-                  value={formData.basePrice}
-                  onChange={(e) =>
-                    setFormData({ ...formData, basePrice: e.target.value })
-                  }
-                  className="form-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="form-label">Capacity *</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={formData.capacity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, capacity: e.target.value })
-                  }
-                  className="form-input"
-                  placeholder="Number of guests"
-                />
-              </div>
-              <div>
-                <label className="form-label">Status *</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value, ...(e.target.value !== 'MAINTENANCE' ? { maintenanceReason: '' } : {}) })
-                  }
-                  className="form-select"
-                >
-                  <option value="AVAILABLE">Available</option>
-                  <option value="BOOKED">Booked</option>
-                  <option value="MAINTENANCE">Maintenance</option>
-                </select>
-              </div>
-            </div>
-
-            {formData.status === 'MAINTENANCE' && (
-              <div>
-                <label className="form-label">Repair / work type (optional)</label>
-                <p className="text-xs text-slate-500 mb-2">What is under repair? e.g. Electronics, AC, Fans, Carpenter</p>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {MAINTENANCE_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => addMaintenancePreset(preset)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-colors"
-                    >
-                      + {preset}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="text"
-                  value={formData.maintenanceReason}
-                  onChange={(e) => setFormData({ ...formData, maintenanceReason: e.target.value })}
-                  className="form-input"
-                  placeholder="e.g. AC, Fans, Carpenter, Electronics"
-                />
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-2 pt-3 border-t border-white/5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn-secondary text-sm px-4 py-2"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary text-sm px-4 py-2"
-              >
-                <span>{room ? 'Update Room' : 'Create Room'}</span>
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="space-y-1.5 text-left">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Category</label>
+            <select
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-sky-500 transition-colors"
+              value={formData.roomType}
+              onChange={e => setFormData({ ...formData, roomType: e.target.value })}
+            >
+              <option value="STANDARD">Standard</option>
+              <option value="SUITE">Suite</option>
+              <option value="SUITE_PLUS">Suite+</option>
+            </select>
+          </div>
+          <div className="space-y-1.5 text-left">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Floor</label>
+            <input
+              type="number"
+              required
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-sky-500 transition-colors"
+              value={formData.floor}
+              onChange={e => setFormData({ ...formData, floor: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1.5 text-left">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Base Price</label>
+            <input
+              type="number"
+              required
+              className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-sky-500 transition-colors"
+              value={formData.basePrice}
+              onChange={e => setFormData({ ...formData, basePrice: e.target.value })}
+            />
+          </div>
+          <div className="col-span-2 flex justify-end gap-3 mt-4">
+            <button type="button" onClick={onClose} className="px-6 py-3 rounded-xl border border-white/10 text-slate-400 font-bold hover:bg-white/5 transition-colors uppercase tracking-widest text-xs">Cancel</button>
+            <button type="submit" className="px-6 py-3 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-500 transition-all uppercase tracking-widest text-xs shadow-lg shadow-sky-900/20">
+              {room ? 'Update Room' : 'Add Room'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
