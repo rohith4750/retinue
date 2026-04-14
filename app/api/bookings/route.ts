@@ -287,6 +287,7 @@ export async function POST(request: NextRequest) {
             idProof: validatedData.guestIdProof,
             idProofType: data.guestIdProofType || "AADHAR",
             guestType: data.guestType || "WALK_IN",
+            email: validatedData.guestEmail || null,
             address: validatedData.guestAddress,
           },
         });
@@ -489,6 +490,7 @@ export async function POST(request: NextRequest) {
       await notifyInternalRoomBooked({
         guestName: result.guest.name,
         guestPhone: result.guest.phone,
+        guestEmail: result.guest.email,
         roomNumber: first.room.roomNumber,
         roomType: first.room.roomType,
         checkIn: first.checkIn,

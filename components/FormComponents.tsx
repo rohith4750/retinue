@@ -4,3 +4,5 @@
 export { FormInput } from './FormInput'
 export { FormSelect } from './FormSelect'
 export { FormTextarea } from './FormTextarea'
+export { DynamicForm } from './DynamicForm'
+export type { FormField, FormFieldOption, FormFieldType } from './DynamicForm'

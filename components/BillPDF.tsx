@@ -392,6 +392,7 @@ export function BillPDF({ bill }: BillPDFProps) {
           <PDFText style={styles.billToTitle}>Bill To</PDFText>
           <PDFText style={[styles.billToText, { fontWeight: 'bold' }]}>{guest.name}</PDFText>
           <PDFText style={styles.billToText}>Phone: {guest.phone}</PDFText>
+          {guest.email && <PDFText style={styles.billToText}>Email: {guest.email}</PDFText>}
           {guest.address && <PDFText style={styles.billToText}>Address: {guest.address}</PDFText>}
         </View>
 

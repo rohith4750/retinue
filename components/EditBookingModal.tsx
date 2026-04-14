@@ -46,6 +46,7 @@ const initialFormData = {
   slotId: '',
   guestName: '',
   guestPhone: '',
+  guestEmail: '',
   guestIdProof: '',
   guestIdProofType: 'AADHAR',
   guestAddress: '',
@@ -107,6 +108,7 @@ export function EditBookingModal({
       roomIds: booking.room?.id ? [booking.room.id] : [],
       guestName: guest.name || '',
       guestPhone: guest.phone || '',
+      guestEmail: guest.email || '',
       guestIdProof: guest.idProof || '',
       guestIdProofType: guest.idProofType || 'AADHAR',
       guestAddress: guest.address || '',
@@ -144,6 +146,7 @@ export function EditBookingModal({
     onSave({
       guestName: formData.guestName,
       guestPhone: formData.guestPhone,
+      guestEmail: formData.guestEmail || undefined,
       guestIdProof: formData.guestIdProof || undefined,
       guestIdProofType: formData.guestIdProofType,
       guestAddress: formData.guestAddress || undefined,
@@ -189,6 +192,15 @@ export function EditBookingModal({
                 onBlur={() => handleBlur('guestPhone')}
                 error={getError('guestPhone')}
                 placeholder="10-digit mobile number"
+              />
+              <FormInput
+                label="Guest Email"
+                type="email"
+                value={formData.guestEmail}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('guestEmail', e.target.value)}
+                onBlur={() => handleBlur('guestEmail')}
+                error={getError('guestEmail')}
+                placeholder="email@example.com"
               />
               <FormSelect label="Guest Type *" value={formData.guestType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('guestType', e.target.value)} options={[{ value: 'WALK_IN', label: 'Walk-in' }, { value: 'CORPORATE', label: 'Corporate' }, { value: 'OTA', label: 'OTA' }, { value: 'GOVERNMENT', label: 'Government' }, { value: 'REGULAR', label: 'Regular Guest' }, { value: 'AGENT', label: 'Travel Agent' }, { value: 'FAMILY', label: 'Family/Friends' }]} />
               <FormSelect label="ID Proof Type *" value={formData.guestIdProofType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { updateField('guestIdProofType', e.target.value); if (formData.guestIdProof) validateIdProof(e.target.value, formData.guestIdProof) }} options={[{ value: 'AADHAR', label: 'Aadhaar Card' }, { value: 'PAN_CARD', label: 'PAN Card' }, { value: 'PASSPORT', label: 'Passport' }, { value: 'DRIVING_LICENSE', label: 'Driving License' }, { value: 'VOTER_ID', label: 'Voter ID' }, { value: 'OTHER', label: 'Other' }]} />

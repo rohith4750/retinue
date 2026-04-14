@@ -496,6 +496,12 @@ export default function BillPage() {
                   <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 uppercase font-bold">Phone</span>
                   {guest.phone}
                 </p>
+                {guest.email && (
+                  <p className="text-sm text-slate-400 flex items-center gap-2">
+                    <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 uppercase font-bold">Email</span>
+                    {guest.email}
+                  </p>
+                )}
                 {guest.idProof && (
                   <p className="text-sm text-slate-400 flex items-center gap-2">
                     <span className="text-[10px] bg-sky-500/10 px-1.5 py-0.5 rounded text-sky-400 uppercase font-bold">{guest.idProofType || 'ID Proof'}</span>

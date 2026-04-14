@@ -127,6 +127,12 @@ export default function BookingDetailPage() {
                   <p className="text-xs text-slate-400 mb-1">Phone</p>
                   <p className="text-sm text-slate-200">{booking.guest.phone}</p>
                 </div>
+                {booking.guest.email && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Email</p>
+                    <p className="text-sm text-slate-200">{booking.guest.email}</p>
+                  </div>
+                )}
                 {booking.guest.address && (
                   <div className="md:col-span-2">
                     <p className="text-xs text-slate-400 mb-1">Address</p>

@@ -80,6 +80,7 @@ export async function PUT(
       roomId,
       guestName,
       guestPhone,
+      guestEmail,
       guestIdProof,
       guestIdProofType,
       guestAddress,
@@ -127,6 +128,14 @@ export async function PUT(
             field: "guest.phone",
             oldValue: currentBooking.guest?.phone,
             newValue: guestPhone,
+          });
+        }
+        if (guestEmail !== undefined && guestEmail !== currentBooking.guest?.email) {
+          guestUpdates.email = guestEmail || null;
+          changes.push({
+            field: "guest.email",
+            oldValue: currentBooking.guest?.email,
+            newValue: guestEmail,
           });
         }
         if (
@@ -717,6 +726,7 @@ export async function PUT(
         bookingReference: updatedBooking.bookingReference ?? updatedBooking.id,
         guestName: updatedBooking.guest?.name ?? "",
         guestPhone: updatedBooking.guest?.phone ?? "",
+        guestEmail: updatedBooking.guest?.email,
         roomNumber: updatedBooking.room?.roomNumber ?? "",
         roomType: updatedBooking.room?.roomType,
         checkIn: updatedBooking.checkIn,

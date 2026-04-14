@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
             idProof: validatedData.guestIdProof,
             idProofType: data.guestIdProofType || "AADHAR",
             guestType: "WALK_IN",
+            email: validatedData.guestEmail || null,
             address: validatedData.guestAddress,
           },
         });
@@ -254,6 +255,7 @@ export async function POST(request: NextRequest) {
       checkOut: result.booking.checkOut,
       bookingReference: result.bookingReference,
       totalAmount: result.booking.totalAmount,
+      guestEmail: result.booking.guest.email,
       source: "ONLINE",
     });
 
