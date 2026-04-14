@@ -121,24 +121,24 @@ export const ListFilterBar: React.FC<ListFilterBarProps> = ({
             {showMonthPicker && (
               <div className="absolute top-full left-0 mt-3 p-5 bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl z-[100] w-72 animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex flex-col gap-4 mb-5">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Select Year</span>
-                    <div className="flex gap-1.5">
-                      {years.map(y => (
-                        <button
-                          key={y}
-                          onClick={() => onYearChange?.(y)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                            selectedYear === y 
-                              ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20 ring-1 ring-sky-400/50' 
-                              : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                          }`}
-                        >
-                          {y}
-                        </button>
-                      ))}
-                    </div>
+                <div className="flex flex-col gap-2.5 px-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Select Year</span>
+                  <div className="flex flex-wrap gap-2">
+                    {years.map(y => (
+                      <button
+                        key={y}
+                        onClick={() => onYearChange?.(y)}
+                        className={`flex-1 min-w-[50px] px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                          selectedYear === y 
+                            ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20 ring-1 ring-sky-400/50' 
+                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        {y}
+                      </button>
+                    ))}
                   </div>
+                </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
