@@ -489,9 +489,20 @@ export default function BillPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-slate-900/40 p-4 rounded-xl">
-              <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Guest</h3>
-              <p className="font-semibold text-slate-200">{guest.name}</p>
-              <p className="text-sm text-slate-400">{guest.phone}</p>
+              <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Guest Details</h3>
+              <p className="font-bold text-slate-100 text-lg mb-1">{guest.name}</p>
+              <div className="space-y-1">
+                <p className="text-sm text-slate-400 flex items-center gap-2">
+                  <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 uppercase font-bold">Phone</span>
+                  {guest.phone}
+                </p>
+                {guest.idProof && (
+                  <p className="text-sm text-slate-400 flex items-center gap-2">
+                    <span className="text-[10px] bg-sky-500/10 px-1.5 py-0.5 rounded text-sky-400 uppercase font-bold">{guest.idProofType || 'ID Proof'}</span>
+                    {guest.idProof}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="bg-slate-900/40 p-4 rounded-xl">
               <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Booking</h3>
