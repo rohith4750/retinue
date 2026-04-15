@@ -54,7 +54,7 @@ export default function Home() {
 
         router.push('/dashboard')
       } catch (error) {
-        router.push('/dashboard')
+        clearAuth(); router.push('/login')
       } finally {
         setIsValidating(false)
       }
