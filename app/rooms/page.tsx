@@ -380,82 +380,83 @@ export default function RoomsPage() {
           <div className="space-y-8">
             {roomsByCategory.length > 0 ? (
               roomsByCategory.map(({ category, rooms: categoryRooms }) => (
-                <div key={category} className="space-y-6">
-                  <div className="floor-layer-header">
-                    <h3 className="flex items-center gap-4">
-                      <span>{category.replace(/_/g, ' ')}</span>
-                      <span className="text-sm font-medium text-sky-400 opacity-60 uppercase tracking-widest leading-none">
-                        {categoryRooms.length} Spaces
-                      </span>
+                <div key={category} className="space-y-6 mb-10">
+                  <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+                    <h3 className="text-2xl font-black text-white tracking-tight uppercase">
+                      {category.replace(/_/g, ' ')}
                     </h3>
+                    <span className="px-3 py-1 rounded-full bg-slate-800 text-xs font-bold text-sky-400 uppercase tracking-wider border border-white/5 shadow-inner">
+                      {categoryRooms.length} {categoryRooms.length === 1 ? 'Room' : 'Rooms'}
+                    </span>
                   </div>
-                  <div className="perspective-1000 pb-12">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-12 gap-y-16">
-                      {categoryRooms.map((room: any) => (
-                        <div
-                          key={room.id}
-                          className="relative group preserve-3d isometric-card cursor-pointer h-44"
-                          onClick={() => {
-                            if (canManageRooms) {
-                              setEditingRoom(room)
-                              setShowModal(true)
-                            }
-                          }}
-                        >
-                          <div className="room-slab-side-right" />
-                          <div className="room-slab-side-bottom" />
-                          <div className={`room-slab-top p-5 flex flex-col justify-between transition-all duration-500 ${
-                            room.status === 'AVAILABLE' ? 'glow-available' :
-                            room.status === 'BOOKED' ? 'glow-booked' :
-                            'shadow-amber-500/10'
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {categoryRooms.map((room: any) => (
+                      <div
+                        key={room.id}
+                        className={`relative group cursor-pointer h-44 rounded-2xl bg-slate-900/60 border backdrop-blur-md overflow-hidden flex flex-col justify-between p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
+                          room.status === 'AVAILABLE' ? 'border-emerald-500/30 hover:border-emerald-500/60 shadow-emerald-500/5' :
+                          room.status === 'BOOKED' ? 'border-red-500/30 hover:border-red-500/60 shadow-red-500/5' :
+                          'border-amber-500/30 hover:border-amber-500/60 shadow-amber-500/5'
+                        }`}
+                        onClick={() => {
+                          if (canManageRooms) {
+                            setEditingRoom(room)
+                            setShowModal(true)
+                          }
+                        }}
+                      >
+                        {/* Status Gradient Background */}
+                        <div className={`absolute inset-0 opacity-10 transition-opacity duration-300 group-hover:opacity-20 ${
+                          room.status === 'AVAILABLE' ? 'bg-gradient-to-br from-emerald-500 to-transparent' :
+                          room.status === 'BOOKED' ? 'bg-gradient-to-br from-red-500 to-transparent' :
+                          'bg-gradient-to-br from-amber-500 to-transparent'
+                        }`} />
+
+                        <div className="relative z-10 flex justify-between items-start">
+                          <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Room</span>
+                            <p className="text-2xl font-black text-white leading-none">{room.roomNumber}</p>
+                          </div>
+                          <div className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm backdrop-blur-md ${
+                            room.status === 'AVAILABLE' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+                            room.status === 'BOOKED' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                            'bg-amber-500/10 border-amber-500/30 text-amber-400'
                           }`}>
-                            <div className="flex justify-between items-start">
-                              <div className="bg-slate-900/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
-                                <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest block mb-0.5">Room</span>
-                                <p className="text-2xl font-black text-white leading-none">{room.roomNumber}</p>
-                              </div>
-                              <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter border shadow-sm ${
-                                room.status === 'AVAILABLE' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' :
-                                room.status === 'BOOKED' ? 'bg-red-500/20 border-red-500/50 text-red-400' :
-                                'bg-amber-500/20 border-amber-500/50 text-amber-400'
-                              }`}>
-                                {room.status}
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-end justify-between mt-auto">
-                              <div className="space-y-1">
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">{room.roomType}</p>
-                                <p className="text-2xl font-black text-white leading-none">₹{room.basePrice?.toLocaleString()}</p>
-                              </div>
-                              {canManageRooms && (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setEditingRoom(room)
-                                      setShowModal(true)
-                                    }}
-                                    className="w-8 h-8 flex items-center justify-center bg-sky-600/80 text-white hover:bg-sky-500 rounded-full border border-white/10 transition-all hover:scale-110"
-                                  >
-                                    <FaEdit className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDelete(room.id)
-                                    }}
-                                    className="w-8 h-8 flex items-center justify-center bg-red-600/80 text-white hover:bg-red-500 rounded-full border border-white/10 transition-all hover:scale-110"
-                                  >
-                                    <FaTrash className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            {room.status}
                           </div>
                         </div>
-                      ))}
-                    </div>
+                        
+                        <div className="relative z-10 flex items-end justify-between mt-auto">
+                          <div className="space-y-1">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">{room.roomType}</p>
+                            <p className="text-xl font-black text-white leading-none">₹{room.basePrice?.toLocaleString()}</p>
+                          </div>
+                          {canManageRooms && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingRoom(room)
+                                  setShowModal(true)
+                                }}
+                                className="w-8 h-8 flex items-center justify-center bg-slate-800 text-sky-400 hover:bg-sky-500 hover:text-white rounded-full border border-sky-500/30 transition-all hover:scale-110 shadow-lg"
+                              >
+                                <FaEdit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(room.id)
+                                }}
+                                className="w-8 h-8 flex items-center justify-center bg-slate-800 text-red-400 hover:bg-red-500 hover:text-white rounded-full border border-red-500/30 transition-all hover:scale-110 shadow-lg"
+                              >
+                                <FaTrash className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))
