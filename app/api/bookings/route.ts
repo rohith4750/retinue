@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get("date");
     const search = searchParams.get("search");
     const source = searchParams.get("source");
+    const roomId = searchParams.get("roomId");
     // Payment status filter (PENDING, PAID, PARTIAL)
     const paymentStatusParam = searchParams.get("paymentStatus");
     const paymentStatus =
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
       ...(status ? { status } : { status: { notIn: ["CANCELLED"] } }),
       ...(paymentStatus ? { paymentStatus } : {}),
       ...(forCalendar ? {} : { source: { not: "ONLINE" } }),
+      ...(roomId ? { roomId } : {}),
     };
 
     if (source === "online" && !forCalendar) {

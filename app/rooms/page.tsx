@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import moment from 'moment'
@@ -39,6 +40,7 @@ export default function RoomsPage() {
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
   const [editingRoom, setEditingRoom] = useState<any>(null)
+  const [timelineRoom, setTimelineRoom] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
@@ -393,17 +395,12 @@ export default function RoomsPage() {
                     {categoryRooms.map((room: any) => (
                       <div
                         key={room.id}
-                        className={`relative group cursor-pointer h-44 rounded-2xl bg-slate-900/60 border backdrop-blur-md overflow-hidden flex flex-col justify-between p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
+                        className={`relative group cursor-pointer min-h-[11rem] h-auto rounded-2xl bg-slate-900/60 border backdrop-blur-md overflow-hidden flex flex-col justify-between p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
                           room.status === 'AVAILABLE' ? 'border-emerald-500/30 hover:border-emerald-500/60 shadow-emerald-500/5' :
                           room.status === 'BOOKED' ? 'border-red-500/30 hover:border-red-500/60 shadow-red-500/5' :
                           'border-amber-500/30 hover:border-amber-500/60 shadow-amber-500/5'
                         }`}
-                        onClick={() => {
-                          if (canManageRooms) {
-                            setEditingRoom(room)
-                            setShowModal(true)
-                          }
-                        }}
+                        onClick={() => setTimelineRoom(room)}
                       >
                         {/* Status Gradient Background */}
                         <div className={`absolute inset-0 opacity-10 transition-opacity duration-300 group-hover:opacity-20 ${
@@ -426,13 +423,25 @@ export default function RoomsPage() {
                           </div>
                         </div>
                         
-                        <div className="relative z-10 flex items-end justify-between mt-auto">
-                          <div className="space-y-1">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">{room.roomType}</p>
-                            <p className="text-xl font-black text-white leading-none">₹{room.basePrice?.toLocaleString()}</p>
+                        <div className="relative z-10 flex items-end justify-between mt-auto pt-4">
+                          <div className="space-y-1 w-full">
+                            <div className="flex justify-between items-end w-full">
+                              <div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">{room.roomType}</p>
+                                <p className="text-xl font-black text-white leading-none mt-1">₹{room.basePrice?.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            
+                            {room.status === 'BOOKED' && room.currentBooking && (
+                              <div className="pt-2 mt-2 border-t border-white/5 flex flex-col">
+                                <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Booked By</span>
+                                <span className="text-xs font-bold text-red-300 truncate w-full pr-8">{room.currentBooking.guestName}</span>
+                                <span className="text-[10px] text-slate-400 mt-0.5">{moment(room.currentBooking.checkInAt).format('MMM D')} - {moment(room.currentBooking.checkOutAt).format('MMM D')}</span>
+                              </div>
+                            )}
                           </div>
                           {canManageRooms && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 absolute bottom-0 right-0">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -490,6 +499,13 @@ export default function RoomsPage() {
           isLoading={deleteMutation.isPending}
           confirmText="Delete Room"
         />
+
+        {timelineRoom && (
+          <RoomBookingsModal
+            room={timelineRoom}
+            onClose={() => setTimelineRoom(null)}
+          />
+        )}
       </div>
     </>
   )
@@ -598,3 +614,89 @@ function RoomModal({ room, onClose }: { room: any; onClose: () => void }) {
     </div>
   )
 }
+
+function RoomBookingsModal({ room, onClose }: { room: any; onClose: () => void }) {
+  const currentMonthStart = moment().startOf('month').toISOString()
+  const currentMonthEnd = moment().endOf('month').toISOString()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['room-bookings', room.id, currentMonthStart],
+    queryFn: () => api.get(`/bookings?roomId=${room.id}&from=${encodeURIComponent(currentMonthStart)}&to=${encodeURIComponent(currentMonthEnd)}&limit=100`),
+  })
+
+  // /api/bookings returns { data: [...], pagination: {...}, summary: {...} }
+  const bookings = data?.data || []
+  
+  if (!mounted) return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      <div className="w-full max-w-4xl bg-slate-900 border border-white/10 rounded-2xl overflow-hidden p-6 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-10 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-black text-white flex items-center gap-3">
+            <FaCalendarAlt className="text-sky-500" />
+            <div className="flex flex-col">
+               <span>Timeline for Room {room.roomNumber}</span>
+               <span className="text-xs text-slate-400 mt-1 uppercase tracking-widest">{moment().format('MMMM YYYY')}</span>
+            </div>
+          </h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition">×</button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-16 flex justify-center"><LoadingSpinner size="lg" /></div>
+        ) : bookings.length === 0 ? (
+           <div className="text-center py-16 bg-slate-800/20 border border-white/5 rounded-xl">
+             <FaCalendarAlt className="text-4xl text-slate-600 mb-4 mx-auto" />
+             <p className="text-slate-400 font-medium text-lg">No bookings for this month.</p>
+           </div>
+        ) : (
+          <div className="overflow-x-auto">
+             <table className="w-full text-left border-collapse">
+               <thead>
+                 <tr className="border-b border-white/10 text-[10px] uppercase tracking-widest text-slate-500 bg-slate-900">
+                   <th className="p-4 font-black">Guest</th>
+                   <th className="p-4 font-black">Check In</th>
+                   <th className="p-4 font-black">Check Out</th>
+                   <th className="p-4 font-black">Status</th>
+                   <th className="p-4 text-right font-black">Amount</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-white/5">
+                 {bookings.map((b: any) => (
+                   <tr key={b.id} className="hover:bg-slate-800/30 transition-colors">
+                     <td className="p-4">
+                       <p className="font-bold text-white text-base">{b.guest?.name || 'Guest'}</p>
+                       <p className="text-xs text-slate-400 mt-0.5">{b.guest?.phone}</p>
+                     </td>
+                     <td className="p-4 text-sm text-slate-300 font-medium">{moment(b.checkIn).format('MMM DD, YYYY')}</td>
+                     <td className="p-4 text-sm text-slate-300 font-medium">{moment(b.checkOut).format('MMM DD, YYYY')}</td>
+                     <td className="p-4">
+                       <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-wider ${
+                         b.status === 'CHECKED_IN' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+                         b.status === 'CONFIRMED' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' :
+                         b.status === 'CHECKED_OUT' ? 'bg-slate-500/10 text-slate-400 border border-slate-500/30' :
+                         'bg-red-500/10 text-red-400 border border-red-500/30'
+                       }`}>{b.status}</span>
+                     </td>
+                     <td className="p-4 text-right">
+                        <strong className="text-white text-base">₹{b.totalAmount.toLocaleString()}</strong>
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  )
+}
+

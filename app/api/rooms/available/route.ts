@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
           in: ["PENDING", "CONFIRMED", "CHECKED_IN"],
         },
       },
-      select: { roomId: true, checkIn: true, checkOut: true, status: true },
+      select: { roomId: true, checkIn: true, checkOut: true, status: true, guest: { select: { name: true } } },
     });
 
     const overlappingBookings = activeBookings.filter((b) => {
@@ -70,15 +70,11 @@ export async function GET(request: NextRequest) {
       return bCheckIn < checkOutDate && effectiveCheckOut > checkInDate;
     });
 
-    const bookedIdsSet = new Set(overlappingBookings.map((b) => b.roomId));
-    // For each booked room, store check-in and check-out (from same booking; latest check-out wins)
-    const checkOutByRoom = new Map<string, Date>();
-    const checkInByRoom = new Map<string, Date>();
+    const bookedRoomsMap = new Map();
     for (const b of overlappingBookings) {
-      const existingOut = checkOutByRoom.get(b.roomId);
-      if (!existingOut || new Date(b.checkOut) > existingOut) {
-        checkOutByRoom.set(b.roomId, new Date(b.checkOut));
-        checkInByRoom.set(b.roomId, new Date(b.checkIn));
+      const existing = bookedRoomsMap.get(b.roomId);
+      if (!existing || new Date(b.checkOut) > new Date(existing.checkOut)) {
+        bookedRoomsMap.set(b.roomId, b);
       }
     }
 
@@ -96,14 +92,17 @@ export async function GET(request: NextRequest) {
       if (room.status === "MAINTENANCE") {
         return { ...room, status: "MAINTENANCE" as const };
       }
-      if (bookedIdsSet.has(room.id)) {
-        const checkOutAt = checkOutByRoom.get(room.id);
-        const checkInAt = checkInByRoom.get(room.id);
+      
+      const booking = bookedRoomsMap.get(room.id);
+      if (booking) {
         return {
           ...room,
           status: "BOOKED" as const,
-          checkInAt: checkInAt ? checkInAt.toISOString() : undefined,
-          checkOutAt: checkOutAt ? checkOutAt.toISOString() : undefined,
+          currentBooking: {
+            guestName: booking.guest?.name || 'Guest',
+            checkInAt: booking.checkIn.toISOString(),
+            checkOutAt: booking.checkOut.toISOString(),
+          }
         };
       }
       return { ...room, status: "AVAILABLE" as const };

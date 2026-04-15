@@ -43,18 +43,36 @@ export async function GET(request: NextRequest) {
           { checkOut: { gt: today } },
         ],
       },
-      select: { roomId: true, checkOut: true },
+      select: { roomId: true, checkOut: true, checkIn: true, guest: { select: { name: true } } },
     })
     const blocking = overlapping.filter((b) => {
       const checkoutDayStart = moment(b.checkOut).utcOffset("+05:30").startOf('day').toDate()
       return checkoutDayStart > today
     })
-    const bookedRoomIds = new Set(blocking.map((b) => b.roomId))
+    const bookedRoomsMap = new Map()
+    blocking.forEach(b => {
+      const existing = bookedRoomsMap.get(b.roomId)
+      if (!existing || new Date(b.checkOut) > new Date(existing.checkOut)) {
+        bookedRoomsMap.set(b.roomId, b)
+      }
+    })
 
     const roomsWithEffectiveStatus = rooms.map((room) => {
       if (room.status === 'MAINTENANCE') return { ...room, status: 'MAINTENANCE' as const }
-      const effectiveStatus = bookedRoomIds.has(room.id) ? 'BOOKED' : 'AVAILABLE'
-      return { ...room, status: effectiveStatus }
+      
+      const booking = bookedRoomsMap.get(room.id)
+      if (booking) {
+        return {
+          ...room,
+          status: 'BOOKED' as const,
+          currentBooking: {
+            guestName: booking.guest?.name || 'Guest',
+            checkInAt: booking.checkIn,
+            checkOutAt: booking.checkOut
+          }
+        }
+      }
+      return { ...room, status: 'AVAILABLE' as const }
     })
 
     // Optional filter by status (applied after deriving effective status)
