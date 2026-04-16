@@ -177,7 +177,10 @@ export default function BillsPage() {
               </div>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider leading-none mb-1">Total Paid</p>
-                <p className="text-sm font-bold text-emerald-400 leading-none">{(response.summary.totalRevenue || 0).toLocaleString()}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-sm font-bold text-emerald-400 leading-none">{(response.summary.totalRevenue || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-emerald-500/60 font-medium">({response.summary.countPaid || 0})</p>
+                </div>
               </div>
             </div>
 
@@ -187,7 +190,10 @@ export default function BillsPage() {
               </div>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider leading-none mb-1">Total Pending</p>
-                <p className="text-sm font-bold text-amber-400 leading-none">{(response.summary.totalPending || 0).toLocaleString()}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-sm font-bold text-amber-400 leading-none">{(response.summary.totalPending || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-amber-500/60 font-medium">({response.summary.countPending || 0})</p>
+                </div>
               </div>
             </div>
 

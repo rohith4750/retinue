@@ -129,17 +129,27 @@ export async function GET(request: NextRequest) {
       const groupDiscount = siblings.reduce((sum, b) => sum + (b.discount || 0), 0);
       const groupPending = Math.max(0, groupTotal - groupPaid);
       
+      let groupStatus = "PENDING";
+      if (groupPending <= 0) groupStatus = "PAID";
+      else if (groupPaid > 0) groupStatus = "PARTIAL";
+      
       return {
         totalPaid: acc.totalPaid + groupPaid,
         totalPending: acc.totalPending + groupPending,
-        totalDiscount: acc.totalDiscount + groupDiscount
+        totalDiscount: acc.totalDiscount + groupDiscount,
+        countPaid: acc.countPaid + (groupStatus === "PAID" ? 1 : 0),
+        countPending: acc.countPending + (groupStatus === "PENDING" ? 1 : 0),
+        countPartial: acc.countPartial + (groupStatus === "PARTIAL" ? 1 : 0)
       };
-    }, { totalPaid: 0, totalPending: 0, totalDiscount: 0 });
+    }, { totalPaid: 0, totalPending: 0, totalDiscount: 0, countPaid: 0, countPending: 0, countPartial: 0 });
 
     const summary = {
       totalRevenue: stats.totalPaid,
       totalPending: stats.totalPending,
-      totalDiscount: stats.totalDiscount
+      totalDiscount: stats.totalDiscount,
+      countPaid: stats.countPaid,
+      countPending: stats.countPending,
+      countPartial: stats.countPartial
     };
 
     return Response.json(
