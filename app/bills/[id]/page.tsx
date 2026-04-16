@@ -325,28 +325,29 @@ export default function BillPage() {
               Edit details
             </button>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Gross Bill</p>
-              <p className="text-lg font-bold text-slate-200">₹{(subtotal + tax).toLocaleString()}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-900/40 p-4 rounded-xl border border-white/5 relative overflow-hidden group">
+              <p className="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">Net Payable</p>
+              <p className="text-2xl font-black text-white">₹{netPayable.toLocaleString()}</p>
+              {discount > 0 ? (
+                <p className="text-[10px] text-slate-500 mt-1 font-medium">
+                  ₹{(subtotal + tax).toLocaleString()} Gross &nbsp;&bull;&nbsp; <span className="text-emerald-400/80">-₹{discount.toLocaleString()} Discount</span>
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-600 mt-1 font-medium opacity-0 group-hover:opacity-100 transition-opacity">No discounts applied</p>
+              )}
             </div>
-            <div className="opacity-80">
-              <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Total Discount</p>
-              <p className="text-lg font-bold text-emerald-400">-₹{discount.toLocaleString()}</p>
+
+            <div className="bg-slate-900/40 p-4 rounded-xl border border-white/5 relative">
+              <p className="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">Amount Paid</p>
+              <p className="text-2xl font-black text-emerald-400">₹{paidAmount.toLocaleString()}</p>
             </div>
-            <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-              <p className="text-xs text-sky-400/80 mb-0.5 font-semibold uppercase tracking-tight">Net Payable</p>
-              <p className="text-xl font-black text-white">₹{netPayable.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 mb-0.5 uppercase tracking-tight">Amount Paid</p>
-              <p className="text-lg font-bold text-emerald-400">₹{paidAmount.toLocaleString()}</p>
-            </div>
-            <div className={`${balanceDue > 0 ? 'bg-amber-500/10 border-amber-500/20' : balanceDue < 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/5 border-white/5'} p-2 rounded-lg border`}>
-              <p className="text-xs text-slate-500 mb-0.5 font-bold uppercase tracking-tight">
-                {balanceDue < 0 ? 'Overpaid' : 'Balance Due'}
+
+            <div className={`${balanceDue > 0 ? 'bg-amber-500/10 border-amber-500/30 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]' : balanceDue < 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-900/40 border-white/5'} p-4 rounded-xl border relative`}>
+              <p className={`text-xs mb-1 font-bold uppercase tracking-wider ${balanceDue > 0 ? 'text-amber-500/70' : balanceDue < 0 ? 'text-emerald-500/70' : 'text-slate-400'}`}>
+                {balanceDue < 0 ? 'Amount Overpaid' : 'Balance Due'}
               </p>
-              <p className={`text-xl font-black ${balanceDue > 0 ? 'text-amber-400' : balanceDue < 0 ? 'text-emerald-400' : 'text-slate-200'}`}>
+              <p className={`text-2xl font-black ${balanceDue > 0 ? 'text-amber-400' : balanceDue < 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
                 ₹{Math.abs(balanceDue).toLocaleString()}
               </p>
             </div>
