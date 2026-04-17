@@ -4,9 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import Link from 'next/link'
 import React, { useState, useEffect } from 'react'
-import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaReceipt, FaRupeeSign, FaSearch, FaList, FaThLarge, FaFileInvoiceDollar, FaEdit, FaTrash, FaDownload, FaPlus } from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { SearchInput } from '@/components/SearchInput'
+import { ListFilterBar } from '@/components/ListFilterBar'
+import moment from 'moment'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
 
@@ -20,8 +22,10 @@ export default function BillsPage() {
   const limit = 24 
 
   // Month/Year Filtering
+  // Month/Year Filtering
   const [selectedMonth, setSelectedMonth] = useState<string>('')
   const [selectedYear, setSelectedYear] = useState<string>('')
+  const [selectedDate, setSelectedDate] = useState<string>('')
 
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; id: string; billNumber: string }>({
     show: false,
@@ -50,9 +54,12 @@ export default function BillsPage() {
 
   const queryClient = useQueryClient()
   const { data: response, isLoading } = useQuery({
-    queryKey: ['bills', page, limit, debouncedSearch, paymentFilter, selectedMonth, selectedYear],
+    queryKey: ['bills', page, limit, debouncedSearch, paymentFilter, selectedDate, selectedMonth, selectedYear],
     queryFn: () => {
       let url = `/bills?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearch)}&paymentStatus=${paymentFilter === 'all' ? '' : paymentFilter}`
+      if (selectedDate) {
+        url += `&date=${selectedDate}`
+      }
       if (selectedMonth && selectedYear) {
         url += `&month=${selectedMonth}&year=${selectedYear}`
       }
@@ -107,86 +114,55 @@ export default function BillsPage() {
         </div>
       </div>
 
-      {/* Toolbar: search + status filter + view toggle */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="flex-1 min-w-0">
-          <SearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search by bill #, guest, room..."
-            className="bg-slate-800/80 border-slate-600 text-white placeholder-slate-500"
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-slate-500 mr-1">Status:</span>
-          {(['all', 'PENDING', 'PARTIAL', 'PAID'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => { setPaymentFilter(f); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${paymentFilter === f
-                ? f === 'all'
-                  ? 'bg-slate-600 text-white'
-                  : f === 'PAID'
-                    ? 'bg-emerald-500/30 text-emerald-300'
-                    : f === 'PARTIAL'
-                      ? 'bg-amber-500/30 text-amber-300'
-                      : 'bg-red-500/30 text-red-300'
-                : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
-                }`}
-            >
-              {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
-            </button>
-          ))}
-          <span className="w-px h-5 bg-slate-600 mx-1" />
-          <div className="flex rounded-lg overflow-hidden border border-slate-600">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 ${viewMode === 'table' ? 'bg-sky-600 text-white' : 'bg-slate-800/80 text-slate-400 hover:text-white'}`}
-              title="Table view"
-            >
-              <FaList className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`p-2 ${viewMode === 'cards' ? 'bg-sky-600 text-white' : 'bg-slate-800/80 text-slate-400 hover:text-white'}`}
-              title="Cards view"
-            >
-              <FaThLarge className="w-4 h-4" />
-            </button>
-          </div>
+      <ListFilterBar
+        searchPlaceholder="Search by bill #, guest, room..."
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        
+        quickFilters={[
+          { id: 'all', label: 'All' },
+          { id: 'PENDING', label: 'Pending' },
+          { id: 'PARTIAL', label: 'Partial' },
+          { id: 'PAID', label: 'Paid' },
+        ]}
+        activeQuickFilter={paymentFilter}
+        onQuickFilterChange={(id) => { setPaymentFilter(id as PaymentFilter); setPage(1); }}
+        
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        selectedMonth={selectedMonth}
+        onMonthChange={setSelectedMonth}
+        selectedYear={selectedYear}
+        onYearChange={setSelectedYear}
 
-          <div className="flex items-center gap-2 bg-slate-800/80 border border-slate-600 rounded-lg px-2 py-1">
-            <select
-              value={selectedMonth}
-              onChange={(e) => { setSelectedMonth(e.target.value); setPage(1); }}
-              className="bg-transparent text-xs text-white border-none focus:ring-0 cursor-pointer"
-            >
-              <option value="">Month</option>
-              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
-                <option key={m} value={i + 1}>{m}</option>
-              ))}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => { setSelectedYear(e.target.value); setPage(1); }}
-              className="bg-transparent text-xs text-white border-none focus:ring-0 cursor-pointer"
-            >
-              <option value="">Year</option>
-              {[2024, 2025, 2026].map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            {(selectedMonth || selectedYear) && (
-              <button 
-                onClick={() => { setSelectedMonth(''); setSelectedYear(''); setPage(1); }}
-                className="text-slate-500 hover:text-red-400 p-1"
+        extraActions={
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-xl overflow-hidden border border-white/5 bg-slate-800/60 p-1">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
+                title="Table view"
               >
-                ×
+                <FaList className="w-4 h-4" />
               </button>
-            )}
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:text-white'}`}
+                title="Cards view"
+              >
+                <FaThLarge className="w-4 h-4" />
+              </button>
+            </div>
+            <Link
+              href="/bookings/new"
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 transition-all text-sm"
+            >
+              <FaPlus className="w-3 h-3" />
+              <span>New</span>
+            </Link>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4 py-3 px-4 rounded-xl bg-slate-800/50 border border-white/5 shadow-inner">
         <span className="text-sm text-slate-400">
@@ -201,7 +177,10 @@ export default function BillsPage() {
               </div>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider leading-none mb-1">Total Paid</p>
-                <p className="text-sm font-bold text-emerald-400 leading-none">{(response.summary.totalRevenue || 0).toLocaleString()}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-sm font-bold text-emerald-400 leading-none">{(response.summary.totalRevenue || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-emerald-500/60 font-medium">({response.summary.countPaid || 0})</p>
+                </div>
               </div>
             </div>
 
@@ -211,7 +190,10 @@ export default function BillsPage() {
               </div>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider leading-none mb-1">Total Pending</p>
-                <p className="text-sm font-bold text-amber-400 leading-none">{(response.summary.totalPending || 0).toLocaleString()}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-sm font-bold text-amber-400 leading-none">{(response.summary.totalPending || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-amber-500/60 font-medium">({response.summary.countPending || 0})</p>
+                </div>
               </div>
             </div>
 

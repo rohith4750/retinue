@@ -341,6 +341,7 @@ export type RoomBookedAlertDetails = {
   checkIn: Date;
   checkOut: Date;
   bookingReference: string;
+  guestEmail?: string;
   totalAmount?: number;
   source: "ONLINE" | "STAFF";
   createdByUsername?: string;
@@ -494,6 +495,7 @@ export type BookingStepAlertDetails = {
   bookingReference: string;
   guestName: string;
   guestPhone: string;
+  guestEmail?: string;
   roomNumber: string;
   roomType?: string;
   checkIn: Date;

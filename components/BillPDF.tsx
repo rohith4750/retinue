@@ -390,7 +390,7 @@ export function BillPDF({ bill }: BillPDFProps) {
         {/* Bill To */}
         <View style={styles.billToSection}>
           <PDFText style={styles.billToTitle}>Bill To</PDFText>
-          <PDFText style={styles.billToText}>{guest.name}</PDFText>
+          <PDFText style={[styles.billToText, { fontWeight: 'bold' }]}>{guest.name}</PDFText>
         </View>
 
         {/* Item details table */}

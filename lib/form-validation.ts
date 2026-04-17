@@ -151,6 +151,9 @@ export const bookingValidationRules: ValidationRules = {
     required: true,
     phone: true,
   },
+  guestEmail: {
+    email: true,
+  },
   guestAddress: {
     maxLength: 500,
   },

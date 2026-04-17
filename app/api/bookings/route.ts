@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get("date");
     const search = searchParams.get("search");
     const source = searchParams.get("source");
+    const roomId = searchParams.get("roomId");
     // Payment status filter (PENDING, PAID, PARTIAL)
     const paymentStatusParam = searchParams.get("paymentStatus");
     const paymentStatus =
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
       ...(status ? { status } : { status: { notIn: ["CANCELLED"] } }),
       ...(paymentStatus ? { paymentStatus } : {}),
       ...(forCalendar ? {} : { source: { not: "ONLINE" } }),
+      ...(roomId ? { roomId } : {}),
     };
 
     if (source === "online" && !forCalendar) {
@@ -146,34 +148,29 @@ export async function GET(request: NextRequest) {
       prisma.booking.count({ where }),
     ]);
 
-    // Calculate Global Stats (Independent of pagination/filters, but respecting source restrictions if any)
-    // We want these stats to reflect the "whole hotel state" mostly, or at least be useful context.
-    // Usually, dashboard stats should be global (e.g. Total Revenue for today, or Total In-House).
-    // Let's calculate standard dashboard metrics:
-    const statsWhere: any = forCalendar ? {} : { source: { not: "ONLINE" } };
-
+    // Calculate Summary Stats based on the EXACT same filters (where clause) but across ALL pages
     const [confirmedCount, checkedInCount, checkedOutCount, revenueAgg] =
       await Promise.all([
         prisma.booking.count({
           where: {
-            ...statsWhere,
+            ...where,
             status: "CONFIRMED",
           },
         }),
         prisma.booking.count({
           where: {
-            ...statsWhere,
+            ...where,
             status: "CHECKED_IN",
           },
         }),
         prisma.booking.count({
           where: {
-            ...statsWhere,
+            ...where,
             status: "CHECKED_OUT",
           },
         }),
         prisma.booking.aggregate({
-          where: { ...statsWhere },
+          where,
           _sum: { totalAmount: true },
         }),
       ]);
@@ -287,6 +284,7 @@ export async function POST(request: NextRequest) {
             idProof: validatedData.guestIdProof,
             idProofType: data.guestIdProofType || "AADHAR",
             guestType: data.guestType || "WALK_IN",
+            email: validatedData.guestEmail || null,
             address: validatedData.guestAddress,
           },
         });
@@ -489,6 +487,7 @@ export async function POST(request: NextRequest) {
       await notifyInternalRoomBooked({
         guestName: result.guest.name,
         guestPhone: result.guest.phone,
+        guestEmail: result.guest.email,
         roomNumber: first.room.roomNumber,
         roomType: first.room.roomType,
         checkIn: first.checkIn,

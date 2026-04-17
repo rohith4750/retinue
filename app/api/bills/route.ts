@@ -50,8 +50,9 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // 1. Fetch ALL matching bookings (non-cancelled and potentially non-checked-out)
+    // 1. Fetch matching bookings (non-cancelled)
     // We group in memory because Prisma distinct doesn't support nested fields like guest.phone
+    // We limit to 1000 items as a safety measure for in-memory processing
     const allBookings = await prisma.booking.findMany({
       where,
       include: {
@@ -59,16 +60,22 @@ export async function GET(request: NextRequest) {
         room: true,
       },
       orderBy: { checkIn: "desc" },
+      take: 1000, 
     });
 
-    // 2. Group by Guest Phone
+    // 2. Group by Guest Phone + ID Proof Type + ID Proof Value
     const groups = new Map<string, any[]>();
     allBookings.forEach((b) => {
-      const phone = b.guest?.phone || b.guestId;
-      if (!groups.has(phone)) {
-        groups.set(phone, []);
+      // Robust null check for guest relation
+      const phone = b.guest?.phone || b.guestId || "no-phone";
+      const idType = b.guest?.idProofType || "no-type";
+      const idValue = b.guest?.idProof || "no-id";
+      const key = `${phone}-${idType}-${idValue}`;
+      
+      if (!groups.has(key)) {
+        groups.set(key, []);
       }
-      groups.get(phone)!.push(b);
+      groups.get(key)!.push(b);
     });
 
     const uniqueGroups = Array.from(groups.values());
@@ -91,9 +98,12 @@ export async function GET(request: NextRequest) {
       else if (paidAmount > 0) status = "PARTIAL";
 
       const roomNumbers = siblings
-        .map((b) => b.room.roomNumber)
+        .map((b) => b.room?.roomNumber)
+        .filter(Boolean)
         .sort()
         .filter((v, i, a) => a.indexOf(v) === i); // Unique room numbers
+
+      const primaryRoomNumber = header.room?.roomNumber || "N/A";
 
       return {
         ...header,
@@ -107,8 +117,8 @@ export async function GET(request: NextRequest) {
         primaryRoom: header.room,
         displayRoomNumber:
           siblings.length > 1
-            ? `${header.room.roomNumber} + ${siblings.length - 1}`
-            : header.room.roomNumber,
+            ? `${primaryRoomNumber} + ${siblings.length - 1}`
+            : primaryRoomNumber,
       };
     });
 
@@ -119,17 +129,27 @@ export async function GET(request: NextRequest) {
       const groupDiscount = siblings.reduce((sum, b) => sum + (b.discount || 0), 0);
       const groupPending = Math.max(0, groupTotal - groupPaid);
       
+      let groupStatus = "PENDING";
+      if (groupPending <= 0) groupStatus = "PAID";
+      else if (groupPaid > 0) groupStatus = "PARTIAL";
+      
       return {
         totalPaid: acc.totalPaid + groupPaid,
         totalPending: acc.totalPending + groupPending,
-        totalDiscount: acc.totalDiscount + groupDiscount
+        totalDiscount: acc.totalDiscount + groupDiscount,
+        countPaid: acc.countPaid + (groupStatus === "PAID" ? 1 : 0),
+        countPending: acc.countPending + (groupStatus === "PENDING" ? 1 : 0),
+        countPartial: acc.countPartial + (groupStatus === "PARTIAL" ? 1 : 0)
       };
-    }, { totalPaid: 0, totalPending: 0, totalDiscount: 0 });
+    }, { totalPaid: 0, totalPending: 0, totalDiscount: 0, countPaid: 0, countPending: 0, countPartial: 0 });
 
     const summary = {
       totalRevenue: stats.totalPaid,
       totalPending: stats.totalPending,
-      totalDiscount: stats.totalDiscount
+      totalDiscount: stats.totalDiscount,
+      countPaid: stats.countPaid,
+      countPending: stats.countPending,
+      countPartial: stats.countPartial
     };
 
     return Response.json(

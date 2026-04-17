@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const limit = Math.max(1, parseInt(searchParams.get('limit') || '20'))
     const skip = (page - 1) * limit
 
     const where: any = {}
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const [history, total] = await Promise.all([
+    const [historyRaw, total] = await Promise.all([
       prisma.bookingHistory.findMany({
         where,
         skip,
@@ -61,6 +61,14 @@ export async function GET(request: NextRequest) {
       }),
       prisma.bookingHistory.count({ where }),
     ])
+
+    // Safety: Guard against orphaned records where booking might be null
+    const history = historyRaw.map(item => ({
+      ...item,
+      booking: item.booking || null,
+      guest: item.booking?.guest || null,
+      room: item.booking?.room || null,
+    }));
 
     return Response.json(
       successResponse({

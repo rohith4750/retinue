@@ -78,10 +78,11 @@ export async function notifyInternalRoomBooked(
   try {
     // 1. Send Emails
     const toEmails = await getInternalAlertEmails();
+    if (details.guestEmail) {
+      toEmails.push(details.guestEmail);
+    }
     if (toEmails.length > 0) {
-      // Don't await email to prevent blocking (fire and forget handled by email lib usually, but here we await.
-      // We can remove await if we want speed, but error logging is good).
-      await sendRoomBookedAlert(toEmails, details); // This functions logs its own errors
+      await sendRoomBookedAlert(toEmails, details);
     }
 
     // 2. Create In-App Notifications
@@ -118,6 +119,9 @@ export async function notifyInternalBookingStep(
 
     // 1. Send Emails
     const toEmails = await getInternalAlertEmails();
+    if (details.guestEmail) {
+      toEmails.push(details.guestEmail);
+    }
     if (toEmails.length > 0) {
       await sendBookingStepAlert(toEmails, details);
     }

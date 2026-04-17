@@ -8,6 +8,7 @@ import { FaBox, FaPlus, FaExclamationTriangle, FaEdit, FaTrash } from 'react-ico
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
 import { ConfirmationModal } from '@/components/ConfirmationModal'
+import { ListFilterBar } from '@/components/ListFilterBar'
 
 export default function InventoryPage() {
   const [showModal, setShowModal] = useState(false)
@@ -17,6 +18,8 @@ export default function InventoryPage() {
     itemId: null
   })
   const queryClient = useQueryClient()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
 
   // Check user role
   const [user, setUser] = useState<any>(null)
@@ -38,6 +41,16 @@ export default function InventoryPage() {
 
   const items = data?.items || []
   const lowStockItems = data?.lowStockItems || []
+
+  // Unique categories for filtering
+  const categories = Array.from(new Set(items.map((i: any) => i.category).filter(Boolean))) as string[]
+
+  const filteredItems = items.filter((item: any) => {
+    const matchesSearch = item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         item.category.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = !selectedCategory || item.category === selectedCategory
+    return matchesSearch && matchesCategory
+  })
 
   // Delete mutation
   const deleteMutation = useMutationWithInvalidation({
@@ -79,17 +92,33 @@ export default function InventoryPage() {
             <h1 className="text-2xl font-bold text-slate-100 mb-1">Stock & Assets</h1>
             <p className="text-sm text-slate-400">Track stock levels and assign assets to rooms or halls</p>
           </div>
-          <button
-            onClick={() => {
-              setEditingItem(null)
-              setShowModal(true)
-            }}
-            className="btn-primary flex items-center space-x-2"
-          >
-            <FaPlus className="w-4 h-4" />
-            <span>Add Item</span>
-          </button>
         </div>
+
+        <ListFilterBar
+          searchPlaceholder="Search inventory..."
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          
+          quickFilters={[
+            { id: '', label: 'All Categories' },
+            ...categories.map(cat => ({ id: cat, label: cat }))
+          ]}
+          activeQuickFilter={selectedCategory}
+          onQuickFilterChange={setSelectedCategory}
+          
+          extraActions={
+            <button
+              onClick={() => {
+                setEditingItem(null)
+                setShowModal(true)
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-500 shadow-lg shadow-sky-600/20 transition-all text-sm"
+            >
+              <FaPlus className="w-3 h-3" />
+              <span>Add Item</span>
+            </button>
+          }
+        />
 
         {lowStockItems.length > 0 && (
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 md:p-4 mb-4 md:mb-6 backdrop-blur-sm">
@@ -118,7 +147,7 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item: any) => {
+              {filteredItems.map((item: any) => {
                 const isLowStock = item.quantity <= item.minStock
                 return (
                   <tr key={item.id} className={isLowStock ? 'bg-yellow-500/5' : ''}>
@@ -176,7 +205,7 @@ export default function InventoryPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-white/5">
-            {items.map((item: any) => {
+            {filteredItems.map((item: any) => {
               const isLowStock = item.quantity <= item.minStock
               return (
                 <div key={item.id} className={`p-4 ${isLowStock ? 'bg-yellow-500/5' : ''}`}>

@@ -122,6 +122,7 @@ model Guest {
   id            String      @id @default(cuid())
   name          String
   phone         String
+  email         String?
   idProof       String?
   idProofType   String?     @default("AADHAR") // AADHAR, PAN_CARD, PASSPORT, DRIVING_LICENSE, VOTER_ID, OTHER
   guestType     String?     @default("WALK_IN") // WALK_IN, CORPORATE, OTA, GOVERNMENT, REGULAR, AGENT, FAMILY

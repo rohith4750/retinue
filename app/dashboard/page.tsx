@@ -3,6 +3,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, BarChart, Bar
+} from 'recharts'
 import Link from 'next/link'
 import {
   FaHome, FaCheckCircle, FaCalendarAlt, FaDollarSign, FaExclamationTriangle,
@@ -13,22 +17,22 @@ import {
 import moment from 'moment'
 
 const GUEST_TYPE_ORDER = ['WALK_IN', 'CORPORATE', 'OTA', 'REGULAR', 'FAMILY', 'GOVERNMENT', 'AGENT']
-const GUEST_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
-  WALK_IN: { bar: 'bg-violet-500', bg: 'bg-violet-500/20', text: 'text-violet-400' },
-  CORPORATE: { bar: 'bg-sky-500', bg: 'bg-sky-500/20', text: 'text-sky-400' },
-  OTA: { bar: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-400' },
-  REGULAR: { bar: 'bg-emerald-500', bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
-  FAMILY: { bar: 'bg-rose-500', bg: 'bg-rose-500/20', text: 'text-rose-400' },
-  GOVERNMENT: { bar: 'bg-indigo-500', bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
-  AGENT: { bar: 'bg-teal-500', bg: 'bg-teal-500/20', text: 'text-teal-400' },
+const GUEST_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string; hex: string }> = {
+  WALK_IN: { bar: 'bg-violet-500', bg: 'bg-violet-500/20', text: 'text-violet-400', hex: '#8b5cf6' },
+  CORPORATE: { bar: 'bg-sky-500', bg: 'bg-sky-500/20', text: 'text-sky-400', hex: '#0ea5e9' },
+  OTA: { bar: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-400', hex: '#f59e0b' },
+  REGULAR: { bar: 'bg-emerald-500', bg: 'bg-emerald-500/20', text: 'text-emerald-400', hex: '#10b981' },
+  FAMILY: { bar: 'bg-rose-500', bg: 'bg-rose-500/20', text: 'text-rose-400', hex: '#f43f5e' },
+  GOVERNMENT: { bar: 'bg-indigo-500', bg: 'bg-indigo-500/20', text: 'text-indigo-400', hex: '#6366f1' },
+  AGENT: { bar: 'bg-teal-500', bg: 'bg-teal-500/20', text: 'text-teal-400', hex: '#14b8a6' },
 }
 
 const ROOM_TYPE_ORDER = ['STANDARD', 'SUITE', 'SUITE_PLUS']
-const ROOM_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
-  STANDARD: { bar: 'bg-sky-500', bg: 'bg-sky-500/20', text: 'text-sky-400' },
-  DELUXE: { bar: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-400' },
-  SUITE: { bar: 'bg-emerald-500', bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
-  SUITE_PLUS: { bar: 'bg-fuchsia-500', bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-400' },
+const ROOM_TYPE_COLORS: Record<string, { bar: string; bg: string; text: string; hex: string }> = {
+  STANDARD: { bar: 'bg-sky-500', bg: 'bg-sky-500/20', text: 'text-sky-400', hex: '#0ea5e9' },
+  DELUXE: { bar: 'bg-amber-500', bg: 'bg-amber-500/20', text: 'text-amber-400', hex: '#f59e0b' },
+  SUITE: { bar: 'bg-emerald-500', bg: 'bg-emerald-500/20', text: 'text-emerald-400', hex: '#10b981' },
+  SUITE_PLUS: { bar: 'bg-fuchsia-500', bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-400', hex: '#d946ef' },
 }
 
 export default function DashboardPage() {
@@ -378,35 +382,25 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <div className="h-48 flex items-end gap-2">
-                {stats?.weeklyRevenue?.map((day: any, index: number) => {
-                  const maxAmount = Math.max(...(stats?.weeklyRevenue?.map((d: any) => d.amount) || [1]))
-                  const height = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0
-                  const isToday = index === (stats?.weeklyRevenue?.length || 0) - 1
-
-                  return (
-                    <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                      <div className="w-full relative" style={{ height: '140px' }}>
-                        <div
-                          className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${isToday
-                              ? 'bg-gradient-to-t from-sky-600 to-sky-400'
-                              : 'bg-gradient-to-t from-slate-700 to-slate-600'
-                            }`}
-                          style={{ height: `${Math.max(height, 5)}%` }}
-                        >
-                          {day.amount > 0 && (
-                            <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 whitespace-nowrap">
-                              ₹{(day.amount / 1000).toFixed(0)}K
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <span className={`text-xs ${isToday ? 'text-sky-400 font-semibold' : 'text-slate-500'}`}>
-                        {day.day}
-                      </span>
-                    </div>
-                  )
-                })}
+              <div className="h-48 mt-4 text-xs font-semibold">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats?.weeklyRevenue || []} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} dy={10} />
+                    <RechartsTooltip 
+                      cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: '#fff' }}
+                      itemStyle={{ color: '#0ea5e9', fontWeight: 'bold' }}
+                      formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
+                    />
+                    <Area type="monotone" dataKey="amount" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" activeDot={{ r: 6, fill: '#0ea5e9', stroke: '#fff', strokeWidth: 2 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}
@@ -422,39 +416,29 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-400 mt-1">Current room distribution</p>
               </div>
             </div>
-            <div className="space-y-4">
-              {/* Available */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-slate-300 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-lg bg-emerald-500"></span>
-                    Available
-                  </span>
-                  <span className="text-sm font-semibold text-white">{stats?.availableRooms || 0}</span>
-                </div>
-                <div className="h-2 bg-slate-700 rounded-lg overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 rounded-lg transition-all duration-500"
-                    style={{ width: `${stats?.totalRooms ? ((stats?.availableRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
+            <div className="h-48 mt-4 text-xs font-semibold">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie 
+                    data={[
+                      { name: `Available: ${stats?.availableRooms || 0}`, value: stats?.availableRooms || 0, color: '#10b981' },
+                      { name: `Booked: ${stats?.bookedRooms || 0}`, value: stats?.bookedRooms || 0, color: '#ef4444' },
+                    ]} 
+                    cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value" stroke="none"
+                  >
+                    {[
+                      { name: `Available: ${stats?.availableRooms || 0}`, value: stats?.availableRooms || 0, color: '#10b981' },
+                      { name: `Booked: ${stats?.bookedRooms || 0}`, value: stats?.bookedRooms || 0, color: '#ef4444' },
+                    ].map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: '#fff' }}
+                    itemStyle={{ color: '#fff', fontWeight: 'bold' }}
                   />
-                </div>
-              </div>
-              {/* Booked */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-slate-300 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-lg bg-red-500"></span>
-                    Booked
-                  </span>
-                  <span className="text-sm font-semibold text-white">{stats?.bookedRooms || 0}</span>
-                </div>
-                <div className="h-2 bg-slate-700 rounded-lg overflow-hidden">
-                  <div
-                    className="h-full bg-red-500 rounded-lg transition-all duration-500"
-                    style={{ width: `${stats?.totalRooms ? ((stats?.bookedRooms || 0) / stats.totalRooms) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
 
               {/* Room Type Distribution */}
               <div className="mt-6 pt-4 border-t border-white/5">
@@ -468,7 +452,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
-            </div>
           </div>
         </div>
 
@@ -490,25 +473,33 @@ export default function DashboardPage() {
             <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Bookings (all time)</p>
-                <div className="space-y-3">
-                  {GUEST_TYPE_ORDER.map((type) => {
-                    const data = stats?.bookingsByGuestType?.[type] || { count: 0, revenue: 0 }
-                    const label = stats?.guestTypeLabels?.[type] || type.replace(/_/g, ' ')
-                    const totalBookings = Object.values(stats?.bookingsByGuestType || {}).reduce((s: number, v: any) => s + (v?.count || 0), 0)
-                    const pct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 100) : 0
-                    const colors = GUEST_TYPE_COLORS[type] || GUEST_TYPE_COLORS.WALK_IN
-                    return (
-                      <div key={type}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
-                          <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
-                        </div>
-                        <div className="h-2 bg-slate-700/60 rounded-lg overflow-hidden">
-                          <div className={`h-full rounded-lg transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      layout="vertical"
+                      data={GUEST_TYPE_ORDER.map(type => ({
+                        name: stats?.guestTypeLabels?.[type] || type.replace(/_/g, ' '),
+                        count: stats?.bookingsByGuestType?.[type]?.count || 0,
+                        fill: GUEST_TYPE_COLORS[type]?.hex || '#cbd5e1'
+                      })).filter(d => d.count > 0)}
+                      margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} width={80} />
+                      <RechartsTooltip
+                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: '#fff' }}
+                      />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                        {GUEST_TYPE_ORDER.map((type, index) => {
+                           const data = stats?.bookingsByGuestType?.[type]
+                           if (!data || data.count === 0) return null
+                           return <Cell key={`cell-${index}`} fill={GUEST_TYPE_COLORS[type]?.hex || '#cbd5e1'} />
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
               {canViewFinance && (
@@ -547,25 +538,33 @@ export default function DashboardPage() {
             <div className={`grid grid-cols-1 ${canViewFinance ? 'lg:grid-cols-2' : ''} gap-6`}>
               <div>
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Bookings (all time)</p>
-                <div className="space-y-3">
-                  {ROOM_TYPE_ORDER.map((type) => {
-                    const data = stats?.bookingsByRoomType?.[type] || { count: 0, revenue: 0 }
-                    const label = stats?.roomTypeLabels?.[type] || type.replace(/_/g, ' ')
-                    const totalBookings = Object.values(stats?.bookingsByRoomType || {}).reduce((s: number, v: any) => s + (v?.count || 0), 0)
-                    const pct = totalBookings > 0 ? Math.round((data.count / totalBookings) * 100) : 0
-                    const colors = ROOM_TYPE_COLORS[type] || ROOM_TYPE_COLORS.STANDARD
-                    return (
-                      <div key={type}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-sm font-medium ${colors.text}`}>{label}</span>
-                          <span className="text-sm text-slate-300">{data.count} <span className="text-slate-500">({pct}%)</span></span>
-                        </div>
-                        <div className="h-2 bg-slate-700/60 rounded-lg overflow-hidden">
-                          <div className={`h-full rounded-lg transition-all duration-500 ${colors.bar}`} style={{ width: `${totalBookings > 0 ? (data.count / totalBookings) * 100 : 0}%` }} />
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      layout="vertical"
+                      data={ROOM_TYPE_ORDER.map(type => ({
+                        name: stats?.roomTypeLabels?.[type] || type.replace(/_/g, ' '),
+                        count: stats?.bookingsByRoomType?.[type]?.count || 0,
+                        fill: ROOM_TYPE_COLORS[type]?.hex || '#cbd5e1'
+                      })).filter(d => d.count > 0)}
+                      margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} width={80} />
+                      <RechartsTooltip
+                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: '#fff' }}
+                      />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                        {ROOM_TYPE_ORDER.map((type, index) => {
+                           const data = stats?.bookingsByRoomType?.[type]
+                           if (!data || data.count === 0) return null
+                           return <Cell key={`cell-${index}`} fill={ROOM_TYPE_COLORS[type]?.hex || '#cbd5e1'} />
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
               {canViewFinance && (

@@ -5,10 +5,15 @@ import { api } from '@/lib/api-client'
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, FaTag, FaEye, FaUsers, FaPercent } from 'react-icons/fa'
+import { 
+  FaCalendarAlt, FaArrowLeft, FaCreditCard, FaIdCard, 
+  FaTag, FaEye, FaUsers, FaPercent, FaUser, FaPhone, 
+  FaEnvelope, FaGlobe, FaMapMarkerAlt 
+} from 'react-icons/fa'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useMutationWithInvalidation } from '@/lib/use-mutation-with-invalidation'
-import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
+import { FormInput, FormSelect, FormTextarea, DynamicForm } from '@/components/FormComponents'
+import type { FormField } from '@/components/FormComponents'
 import { useFormValidation } from '@/hooks/useFormValidation'
 import { bookingValidationRules } from '@/lib/form-validation'
 
@@ -28,6 +33,7 @@ function NewBookingContent() {
       guestPhone: '',
       guestIdProof: '',
       guestIdProofType: 'AADHAR' as const,
+      guestEmail: '',
       guestAddress: '',
       guestType: 'WALK_IN' as const,
       numberOfGuests: '1',
@@ -52,7 +58,7 @@ function NewBookingContent() {
     const checkoutDate = new Date(checkInDate.getTime() + 24 * 60 * 60 * 1000)
     // Set standard hotel checkout time: 11:00 AM
     checkoutDate.setHours(11, 0, 0, 0)
-    
+
     const year = checkoutDate.getFullYear()
     const month = String(checkoutDate.getMonth() + 1).padStart(2, '0')
     const day = String(checkoutDate.getDate()).padStart(2, '0')
@@ -226,6 +232,7 @@ function NewBookingContent() {
           guestIdProofType: data.guestIdProofType,
           guestAddress: data.guestAddress,
           guestType: data.guestType,
+          guestEmail: data.guestEmail,
           numberOfGuests: parseInt(data.numberOfGuests) || 1,
           checkIn: checkInISO,
           checkOut: checkOutISO,
@@ -334,6 +341,192 @@ function NewBookingContent() {
 
   const overview = calculateOverview()
 
+  // --- FORM CONFIGURATIONS ---
+  const guestInfoSchema: FormField[] = [
+    { 
+      name: 'guestName', 
+      label: (
+        <span className="flex items-center gap-2">
+          <FaUser className="w-3 h-3 text-slate-400" />
+          Guest Name *
+        </span>
+      ), 
+      type: 'text', 
+      placeholder: 'Full name' 
+    },
+    {
+      name: 'guestPhone',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaPhone className="w-3 h-3 text-slate-400" />
+          Phone Number *
+        </span>
+      ),
+      type: 'tel',
+      placeholder: '10-digit mobile number',
+      onChange: (e: any) => {
+        const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+        updateField('guestPhone', value)
+      }
+    },
+    {
+      name: 'guestEmail',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaEnvelope className="w-3 h-3 text-slate-400" />
+          Guest Email
+        </span>
+      ),
+      type: 'email',
+      placeholder: 'email@example.com'
+    },
+    {
+      name: 'guestType',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaGlobe className="w-3 h-3 text-slate-400" />
+          Guest Type *
+        </span>
+      ),
+      type: 'select',
+      options: [
+        { value: 'WALK_IN', label: 'Walk-in' },
+        { value: 'CORPORATE', label: 'Corporate' },
+        { value: 'OTA', label: 'OTA (Online Booking)' },
+        { value: 'GOVERNMENT', label: 'Government' },
+        { value: 'REGULAR', label: 'Regular Guest' },
+        { value: 'AGENT', label: 'Travel Agent' },
+        { value: 'FAMILY', label: 'Family/Friends' },
+      ]
+    },
+    {
+      name: 'guestIdProofType',
+      label: 'ID Proof Type *',
+      type: 'select',
+      options: [
+        { value: 'AADHAR', label: 'Aadhaar Card' },
+        { value: 'PAN_CARD', label: 'PAN Card' },
+        { value: 'PASSPORT', label: 'Passport' },
+        { value: 'DRIVING_LICENSE', label: 'Driving License' },
+        { value: 'VOTER_ID', label: 'Voter ID' },
+        { value: 'OTHER', label: 'Other' },
+      ],
+      onChange: (e: any) => {
+        const val = e.target.value
+        updateField('guestIdProofType', val)
+        if (formData.guestIdProof) {
+          validateIdProof(val, formData.guestIdProof)
+        }
+      }
+    },
+    {
+      name: 'guestIdProof',
+      label: 'ID Proof Number',
+      type: 'custom',
+      render: ({ formData, error, updateField, handleBlur }) => (
+        <div>
+          <label className="form-label">ID Proof Number</label>
+          <input
+            type={ID_PROOF_PATTERNS[formData.guestIdProofType]?.inputType || 'text'}
+            value={formData.guestIdProof}
+            onChange={(e) => {
+              let value = e.target.value
+              if (formData.guestIdProofType === 'AADHAR') {
+                value = value.replace(/\D/g, '')
+              } else {
+                value = value.toUpperCase()
+              }
+              const maxLen = ID_PROOF_PATTERNS[formData.guestIdProofType]?.maxLength || 30
+              if (value.length <= maxLen) {
+                updateField('guestIdProof', value)
+                validateIdProof(formData.guestIdProofType, value)
+              }
+            }}
+            onBlur={() => validateIdProof(formData.guestIdProofType, formData.guestIdProof)}
+            placeholder={ID_PROOF_PATTERNS[formData.guestIdProofType]?.placeholder || 'Enter ID number'}
+            maxLength={ID_PROOF_PATTERNS[formData.guestIdProofType]?.maxLength || 30}
+            className={`form-input ${error || idProofError ? 'border-red-500' : ''}`}
+          />
+          {(error || idProofError) && (
+            <p className="text-xs text-red-400 mt-1">{error || idProofError}</p>
+          )}
+        </div>
+      )
+    },
+    {
+      name: 'numberOfGuests',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaUsers className="w-3 h-3 text-slate-400" />
+          Number of Guests *
+        </span>
+      ),
+      type: 'select',
+      options: [
+        ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ value: n.toString(), label: `${n} ${n === 1 ? 'Guest' : 'Guests'}` })),
+        { value: '10+', label: 'More than 10' }
+      ]
+    },
+    {
+      name: 'guestAddress',
+      label: (
+        <span className="flex items-center gap-2">
+          <FaMapMarkerAlt className="w-3 h-3 text-slate-400" />
+          Permanent Address
+        </span>
+      ),
+      type: 'textarea',
+      rows: 3,
+      placeholder: 'Enter complete address with city and state',
+      className: 'md:col-span-2 lg:col-span-3'
+    }
+  ]
+
+  const paymentSchema: FormField[] = [
+    {
+      name: 'paymentMode',
+      label: 'Payment Mode *',
+      type: 'select',
+      options: [
+        { value: 'CASH', label: 'Cash' },
+        { value: 'CARD', label: 'Card' },
+        { value: 'UPI', label: 'UPI' },
+        { value: 'NET_BANKING', label: 'Net Banking' },
+        { value: 'WALLET', label: 'Wallet' },
+        { value: 'CHEQUE', label: 'Cheque' },
+      ]
+    },
+    { name: 'advanceAmount', label: 'Advance Amount (₹)', type: 'text', placeholder: '0.00' },
+    { name: 'discount', label: 'Discount (₹)', type: 'text', placeholder: '0.00' },
+    {
+      name: 'applyGst',
+      label: 'GST (18%)',
+      type: 'custom',
+      render: ({ formData, updateField }) => (
+        <div>
+          <label className="form-label flex items-center gap-2">
+            <FaPercent className="w-3 h-3 text-slate-400" />
+            GST (18%)
+          </label>
+          <div className="flex items-center h-[42px] px-3 bg-slate-800/60 rounded-lg border border-white/10">
+            <label className="relative inline-flex items-center cursor-pointer text-xs">
+              <input
+                type="checkbox"
+                checked={formData.applyGst}
+                onChange={(e) => updateField('applyGst', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-sky-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              <span className="ml-2 text-slate-300">
+                {formData.applyGst ? 'Applied' : 'Not Applied'}
+              </span>
+            </label>
+          </div>
+        </div>
+      )
+    }
+  ]
+
   return (
     <>
       <div className="glow-sky top-20 right-20"></div>
@@ -363,118 +556,13 @@ function NewBookingContent() {
                 <FaIdCard className="mr-2 w-4 h-4" />
                 Guest Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormInput
-                  label="Guest Name *"
-                  type="text"
-                  value={formData.guestName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('guestName', e.target.value)}
-                  onBlur={() => handleBlur('guestName')}
-                  error={getError('guestName')}
-                  placeholder="Full name"
-                />
-                <FormInput
-                  label="Phone Number *"
-                  type="tel"
-                  value={formData.guestPhone}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                    updateField('guestPhone', value)
-                  }}
-                  onBlur={() => handleBlur('guestPhone')}
-                  error={getError('guestPhone')}
-                  placeholder="10-digit mobile number"
-                />
-                <FormSelect
-                  label="Guest Type *"
-                  value={formData.guestType}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('guestType', e.target.value)}
-                  options={[
-                    { value: 'WALK_IN', label: 'Walk-in' },
-                    { value: 'CORPORATE', label: 'Corporate' },
-                    { value: 'OTA', label: 'OTA (Online Booking)' },
-                    { value: 'GOVERNMENT', label: 'Government' },
-                    { value: 'REGULAR', label: 'Regular Guest' },
-                    { value: 'AGENT', label: 'Travel Agent' },
-                    { value: 'FAMILY', label: 'Family/Friends' },
-                  ]}
-                />
-                <FormSelect
-                  label="ID Proof Type *"
-                  value={formData.guestIdProofType}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                    updateField('guestIdProofType', e.target.value)
-                    // Re-validate ID proof when type changes
-                    if (formData.guestIdProof) {
-                      validateIdProof(e.target.value, formData.guestIdProof)
-                    }
-                  }}
-                  options={[
-                    { value: 'AADHAR', label: 'Aadhaar Card' },
-                    { value: 'PAN_CARD', label: 'PAN Card' },
-                    { value: 'PASSPORT', label: 'Passport' },
-                    { value: 'DRIVING_LICENSE', label: 'Driving License' },
-                    { value: 'VOTER_ID', label: 'Voter ID' },
-                    { value: 'OTHER', label: 'Other' },
-                  ]}
-                />
-                <div>
-                  <label className="form-label">ID Proof Number</label>
-                  <input
-                    type={ID_PROOF_PATTERNS[formData.guestIdProofType]?.inputType || 'text'}
-                    value={formData.guestIdProof}
-                    onChange={(e) => {
-                      let value = e.target.value
-                      // For Aadhaar, only allow digits
-                      if (formData.guestIdProofType === 'AADHAR') {
-                        value = value.replace(/\D/g, '') // Remove non-digits
-                      } else {
-                        value = value.toUpperCase()
-                      }
-                      // Respect max length
-                      const maxLen = ID_PROOF_PATTERNS[formData.guestIdProofType]?.maxLength || 30
-                      if (value.length <= maxLen) {
-                        updateField('guestIdProof', value)
-                        validateIdProof(formData.guestIdProofType, value)
-                      }
-                    }}
-                    onBlur={() => validateIdProof(formData.guestIdProofType, formData.guestIdProof)}
-                    placeholder={ID_PROOF_PATTERNS[formData.guestIdProofType]?.placeholder || 'Enter ID number'}
-                    maxLength={ID_PROOF_PATTERNS[formData.guestIdProofType]?.maxLength || 30}
-                    className={`form-input ${idProofError ? 'border-red-500' : ''}`}
-                  />
-                  {idProofError && (
-                    <p className="text-xs text-red-400 mt-1">{idProofError}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="form-label flex items-center gap-2">
-                    <FaUsers className="w-3 h-3 text-slate-400" />
-                    Number of Guests *
-                  </label>
-                  <select
-                    value={formData.numberOfGuests}
-                    onChange={(e) => updateField('numberOfGuests', e.target.value)}
-                    className="form-select"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <option key={n} value={n}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
-                    ))}
-                    <option value="10+">More than 10</option>
-                  </select>
-                </div>
-                <div className="md:col-span-2 lg:col-span-3">
-                  <FormTextarea
-                    label="Address"
-                    value={formData.guestAddress}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('guestAddress', e.target.value)}
-                    onBlur={() => handleBlur('guestAddress')}
-                    error={getError('guestAddress')}
-                    rows={2}
-                    placeholder="Guest address"
-                  />
-                </div>
-              </div>
+              <DynamicForm
+                schema={guestInfoSchema}
+                formData={formData}
+                errors={errors}
+                updateField={updateField}
+                handleBlur={handleBlur}
+              />
             </div>
 
             {/* Step 1: Select Dates */}
@@ -742,72 +830,14 @@ function NewBookingContent() {
                 <FaCreditCard className="mr-2 w-4 h-4" />
                 Payment Details
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="form-label">Payment Mode *</label>
-                  <select
-                    required
-                    value={formData.paymentMode}
-                    onChange={(e) => updateField('paymentMode', e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="CASH">Cash</option>
-                    <option value="CARD">Card</option>
-                    <option value="UPI">UPI</option>
-                    <option value="NET_BANKING">Net Banking</option>
-                    <option value="WALLET">Wallet</option>
-                    <option value="CHEQUE">Cheque</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Advance Amount (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.advanceAmount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, advanceAmount: e.target.value })
-                    }
-                    className="form-input"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Discount (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.discount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, discount: e.target.value })
-                    }
-                    className="form-input"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="form-label flex items-center gap-2">
-                    <FaPercent className="w-3 h-3 text-slate-400" />
-                    GST (18%)
-                  </label>
-                  <div className="flex items-center h-[42px] px-3 bg-slate-800/60 rounded-lg border border-white/10">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.applyGst}
-                        onChange={(e) => setFormData({ ...formData, applyGst: e.target.checked })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-sky-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      <span className="ml-2 text-sm text-slate-300">
-                        {formData.applyGst ? 'Applied' : 'Not Applied'}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
+              <DynamicForm
+                schema={paymentSchema}
+                formData={formData}
+                errors={errors}
+                updateField={updateField}
+                handleBlur={handleBlur}
+                gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+              />
             </div>
 
             {/* Overview */}

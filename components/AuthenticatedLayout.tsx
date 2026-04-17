@@ -121,16 +121,9 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
           }
         }, 500)
       } catch (error) {
-        console.error('Token validation error (network/DB), allowing access:', error)
-        setIsAuthenticated(true)
+        console.error('Token validation error:', error)
+        clearAuthAndRedirect('network_error')
         setIsLoading(false)
-        setTimeout(() => {
-          // Only enable idle timeout if "Remember Me" is NOT checked
-          if (!isRememberMe()) {
-            initSessionTimeout(handleSessionTimeout)
-            sessionInitialized.current = true
-          }
-        }, 500)
       } finally {
         validationInProgress.current = false
       }

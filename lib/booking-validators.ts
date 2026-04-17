@@ -15,6 +15,7 @@ export const createBookingSchema = z.object({
     .min(2, "Guest name must be at least 2 characters")
     .max(100),
   guestPhone: z.string().regex(/^[0-9]{10}$/, "Phone must be 10 digits"),
+  guestEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   guestIdProof: z.string().optional(),
   guestIdProofType: z
     .enum([
