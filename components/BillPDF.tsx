@@ -391,7 +391,6 @@ export function BillPDF({ bill }: BillPDFProps) {
         <View style={styles.billToSection}>
           <PDFText style={styles.billToTitle}>Bill To</PDFText>
           <PDFText style={styles.billToText}>{guest.name}</PDFText>
-          {guest.address && <PDFText style={styles.billToText}>{guest.address}</PDFText>}
         </View>
 
         {/* Item details table */}
@@ -426,7 +425,7 @@ export function BillPDF({ bill }: BillPDFProps) {
 
           <View style={[styles.itemTableTotalRow, { paddingVertical: 10 }]}>
             <PDFText style={[styles.itemTableTotalText, styles.col1]} hyphenationCallback={() => []}></PDFText>
-            <PDFText style={[styles.itemTableTotalText, styles.col2]} hyphenationCallback={() => []}>Total</PDFText>
+            <PDFText style={[styles.itemTableTotalText, styles.col2]} hyphenationCallback={() => []}>Sub Total</PDFText>
             <PDFText style={[styles.itemTableTotalText, styles.col3]} hyphenationCallback={() => []}></PDFText>
             <PDFText style={[styles.itemTableTotalText, styles.col4]} hyphenationCallback={() => []}></PDFText>
             <PDFText style={[styles.itemTableTotalText, styles.col5]} hyphenationCallback={() => []}></PDFText>
