@@ -278,7 +278,7 @@ export function EditBookingModal({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-slate-800/40 p-4 rounded-xl border border-white/5">
               <FormInput 
-                label="Total Amount (₹) *" 
+                label="Gross Amount (Bill Total) *" 
                 type="number" 
                 value={formData.totalAmount} 
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('totalAmount', e.target.value)} 
@@ -313,6 +313,24 @@ export function EditBookingModal({
                     className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-sky-500"
                  />
                  <label htmlFor="edit-apply-gst" className="text-sm text-slate-300">Apply GST (18%)</label>
+              </div>
+
+              {/* Live Preview Section */}
+              <div className="md:col-span-2 lg:col-span-3 mt-2 p-4 rounded-xl bg-sky-500/10 border border-sky-500/20">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-sky-400 uppercase tracking-wider mb-1">Pricing Preview</h4>
+                    <p className="text-[10px] text-slate-400">Final amount the customer will pay after discount</p>
+                  </div>
+                  <div className="flex items-baseline gap-3">
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-500 uppercase">Net Payable</p>
+                      <p className="text-2xl font-black text-white">
+                        ₹{(Number(formData.totalAmount || 0) - Number(formData.discount || 0)).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

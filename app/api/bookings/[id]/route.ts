@@ -257,13 +257,19 @@ export async function PUT(
         }
 
         if (pricingChanged) {
-          // IMPORTANT: Synchronize subtotal and tax with the new totalAmount/discount
-          // Based on model: Net Total = (Subtotal + Tax) - Discount
-          // So Gross Total (Subtotal + Tax) = Net Total + Discount
-          const currentDiscount = updateData.discount !== undefined ? updateData.discount : (currentBooking.discount || 0);
-          const grossTarget = finalTotal + currentDiscount;
+          // NEW LOGIC: Input totalAmount is the GROSS (Subtotal + Tax).
+          // Net Total = (Subtotal + Tax) - Discount
+          const currentDiscount =
+            updateData.discount !== undefined
+              ? updateData.discount
+              : currentBooking.discount || 0;
+          
+          // The input 'totalAmount' (which is 'finalTotal' currently) is treated as the Gross target
+          const grossTarget = finalTotal;
+          const netPayable = grossTarget - currentDiscount;
 
           if (currentBooking.applyGst) {
+            // Gross = Subtotal * 1.18 -> Subtotal = Gross / 1.18
             const calculatedSubtotal = Math.round((grossTarget / 1.18) * 100) / 100;
             updateData.subtotal = calculatedSubtotal;
             updateData.tax = Math.round((grossTarget - calculatedSubtotal) * 100) / 100;
@@ -272,7 +278,11 @@ export async function PUT(
             updateData.tax = 0;
           }
 
-          const newBalance = finalTotal - finalPaid;
+          // Important: updateData.totalAmount (Net Payable) is Gross - Discount
+          updateData.totalAmount = netPayable;
+          finalTotal = netPayable; // For correctly updating balance below
+
+          const newBalance = netPayable - finalPaid;
           updateData.balanceAmount = Math.max(0, newBalance);
           updateData.paymentStatus =
             newBalance <= 0.01
