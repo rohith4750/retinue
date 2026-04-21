@@ -15,12 +15,14 @@ export async function GET(request: NextRequest) {
     // 1. Pending payment (PARTIAL/PENDING)
     // 2. Checking in today
     // 3. Checking out today
+    // 4. Overdue check-outs (past checkout timestamp but still checked in)
     const roomBookings = await prisma.booking.findMany({
       where: {
         OR: [
           { paymentStatus: { in: ["PENDING", "PARTIAL"] }, status: { in: ["CHECKED_IN", "CHECKED_OUT"] } },
           { checkIn: { gte: startOfToday, lte: endOfToday } },
           { checkOut: { gte: startOfToday, lte: endOfToday } },
+          { checkOut: { lt: startOfToday }, status: "CHECKED_IN" }, // Overdue
         ],
       },
       include: {

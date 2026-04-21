@@ -211,7 +211,12 @@ export default function AdminAlertsPage() {
                     </div>
                     
                     <div className="flex flex-wrap gap-3">
-                      {/* Status Badges */}
+                      {moment(bill.checkOut).isBefore(moment(), 'day') && bill.status === 'CHECKED_IN' && (
+                        <div className="px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-bounce"></div>
+                          <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Overdue Departure</span>
+                        </div>
+                      )}
                       {bill.balanceAmount > 0 && (
                         <div className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2">
                           <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
