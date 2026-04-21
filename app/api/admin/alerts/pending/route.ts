@@ -7,11 +7,21 @@ export async function GET(request: NextRequest) {
     const authResult = await requireAuth("ADMIN")(request);
     if (authResult instanceof Response) return authResult;
 
-    // Fetch rooms bookings with pending payment
+    const now = new Date();
+    const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+    const endOfToday = new Date(now.setHours(23, 59, 59, 999));
+
+    // Fetch rooms bookings that need attention:
+    // 1. Pending payment (PARTIAL/PENDING)
+    // 2. Checking in today
+    // 3. Checking out today
     const roomBookings = await prisma.booking.findMany({
       where: {
-        paymentStatus: { in: ["PENDING", "PARTIAL"] },
-        status: { in: ["CHECKED_OUT", "CHECKED_IN"] }, // Checked out guests with balance are priority
+        OR: [
+          { paymentStatus: { in: ["PENDING", "PARTIAL"] }, status: { in: ["CHECKED_IN", "CHECKED_OUT"] } },
+          { checkIn: { gte: startOfToday, lte: endOfToday } },
+          { checkOut: { gte: startOfToday, lte: endOfToday } },
+        ],
       },
       include: {
         guest: true,
@@ -30,6 +40,7 @@ export async function GET(request: NextRequest) {
       guestPhone: b.guest?.phone || "N/A",
       reference: b.bookingReference || b.id,
       roomNumber: b.room?.roomNumber || "N/A",
+      checkIn: b.checkIn,
       checkOut: b.checkOut,
       totalAmount: b.totalAmount,
       balanceAmount: b.balanceAmount || 0,

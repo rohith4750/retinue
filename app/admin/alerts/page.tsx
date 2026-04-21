@@ -5,7 +5,8 @@ import { api } from '@/lib/api-client'
 import { useState, useEffect } from 'react'
 import { 
   FaExclamationTriangle, FaEnvelope, FaUserCheck, FaSearch, 
-  FaPaperPlane, FaMoneyBillWave, FaBed, FaUserTag, FaFilter
+  FaPaperPlane, FaMoneyBillWave, FaBed, FaUserTag, FaFilter,
+  FaCalendarCheck, FaCalendarPlus, FaArrowRight
 } from 'react-icons/fa'
 import { toast } from 'react-hot-toast'
 import moment from 'moment'
@@ -194,15 +195,42 @@ export default function AdminAlertsPage() {
                       </div>
                       <div>
                         <h4 className="text-lg font-black text-white leading-tight">{bill.guestName}</h4>
-                        <p className="text-xs text-slate-500 flex items-center gap-2 mt-1">
-                          <span className="font-black text-sky-400/80">#{bill.reference}</span>
-                          &bull; 
-                          {moment(bill.checkOut).format('DD MMM YYYY, hh:mm A')}
-                        </p>
+                        <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
+                          <div className="flex items-center gap-1.5 bg-slate-800/80 px-2 py-1 rounded-lg border border-white/5">
+                            <FaCalendarPlus className="text-sky-400/80 text-[10px]" />
+                            <span>{moment(bill.checkIn).format('DD MMM')}</span>
+                          </div>
+                          <FaArrowRight className="text-[10px] text-slate-700" />
+                          <div className="flex items-center gap-1.5 bg-slate-800/80 px-2 py-1 rounded-lg border border-white/5">
+                            <FaCalendarCheck className="text-amber-400/80 text-[10px]" />
+                            <span>{moment(bill.checkOut).format('DD MMM')}</span>
+                          </div>
+                          <span className="font-black text-sky-400/80 ml-2">#{bill.reference}</span>
+                        </div>
                       </div>
                     </div>
                     
                     <div className="flex flex-wrap gap-3">
+                      {/* Status Badges */}
+                      {bill.balanceAmount > 0 && (
+                        <div className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
+                          <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Unpaid Balance</span>
+                        </div>
+                      )}
+                      {moment(bill.checkIn).isSame(moment(), 'day') && (
+                        <div className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2">
+                          <FaCalendarPlus className="text-emerald-400 text-[10px]" />
+                          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Arriving Today</span>
+                        </div>
+                      )}
+                      {moment(bill.checkOut).isSame(moment(), 'day') && (
+                        <div className="px-3 py-1.5 bg-sky-500/10 border border-sky-500/20 rounded-xl flex items-center gap-2">
+                          <FaCalendarCheck className="text-sky-400 text-[10px]" />
+                          <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest">Departing Today</span>
+                        </div>
+                      )}
+
                       <div className="px-4 py-2 bg-slate-800/50 border border-white/5 rounded-xl flex items-center gap-2">
                         <FaBed className="text-sky-400 text-xs" />
                         <span className="text-xs font-bold text-slate-300">Room {bill.roomNumber}</span>
