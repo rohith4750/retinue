@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   billToText: {
     fontSize: 10,
     color: '#374151',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   // Item table - red header
   itemTable: {
@@ -390,7 +390,10 @@ export function BillPDF({ bill }: BillPDFProps) {
         {/* Bill To */}
         <View style={styles.billToSection}>
           <PDFText style={styles.billToTitle}>Bill To</PDFText>
-          <PDFText style={[styles.billToText, { fontWeight: 'bold' }]}>{guest.name}</PDFText>
+          <PDFText style={[styles.billToText, { fontWeight: 'bold', fontSize: 11 }]}>{guest.name}</PDFText>
+          {guest.address && <PDFText style={styles.billToText}>{guest.address}</PDFText>}
+          <PDFText style={[styles.billToText, { color: '#6b7280' }]} hyphenationCallback={() => []}>Phone: {guest.phone}</PDFText>
+          {guest.email && <PDFText style={[styles.billToText, { color: '#6b7280' }]} hyphenationCallback={() => []}>Email: {guest.email}</PDFText>}
         </View>
 
         {/* Item details table */}

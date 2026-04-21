@@ -266,7 +266,8 @@ export function ConventionBillPDF({ booking }: ConventionBillPDFProps) {
                 <View style={styles.billToSection}>
                     <View>
                         <Text style={styles.billToTitle}>Bill To</Text>
-                        <Text style={styles.billToText}>{booking.customerName}</Text>
+                        <Text style={[styles.billToText, { fontWeight: 'bold' }]}>{booking.customerName}</Text>
+                        {booking.customerAddress && <Text style={styles.billToText}>{booking.customerAddress}</Text>}
                         <Text style={styles.billToText}>{booking.customerPhone}</Text>
                         {booking.customerEmail && <Text style={styles.billToText}>{booking.customerEmail}</Text>}
                     </View>

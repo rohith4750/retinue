@@ -634,3 +634,108 @@ export async function sendBookingStepAlert(
     return false;
   }
 }
+
+/**
+ * Send alert for pending/unpaid bills
+ */
+export async function sendPendingBillAlert(
+  toEmails: string[],
+  details: {
+    guestName: string;
+    bookingReference: string;
+    balanceAmount: number;
+    checkOutDate: string | Date;
+    roomInfo: string;
+    actionUrl?: string;
+  }
+): Promise<boolean> {
+  if (!SMTP_USER || !SMTP_PASS || toEmails.length === 0) return false;
+  const fromEmail = SMTP_FROM || SMTP_USER;
+  if (!fromEmail) return false;
+
+  const checkOutStr = formatDateTime(details.checkOutDate);
+  const actionUrl = details.actionUrl || APP_URL;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: 'Inter', -apple-system, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 20px; background-color: #fff1f2; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 2px solid #fda4af; }
+          .header { background: #9f1239; padding: 32px 20px; text-align: center; }
+          .logo { width: 180px; height: auto; margin-bottom: 20px; }
+          .alert-badge { display: inline-block; padding: 6px 16px; background: white; color: #e11d48; border-radius: 100px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
+          .content { padding: 40px; }
+          .amount-card { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 16px; padding: 24px; text-align: center; margin: 24px 0; }
+          .amount-label { font-size: 11px; font-weight: 700; color: #9f1239; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+          .amount-value { font-size: 32px; font-weight: 900; color: #e11d48; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+          .info-item { border-left: 3px solid #fecdd3; padding-left: 12px; }
+          .label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+          .value { font-size: 14px; font-weight: 600; color: #0f172a; }
+          .footer { padding: 32px; text-align: center; background: #f8fafc; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+          .btn { display: inline-block; margin-top: 24px; padding: 12px 32px; background: #e11d48; color: white; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.2); }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="${LOGO_URL}" alt="The Retinue" class="logo">
+            <br>
+            <div class="alert-badge">Payment Pending Alert</div>
+          </div>
+          <div class="content">
+            <h2 style="margin: 0 0 16px 0; color: #9f1239; font-size: 22px;">Outstanding Balance Notification</h2>
+            <p style="margin: 0; color: #475569; font-size: 15px;">Attention: A guest has checked out with an unpaid balance. Please follow up on this immediately.</p>
+            
+            <div class="amount-card">
+              <div class="amount-label">Amount Outstanding</div>
+              <div class="amount-value">₹${Number(details.balanceAmount || 0).toLocaleString("en-IN")}</div>
+            </div>
+
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="label">Guest Name</div>
+                <div class="value">${details.guestName}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Reference</div>
+                <div class="value">#${details.bookingReference}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Room</div>
+                <div class="value">${details.roomInfo}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Check-out Date</div>
+                <div class="value">${checkOutStr}</div>
+              </div>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${actionUrl}" class="btn">View Bill Details</a>
+            </div>
+          </div>
+          <div class="footer">
+            <strong>Urgent Operational Alert</strong> &bull; Hotel Management System<br>
+            Please settle all pending dues before EOD.
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"The Retinue Alerts" <${fromEmail}>`,
+      to: toEmails.join(", "),
+      subject: `[URGENT] Pending Payment: ${details.guestName} (#${details.bookingReference})`,
+      html,
+    });
+    return true;
+  } catch (error) {
+    console.error("Error sending pending bill alert:", error);
+    return false;
+  }
+}

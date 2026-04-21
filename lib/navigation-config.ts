@@ -18,6 +18,7 @@ import {
   FaUsers,
   FaUserShield,
   FaWallet,
+  FaBell,
 } from 'react-icons/fa'
 import { USER_ROLES } from './constants'
 
@@ -106,6 +107,7 @@ export const MENU_SECTIONS: MenuSectionConfig[] = [
     items: [
       { href: '/inventory', icon: FaBox, label: 'Stock & Assets', roles: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.RECEPTIONIST] },
       { href: '/staff', icon: FaUsers, label: 'Staff', roles: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN] },
+      { href: '/admin/alerts', icon: FaBell, label: 'Alert System', roles: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN] },
       { href: '/assets', icon: FaMapMarkerAlt, label: 'Asset Locator', roles: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.RECEPTIONIST] },
     ],
   },
@@ -138,6 +140,7 @@ export const PAGE_INFO_CONFIG: PageInfoConfig[] = [
   { title: 'Asset Locator', icon: FaBox, path: '/assets' },
   { title: 'My Profile', icon: FaUser, path: '/profile' },
   { title: 'Bill Details', icon: FaCalendarAlt, path: '/bills' },
+  { title: 'Alert System', icon: FaBell, path: '/admin/alerts' },
 ]
 
 export const TOOLBAR_QUICK_ACTIONS: QuickActionConfig[] = [

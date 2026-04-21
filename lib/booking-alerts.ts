@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   sendRoomBookedAlert,
   sendBookingStepAlert,
+  sendPendingBillAlert,
   type RoomBookedAlertDetails,
   type BookingStepAlertDetails,
 } from "@/lib/email";
@@ -169,5 +170,34 @@ export async function notifyInternalBookingStep(
     }
   } catch (err) {
     console.error("Failed to send booking step alert to internal users:", err);
+  }
+}
+
+/**
+ * Handle manual alert trigger for pending payments
+ */
+export async function notifyCustomPendingAlert(
+  toEmails: string[],
+  bookingId: string
+): Promise<boolean> {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { guest: true, room: true },
+    });
+
+    if (!booking || !booking.guest) return false;
+
+    return await sendPendingBillAlert(toEmails, {
+      guestName: booking.guest.name,
+      bookingReference: booking.bookingReference || booking.id,
+      balanceAmount: booking.balanceAmount || 0,
+      checkOutDate: booking.checkOut,
+      roomInfo: booking.room?.roomNumber || "N/A",
+      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || ""}/bills/${booking.id}`,
+    });
+  } catch (error) {
+    console.error("Error in notifyCustomPendingAlert:", error);
+    return false;
   }
 }
