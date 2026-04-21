@@ -30,8 +30,8 @@ export default function AdminAlertsPage() {
 
   // Initialize selected emails with all receptionists by default
   useEffect(() => {
-    if (staffUsers?.data && selectedEmails.length === 0) {
-      const receptionists = staffUsers.data
+    if (staffUsers && selectedEmails.length === 0) {
+      const receptionists = (staffUsers as any[])
         .filter((u: any) => u.role === 'RECEPTIONIST' || u.role === 'ADMIN')
         .map((u: any) => u.email)
       setSelectedEmails(receptionists)
@@ -67,7 +67,7 @@ export default function AdminAlertsPage() {
     )
   }
 
-  const filteredBills = pendingBills?.data?.filter((b: any) => 
+  const filteredBills = (pendingBills as any[])?.filter((b: any) => 
     b.guestName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     b.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
     b.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
@@ -82,7 +82,7 @@ export default function AdminAlertsPage() {
     )
   }
 
-  const totalOutstanding = pendingBills?.data?.reduce((acc: number, b: any) => acc + b.balanceAmount, 0) || 0
+  const totalOutstanding = (pendingBills as any[])?.reduce((acc: number, b: any) => acc + b.balanceAmount, 0) || 0
 
   return (
     <div className="w-full px-4 lg:px-8 py-6 relative z-10 space-y-8">
@@ -105,7 +105,7 @@ export default function AdminAlertsPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center min-w-[140px]">
             <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Total Pending</p>
-            <p className="text-2xl font-black text-white">{pendingBills?.data?.length || 0}</p>
+            <p className="text-2xl font-black text-white">{(pendingBills as any[])?.length || 0}</p>
           </div>
           <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center min-w-[140px]">
             <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Outstanding</p>
@@ -127,7 +127,7 @@ export default function AdminAlertsPage() {
             </h3>
             
             <div className="space-y-3">
-              {staffUsers?.data?.map((user: any) => (
+              {(staffUsers as any[])?.map((user: any) => (
                 <button
                   key={user.id}
                   onClick={() => toggleEmail(user.email)}
