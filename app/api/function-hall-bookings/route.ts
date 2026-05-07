@@ -124,10 +124,10 @@ export async function POST(request: NextRequest) {
       specialRequests,
     } = data
 
-    // Validation
-    if (!hallId || !customerName || !customerPhone || !eventType || !eventDate || !startTime || !endTime || !expectedGuests || !totalAmount) {
+    // Validation - Only strictly necessary fields
+    if (!hallId || !customerName || !customerPhone || !eventDate || !totalAmount) {
       return Response.json(
-        errorResponse('VALIDATION_ERROR', 'All required fields must be provided'),
+        errorResponse('VALIDATION_ERROR', 'Hall, customer details, date and amount are required'),
         { status: 400 }
       )
     }
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check capacity
-    if (parseInt(expectedGuests) > hall.capacity) {
+    if (expectedGuests && parseInt(expectedGuests) > hall.capacity) {
       return Response.json(
         errorResponse('CAPACITY_EXCEEDED', `Hall capacity is ${hall.capacity} guests`),
         { status: 400 }
@@ -187,11 +187,11 @@ export async function POST(request: NextRequest) {
         customerName,
         customerPhone,
         customerEmail: customerEmail || null,
-        eventType,
+        eventType: eventType || 'Other',
         eventDate: eventDateObj,
-        startTime,
-        endTime,
-        expectedGuests: parseInt(expectedGuests),
+        startTime: startTime || '09:00',
+        endTime: endTime || '21:00',
+        expectedGuests: parseInt(expectedGuests) || 0,
         totalAmount: total,
         advanceAmount: advance,
         balanceAmount: grandTotal - advance,

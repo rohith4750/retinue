@@ -16,7 +16,6 @@ import { ConventionBillPDF } from '@/components/ConventionBillPDF'
 export default function FunctionHallBookingsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
-  const [includeTesting, setIncludeTesting] = useState(false)
   const [page, setPage] = useState(1)
   const [cancelModal, setCancelModal] = useState<{ show: boolean; bookingId: string | null }>({
     show: false,
@@ -43,14 +42,13 @@ export default function FunctionHallBookingsPage() {
 
   // Fetch bookings
   const { data: bookingsData, isLoading, refetch: refetchBookings } = useQuery({
-    queryKey: ['function-hall-bookings', debouncedSearch, page, includeTesting],
+    queryKey: ['function-hall-bookings', debouncedSearch, page],
     queryFn: () => {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '10'
       })
       if (debouncedSearch) params.append('search', debouncedSearch)
-      if (includeTesting) params.append('includeTesting', 'true')
       return api.get(`/function-hall-bookings?${params.toString()}`)
     },
     staleTime: 0,
@@ -62,9 +60,6 @@ export default function FunctionHallBookingsPage() {
   const pagination = bookingsData?.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 }
   const summary = bookingsData?.summary || { totalRevenue: 0, pendingAmount: 0, todayEvents: 0, upcomingEvents: 0 }
 
-  const isTestingBooking = (booking: any) => {
-    return booking.customerName.toLowerCase().includes('testing')
-  }
 
   // Cancel mutation
   const cancelMutation = useMutationWithInvalidation({
@@ -274,27 +269,13 @@ export default function FunctionHallBookingsPage() {
               Manage and track all function hall events
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-900/60 backdrop-blur-xl border border-white/5 rounded-xl px-3 py-2">
-              <span className="text-xs text-slate-400">Testing Mode</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeTesting}
-                  onChange={(e) => setIncludeTesting(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
-              </label>
-            </div>
-            <Link
-              href="/function-halls/bookings/new"
-              className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-500 transition-colors flex items-center gap-2"
-            >
-              <FaPlus />
-              New Booking
-            </Link>
-          </div>
+          <Link
+            href="/function-halls/bookings/new"
+            className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-500 transition-colors flex items-center gap-2"
+          >
+            <FaPlus />
+            New Booking
+          </Link>
         </div>
 
         {/* Dash Cards */}
@@ -512,11 +493,6 @@ export default function FunctionHallBookingsPage() {
                       <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(booking.status)}`}>
                         {booking.status}
                       </span>
-                      {isTestingBooking(booking) && (
-                        <span className="text-xs px-2 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold">
-                          TEST DATA
-                        </span>
-                      )}
                       <span className="text-xs text-slate-500">
                         {booking.eventType}
                       </span>
@@ -763,10 +739,6 @@ export default function FunctionHallBookingsPage() {
                   <span className="text-white ml-2">{billModal.booking.customerName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400">Phone:</span>
-                  <span className="text-white ml-2">{billModal.booking.customerPhone}</span>
-                </div>
-                <div>
                   <span className="text-slate-400">Hall:</span>
                   <span className="text-white ml-2">{billModal.booking.hall?.name}</span>
                 </div>
@@ -793,11 +765,16 @@ export default function FunctionHallBookingsPage() {
                   <span className="text-white">₹{billModal.booking.totalAmount?.toLocaleString()}</span>
                 </div>
                 {billModal.booking.electricityCharges > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">
-                      Electricity ({billModal.booking.unitsConsumed?.toFixed(1)} units @ ₹{billModal.booking.electricityUnitPrice || 8})
-                    </span>
-                    <span className="text-yellow-400">₹{billModal.booking.electricityCharges?.toLocaleString()}</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">
+                        Electricity ({billModal.booking.unitsConsumed?.toFixed(1)} units @ ₹{billModal.booking.electricityUnitPrice || 8})
+                      </span>
+                      <span className="text-yellow-400">₹{billModal.booking.electricityCharges?.toLocaleString()}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 text-right">
+                      Reading: {billModal.booking.meterReadingBefore} (Start) to {billModal.booking.meterReadingAfter} (End)
+                    </div>
                   </div>
                 )}
                 {billModal.booking.maintenanceCharges > 0 && (

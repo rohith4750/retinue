@@ -83,7 +83,7 @@ function NewFunctionHallBookingContent() {
       toast.error('Please select an event date')
       return
     }
-    if (parseInt(formData.expectedGuests) > (selectedHall?.capacity || 0)) {
+    if (formData.expectedGuests && parseInt(formData.expectedGuests) > (selectedHall?.capacity || 0)) {
       toast.error(`Hall capacity is ${selectedHall?.capacity} guests`)
       return
     }
@@ -222,12 +222,11 @@ function NewFunctionHallBookingContent() {
 
                 {/* Event Type */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Event Type *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Event Type</label>
                   <select
                     name="eventType"
                     value={formData.eventType}
                     onChange={handleChange}
-                    required
                     className="form-input"
                   >
                     <option value="">Select event type</option>
@@ -265,7 +264,7 @@ function NewFunctionHallBookingContent() {
 
                 {/* Expected Guests */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Expected Guests *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Expected Guests</label>
                   <div className="relative">
                     <FaUsers className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                     <input
@@ -273,8 +272,7 @@ function NewFunctionHallBookingContent() {
                       name="expectedGuests"
                       value={formData.expectedGuests}
                       onChange={handleChange}
-                      required
-                      min="1"
+                      min="0"
                       max={selectedHall?.capacity || 9999}
                       className="form-input pl-10"
                       placeholder="Number of guests"
