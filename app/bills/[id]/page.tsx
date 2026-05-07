@@ -119,7 +119,7 @@ export default function BillPage() {
   // Build payment transactions from booking onwards (meaningful timeline)
   type TxRow = { type: string; label: string; amount: number; date: string; mode?: string; notes?: string; historyId?: string }
   const paymentTransactions: TxRow[] = []
-  
+
   if (advanceAmount > 0) {
     paymentTransactions.push({
       type: 'ADVANCE',
@@ -232,7 +232,7 @@ export default function BillPage() {
       } else {
         toast.error('Please allow popups to print')
       }
-      
+
       setTimeout(() => URL.revokeObjectURL(url), 10000)
     } catch (error) {
       console.error('Error printing PDF:', error)
@@ -270,7 +270,7 @@ export default function BillPage() {
       } else {
         toast.error('Please allow popups to print')
       }
-      
+
       setTimeout(() => URL.revokeObjectURL(url), 10000)
     } catch (error) {
       console.error('Error printing receipt:', error)
@@ -468,13 +468,13 @@ export default function BillPage() {
 
         {/* Invoice Card */}
         <div className="bg-slate-800 border border-white/5 rounded-2xl p-6 mb-8">
-           <div className="border-b border-white/10 pb-6 mb-6 text-center">
-              <h1 className="text-3xl font-bold text-blue-400 mb-1">THE RETINUE</h1>
-              <p className="text-sm text-slate-400">Luxury Hotel & Hospitality</p>
-              <div className="text-xs text-slate-500 mt-2">
-                <p>{HOTEL_INFO.address}</p>
-                <p>Email: {HOTEL_INFO.email}</p>
-              </div>
+          <div className="border-b border-white/10 pb-6 mb-6 text-center">
+            <h1 className="text-3xl font-bold text-blue-400 mb-1">THE RETINUE</h1>
+            <p className="text-sm text-slate-400">Luxury Hotel & Hospitality</p>
+            <div className="text-xs text-slate-500 mt-2">
+              <p>{HOTEL_INFO.address}</p>
+              <p>Email: {HOTEL_INFO.email}</p>
+            </div>
           </div>
 
           <div className="flex justify-between items-start mb-6">
@@ -527,7 +527,7 @@ export default function BillPage() {
               </tr>
             </thead>
             <tbody>
-              { (bill.booking.items || [bill.booking]).map((item: any, idx: number) => (
+              {(bill.booking.items || [bill.booking]).map((item: any, idx: number) => (
                 <tr key={idx} className="border-b border-white/5 text-slate-300">
                   <td className="py-3">Room charges - {item.roomType || room.roomType} {item.roomNumber || room.roomNumber}</td>
                   <td className="py-3 text-right">₹{(item.subtotal || bill.subtotal).toLocaleString()}</td>
@@ -553,109 +553,109 @@ export default function BillPage() {
           </table>
 
           <div className="grid grid-cols-3 gap-4 p-4 bg-slate-900/60 rounded-xl">
-             <div>
-                <p className="text-[10px] text-slate-500 uppercase">Paid</p>
-                <p className="text-emerald-400 font-bold">₹{paidAmount.toLocaleString()}</p>
-             </div>
-             <div>
-                <p className="text-[10px] text-slate-500 uppercase">{balanceDue < 0 ? 'Surplus' : 'Balance'}</p>
-                <p className={balanceDue > 0 ? 'text-amber-400 font-bold' : 'text-sky-400 font-bold'}>₹{Math.abs(balanceDue).toLocaleString()}</p>
-             </div>
-             <div>
-                <p className="text-[10px] text-slate-500 uppercase">Status</p>
-                <p className="text-slate-300 font-bold">{bill.paymentStatus}</p>
-             </div>
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase">Paid</p>
+              <p className="text-emerald-400 font-bold">₹{paidAmount.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase">{balanceDue < 0 ? 'Surplus' : 'Balance'}</p>
+              <p className={balanceDue > 0 ? 'text-amber-400 font-bold' : 'text-sky-400 font-bold'}>₹{Math.abs(balanceDue).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase">Status</p>
+              <p className="text-slate-300 font-bold">{bill.paymentStatus}</p>
+            </div>
           </div>
         </div>
 
         {/* Payment History */}
         <div className="border-t border-white/5 pt-8">
-           <h3 className="font-bold text-slate-200 mb-4 flex items-center gap-2">
-             <FaHistory className="text-sky-400" /> Transaction History
-           </h3>
-           <div className="rounded-xl border border-white/10 overflow-hidden text-sm">
-              <table className="w-full">
-                <thead className="bg-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
-                  <tr>
-                    <th className="px-4 py-3 text-left">#</th>
-                    <th className="px-4 py-3 text-left">Type</th>
-                    <th className="px-4 py-3 text-left">Date</th>
-                    <th className="px-4 py-3 text-right">Amount</th>
-                    <th className="px-4 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {paymentTransactions.length === 0 ? (
-                    <tr><td colSpan={5} className="py-8 text-center text-slate-600">No transactions recorded</td></tr>
-                  ) : (
-                    paymentTransactions.map((tx, i) => (
-                      <tr key={i} className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 text-slate-500">{i+1}</td>
-                        <td className="px-4 py-3 font-medium text-slate-200">{tx.label}</td>
-                        <td className="px-4 py-3 text-slate-400 text-xs">{tx.date}</td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-400">
-                          {tx.type === 'CORRECTION' ? `Set to ₹${tx.amount.toLocaleString()}` : `+₹${tx.amount.toLocaleString()}`}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                           <div className="flex justify-end gap-2">
-                              {tx.historyId && tx.type === 'PAYMENT' && (
-                                <button onClick={() => { setEditPaymentTx({ historyId: tx.historyId!, amount: tx.amount }); setEditPaymentAmount(String(tx.amount)) }} className="text-sky-400 hover:text-sky-300"><FaEdit /></button>
-                              )}
-                              <button onClick={() => handlePrintReceipt(tx)} className="text-slate-500 hover:text-white"><FaPrint /></button>
-                           </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-                <tfoot className="bg-slate-800/60 font-bold">
-                  <tr>
-                    <td colSpan={3} className="px-4 py-3 text-slate-400 text-[10px]">TOTAL RECORDED</td>
-                    <td className="px-4 py-3 text-right text-[10px] text-slate-500">Rows: ₹{totalTransactionsSum.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-emerald-400">Total: ₹{paidAmount.toLocaleString()}</td>
-                  </tr>
-                </tfoot>
-              </table>
-           </div>
+          <h3 className="font-bold text-slate-200 mb-4 flex items-center gap-2">
+            <FaHistory className="text-sky-400" /> Transaction History
+          </h3>
+          <div className="rounded-xl border border-white/10 overflow-hidden text-sm">
+            <table className="w-full">
+              <thead className="bg-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="px-4 py-3 text-left">#</th>
+                  <th className="px-4 py-3 text-left">Type</th>
+                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-right">Amount</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {paymentTransactions.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-slate-600">No transactions recorded</td></tr>
+                ) : (
+                  paymentTransactions.map((tx, i) => (
+                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                      <td className="px-4 py-3 text-slate-500">{i + 1}</td>
+                      <td className="px-4 py-3 font-medium text-slate-200">{tx.label}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{tx.date}</td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-400">
+                        {tx.type === 'CORRECTION' ? `Set to ₹${tx.amount.toLocaleString()}` : `+₹${tx.amount.toLocaleString()}`}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          {tx.historyId && tx.type === 'PAYMENT' && (
+                            <button onClick={() => { setEditPaymentTx({ historyId: tx.historyId!, amount: tx.amount }); setEditPaymentAmount(String(tx.amount)) }} className="text-sky-400 hover:text-sky-300"><FaEdit /></button>
+                          )}
+                          <button onClick={() => handlePrintReceipt(tx)} className="text-slate-500 hover:text-white"><FaPrint /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot className="bg-slate-800/60 font-bold">
+                <tr>
+                  <td colSpan={3} className="px-4 py-3 text-slate-400 text-[10px]">TOTAL RECORDED</td>
+                  <td className="px-4 py-3 text-right text-[10px] text-slate-500">Rows: ₹{totalTransactionsSum.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-emerald-400">Total: ₹{paidAmount.toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
 
         {/* Modals */}
         {editPaymentTx && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-              <div className="bg-slate-800 border border-white/10 p-6 rounded-2xl w-full max-w-sm">
-                 <h3 className="font-bold text-white mb-4">Edit Transaction</h3>
-                 <div className="space-y-4 mb-6">
-                    <input type="number" value={editPaymentAmount} onChange={(e) => setEditPaymentAmount(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
-                    <input type="text" value={editPaymentReason} onChange={(e) => setEditPaymentReason(e.target.value)} placeholder="Reason" className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
-                 </div>
-                 <div className="flex justify-end gap-3">
-                    <button onClick={() => setEditPaymentTx(null)} className="text-slate-400">Cancel</button>
-                    <button onClick={() => editPaymentMutation.mutate({ historyId: editPaymentTx.historyId, newAmount: parseFloat(editPaymentAmount) || 0, reason: editPaymentReason })} className="bg-sky-600 text-white px-4 py-2 rounded-lg font-bold">Save</button>
-                 </div>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+            <div className="bg-slate-800 border border-white/10 p-6 rounded-2xl w-full max-w-sm">
+              <h3 className="font-bold text-white mb-4">Edit Transaction</h3>
+              <div className="space-y-4 mb-6">
+                <input type="number" value={editPaymentAmount} onChange={(e) => setEditPaymentAmount(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
+                <input type="text" value={editPaymentReason} onChange={(e) => setEditPaymentReason(e.target.value)} placeholder="Reason" className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
               </div>
-           </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setEditPaymentTx(null)} className="text-slate-400">Cancel</button>
+                <button onClick={() => editPaymentMutation.mutate({ historyId: editPaymentTx.historyId, newAmount: parseFloat(editPaymentAmount) || 0, reason: editPaymentReason })} className="bg-sky-600 text-white px-4 py-2 rounded-lg font-bold">Save</button>
+              </div>
+            </div>
+          </div>
         )}
 
         {showEditBillModal && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-              <div className="bg-slate-800 border border-white/10 p-6 rounded-2xl w-full max-w-sm">
-                 <h3 className="font-bold text-white mb-4">Edit Bill Details</h3>
-                 <div className="space-y-4 mb-6">
-                    <div>
-                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Bill Number</label>
-                        <input type="text" value={editBillData.billNumber} onChange={(e) => setEditBillData({...editBillData, billNumber: e.target.value})} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
-                    </div>
-                    <div>
-                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Discount (₹)</label>
-                        <input type="number" value={editBillData.discount} onChange={(e) => setEditBillData({...editBillData, discount: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
-                    </div>
-                 </div>
-                 <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowEditBillModal(false)} className="text-slate-400">Cancel</button>
-                    <button onClick={() => editBillMutation.mutate(editBillData)} className="bg-sky-600 text-white px-4 py-2 rounded-lg font-bold">Save</button>
-                 </div>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+            <div className="bg-slate-800 border border-white/10 p-6 rounded-2xl w-full max-w-sm">
+              <h3 className="font-bold text-white mb-4">Edit Bill Details</h3>
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Bill Number</label>
+                  <input type="text" value={editBillData.billNumber} onChange={(e) => setEditBillData({ ...editBillData, billNumber: e.target.value })} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Discount (₹)</label>
+                  <input type="number" value={editBillData.discount} onChange={(e) => setEditBillData({ ...editBillData, discount: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white" />
+                </div>
               </div>
-           </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setShowEditBillModal(false)} className="text-slate-400">Cancel</button>
+                <button onClick={() => editBillMutation.mutate(editBillData)} className="bg-sky-600 text-white px-4 py-2 rounded-lg font-bold">Save</button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </>

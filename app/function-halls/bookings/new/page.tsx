@@ -100,6 +100,18 @@ function NewFunctionHallBookingContent() {
       return
     }
 
+    if (name === 'eventDate') {
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: value, 
+        hallId: '', // Reset hall selection when date changes
+        totalAmount: '',
+        advanceAmount: '0'
+      }))
+      setSelectedHall(null)
+      return
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -146,21 +158,26 @@ function NewFunctionHallBookingContent() {
               <div className="space-y-4">
                 {/* Event Date */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Event Date *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-sky-600 text-white text-[10px] font-bold mr-2">1</span>
+                    Event Date *
+                  </label>
                   <input
                     type="date"
                     name="eventDate"
                     value={formData.eventDate}
                     onChange={handleChange}
                     required
-                    min={moment().format('YYYY-MM-DD')}
                     className="form-input"
                   />
                 </div>
 
                 {/* Function Hall Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Function Hall *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center">
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold mr-2 ${formData.eventDate ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-400'}`}>2</span>
+                    Function Hall *
+                  </label>
                   {preselectedHallId && selectedHall ? (
                     // Show locked hall info when pre-selected from "Book Now"
                     <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3">
@@ -183,9 +200,10 @@ function NewFunctionHallBookingContent() {
                         value={formData.hallId}
                         onChange={handleChange}
                         required
-                        className="form-input"
+                        disabled={!formData.eventDate}
+                        className={`form-input ${!formData.eventDate ? 'opacity-50 cursor-not-allowed bg-slate-800/50' : ''}`}
                       >
-                        <option value="">Select a hall</option>
+                        <option value="">{formData.eventDate ? 'Select a hall' : 'Pick a date first'}</option>
                         {halls.map((hall: any) => (
                           <option key={hall.id} value={hall.id} disabled={hall.status !== 'AVAILABLE'}>
                             {hall.name} - {hall.capacity} guests - ₹{hall.pricePerDay.toLocaleString()}/day

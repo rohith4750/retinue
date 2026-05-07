@@ -140,10 +140,7 @@ export function PaymentReceiptPDF({ bill, transaction }: PaymentReceiptPDFProps)
                             <PDFText style={styles.label} hyphenationCallback={() => []}>Guest Name</PDFText>
                             <PDFText style={styles.value} hyphenationCallback={() => []}>{guest.name || 'N/A'}</PDFText>
                         </View>
-                        <View style={styles.row}>
-                            <PDFText style={styles.label} hyphenationCallback={() => []}>Phone Number</PDFText>
-                            <PDFText style={styles.value} hyphenationCallback={() => []}>{guest.phone || 'N/A'}</PDFText>
-                        </View>
+
                         <View style={styles.row}>
                             <PDFText style={styles.label} hyphenationCallback={() => []}>Room Information</PDFText>
                             <PDFText style={styles.value} hyphenationCallback={() => []}>Room {room.roomNumber || 'N/A'} ({room.roomType || 'N/A'})</PDFText>
