@@ -207,12 +207,11 @@ export default function EditFunctionHallBookingPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Event Type *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Event Type</label>
                   <select
                     name="eventType"
                     value={formData.eventType}
                     onChange={handleChange}
-                    required
                     className="form-input"
                   >
                     <option value="">Select event type</option>
@@ -248,7 +247,7 @@ export default function EditFunctionHallBookingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Expected Guests *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Expected Guests</label>
                   <div className="relative">
                     <FaUsers className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                     <input
@@ -256,8 +255,7 @@ export default function EditFunctionHallBookingPage() {
                       name="expectedGuests"
                       value={formData.expectedGuests}
                       onChange={handleChange}
-                      required
-                      min="1"
+                      min="0"
                       className="form-input pl-10"
                       placeholder="Number of guests"
                     />

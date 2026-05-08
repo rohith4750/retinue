@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     headerLeft: {
-        width: '60%',
+        width: '55%',
         backgroundColor: '#ffffff',
         paddingLeft: 24,
         paddingRight: 16,
@@ -65,18 +65,18 @@ const styles = StyleSheet.create({
     },
     hotelNameHeader: {
         color: GOLD,
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: 700,
         letterSpacing: 1,
     },
     headerRight: {
-        flex: 1,
+        width: '45%',
         paddingRight: 24,
         alignItems: 'flex-end',
         justifyContent: 'center',
     },
     taxInvoiceTitle: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: 700,
         color: '#111827',
         marginBottom: 4,
