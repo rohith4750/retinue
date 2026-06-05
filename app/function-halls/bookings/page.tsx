@@ -12,6 +12,7 @@ import { ConfirmationModal } from '@/components/ConfirmationModal'
 import Link from 'next/link'
 import { pdf } from '@react-pdf/renderer'
 import { ConventionBillPDF } from '@/components/ConventionBillPDF'
+import { GST_RATE } from '@/lib/constants'
 
 export default function FunctionHallBookingsPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -791,6 +792,20 @@ export default function FunctionHallBookingsPage() {
                     <span className="text-white">₹{billModal.booking.otherCharges?.toLocaleString()}</span>
                   </div>
                 )}
+                <div className="border-t border-white/5 pt-2 mt-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Sub Total</span>
+                    <span className="text-slate-300">
+                      ₹{((billModal.booking.grandTotal || billModal.booking.totalAmount || 0) / (1 + GST_RATE)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">GST ({(GST_RATE * 100).toFixed(0)}%)</span>
+                    <span className="text-slate-300">
+                      ₹{((billModal.booking.grandTotal || billModal.booking.totalAmount || 0) - (billModal.booking.grandTotal || billModal.booking.totalAmount || 0) / (1 + GST_RATE)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
                 <div className="border-t border-white/10 pt-2 mt-2">
                   <div className="flex justify-between text-base font-bold">
                     <span className="text-slate-300">Grand Total</span>

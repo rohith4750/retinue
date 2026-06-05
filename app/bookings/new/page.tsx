@@ -25,6 +25,15 @@ function NewBookingContent() {
 
   const roomIdParam = searchParams.get('roomId')
   const slotIdParam = searchParams.get('slotId')
+
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  useEffect(() => {
+    const user = localStorage.getItem('user')
+    if (user) {
+      setCurrentUser(JSON.parse(user))
+    }
+  }, [])
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN'
   // Stable initial state: only depends on URL params so form isn't reset on every render
   const initialFormData = useMemo(
     () => ({
@@ -44,7 +53,7 @@ function NewBookingContent() {
       paymentMode: 'CASH' as const,
       advanceAmount: '',
       discount: '',
-      applyGst: false,
+      applyGst: true,
       extraBed: false,
       extraBedCount: '',
       extraBedPrice: '',
@@ -499,11 +508,11 @@ function NewBookingContent() {
     },
     { name: 'advanceAmount', label: 'Advance Amount (₹)', type: 'text', placeholder: '0.00' },
     { name: 'discount', label: 'Discount (₹)', type: 'text', placeholder: '0.00' },
-    {
+    ...(isAdmin ? [{
       name: 'applyGst',
       label: `GST (${(GST_RATE * 100).toFixed(0)}%)`,
-      type: 'custom',
-      render: ({ formData, updateField }) => (
+      type: 'custom' as const,
+      render: ({ formData, updateField }: any) => (
         <div>
           <label className="form-label flex items-center gap-2">
             <FaPercent className="w-3 h-3 text-slate-400" />
@@ -525,7 +534,7 @@ function NewBookingContent() {
           </div>
         </div>
       )
-    }
+    }] : [])
   ]
 
   return (

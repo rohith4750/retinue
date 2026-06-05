@@ -534,12 +534,10 @@ export default function BillPage() {
                   <td className="py-3 text-right">₹{(item.subtotal || bill.subtotal).toLocaleString()}</td>
                 </tr>
               ))}
-              {tax > 0 && (
-                <tr className="border-b border-white/5 text-slate-300">
-                  <td className="py-3">GST ({(GST_RATE * 100).toFixed(0)}%)</td>
-                  <td className="py-3 text-right">₹{tax.toLocaleString()}</td>
-                </tr>
-              )}
+              <tr className="border-b border-white/5 text-slate-300">
+                <td className="py-3">GST ({(GST_RATE * 100).toFixed(0)}%)</td>
+                <td className="py-3 text-right">₹{(tax || 0).toLocaleString()}</td>
+              </tr>
               {discount > 0 && (
                 <tr className="border-b border-white/5 text-emerald-400">
                   <td className="py-3">Discount</td>

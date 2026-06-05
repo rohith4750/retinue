@@ -458,12 +458,10 @@ export function BillPDF({ bill }: BillPDFProps) {
               <PDFText style={styles.paymentSummaryLabel}>Sub Total</PDFText>
               <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(displaySubtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
             </View>
-            {displayTax > 0 && (
               <View style={styles.paymentSummaryRow}>
                 <PDFText style={styles.paymentSummaryLabel}>GST ({(GST_RATE * 100).toFixed(0)}%)</PDFText>
                 <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(displayTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
               </View>
-            )}
             {displayDiscount > 0 && (
               <View style={styles.paymentSummaryRow}>
                 <PDFText style={styles.paymentSummaryLabel}>Discount</PDFText>

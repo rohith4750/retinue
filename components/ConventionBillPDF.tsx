@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
+import { GST_RATE } from '@/lib/constants'
 
 // Register Poppins font for better symbol support and premium look
 Font.register({
@@ -272,7 +273,9 @@ export function ConventionBillPDF({ booking }: ConventionBillPDFProps) {
     const formatDate = (dateString: string) =>
         new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
-    const grandTotal = booking.grandTotal || booking.totalAmount
+    const grandTotal = booking.grandTotal || booking.totalAmount || 0
+    const subTotal = grandTotal / (1 + GST_RATE)
+    const gstAmount = grandTotal - subTotal
 
     return (
         <Document title={`Bill - ${booking.customerName}`}>
@@ -302,6 +305,7 @@ export function ConventionBillPDF({ booking }: ConventionBillPDFProps) {
                         <Text style={styles.taxInvoiceTitle}>Tax Invoice</Text>
                         <Text style={styles.invoiceMeta}>Date: {formatDate(booking.eventDate)}</Text>
                         <Text style={styles.invoiceMeta}>Invoice No: {booking.id?.substring(0, 8).toUpperCase()}</Text>
+                        {HOTEL_INFO.gstin && <Text style={styles.invoiceMeta}>GSTIN: {HOTEL_INFO.gstin}</Text>}
                     </View>
                 </View>
 
@@ -419,11 +423,15 @@ export function ConventionBillPDF({ booking }: ConventionBillPDFProps) {
                     <View style={styles.rightCol}>
                         <View style={styles.paymentSummaryRow}>
                             <Text style={styles.paymentSummaryLabel}>Sub Total</Text>
-                            <Text style={styles.paymentSummaryValue}>₹{grandTotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                            <Text style={styles.paymentSummaryValue}>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                        </View>
+                        <View style={styles.paymentSummaryRow}>
+                            <Text style={styles.paymentSummaryLabel}>GST ({(GST_RATE * 100).toFixed(0)}%)</Text>
+                            <Text style={styles.paymentSummaryValue}>₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
                         </View>
                         <View style={[styles.paymentSummaryRow, { marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#e5e7eb' }]}>
                             <Text style={styles.paymentSummaryLabel}>Total Amount</Text>
-                            <Text style={[styles.paymentSummaryValue, { fontSize: 11 }]}>₹{grandTotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                            <Text style={[styles.paymentSummaryValue, { fontSize: 11 }]}>₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
                         </View>
                         <View style={styles.paymentSummaryRow}>
                             <Text style={styles.paymentSummaryLabel}>Advance Paid</Text>

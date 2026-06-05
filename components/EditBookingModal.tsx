@@ -60,7 +60,7 @@ const initialFormData = {
   totalAmount: '0',
   advanceAmount: '0',
   discount: '0',
-  applyGst: false,
+  applyGst: true,
   extraBed: false,
   extraBedCount: '1',
   extraBedPrice: '500',
@@ -88,6 +88,14 @@ export function EditBookingModal({
   } = useFormValidation(initialFormData, editBookingValidationRules)
 
   const [idProofError, setIdProofError] = useState('')
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  useEffect(() => {
+    const user = localStorage.getItem('user')
+    if (user) {
+      setCurrentUser(JSON.parse(user))
+    }
+  }, [])
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN'
   const validateIdProof = (type: string, value: string) => {
     if (!value) { setIdProofError(''); return true }
     const validation = ID_PROOF_PATTERNS[type]
@@ -305,16 +313,18 @@ export function EditBookingModal({
                 error={getError('discount')} 
                 placeholder="0.00" 
               />
-              <div className="flex items-center gap-2 pt-6">
-                 <input 
-                    type="checkbox" 
-                    id="edit-apply-gst"
-                    checked={formData.applyGst} 
-                    onChange={(e) => updateField('applyGst', e.target.checked)} 
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-sky-500"
-                 />
-                 <label htmlFor="edit-apply-gst" className="text-sm text-slate-300">Apply GST ({(GST_RATE * 100).toFixed(0)}%)</label>
-              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-2 pt-6">
+                   <input 
+                      type="checkbox" 
+                      id="edit-apply-gst"
+                      checked={formData.applyGst} 
+                      onChange={(e) => updateField('applyGst', e.target.checked)} 
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-sky-500"
+                   />
+                   <label htmlFor="edit-apply-gst" className="text-sm text-slate-300">Apply GST ({(GST_RATE * 100).toFixed(0)}%)</label>
+                </div>
+              )}
 
               {/* Live Preview Section */}
               <div className="md:col-span-2 lg:col-span-3 mt-2 p-4 rounded-xl bg-sky-500/10 border border-sky-500/20">
