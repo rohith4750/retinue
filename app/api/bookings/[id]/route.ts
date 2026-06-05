@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import moment from "moment";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { GST_RATE } from "@/lib/constants";
 
 // Types - will be available from @prisma/client after running: npx prisma generate
 type UserRole = "SUPER_ADMIN" | "ADMIN" | "RECEPTIONIST" | "STAFF";
@@ -269,8 +270,8 @@ export async function PUT(
           const netPayable = grossTarget - currentDiscount;
 
           if (currentBooking.applyGst) {
-            // Gross = Subtotal * 1.18 -> Subtotal = Gross / 1.18
-            const calculatedSubtotal = Math.round((grossTarget / 1.18) * 100) / 100;
+            // Gross = Subtotal * (1 + GST_RATE) -> Subtotal = Gross / (1 + GST_RATE)
+            const calculatedSubtotal = Math.round((grossTarget / (1 + GST_RATE)) * 100) / 100;
             updateData.subtotal = calculatedSubtotal;
             updateData.tax = Math.round((grossTarget - calculatedSubtotal) * 100) / 100;
           } else {
@@ -460,7 +461,7 @@ export async function PUT(
             if (newDays !== oldDays && newDays > 0) {
               const newSubtotal = newDays * room.basePrice;
               const newTax = currentBooking.applyGst
-                ? Math.round(newSubtotal * 0.18)
+                ? Math.round(newSubtotal * GST_RATE)
                 : 0;
               const newTotal =
                 newSubtotal + newTax - (currentBooking.discount || 0);
@@ -512,7 +513,7 @@ export async function PUT(
               (currentBooking.subtotal || currentBooking.totalAmount) +
               additionalAmount;
             const newTax = currentBooking.applyGst
-              ? Math.round(newSubtotal * 0.18)
+              ? Math.round(newSubtotal * GST_RATE)
               : 0;
             const newTotal =
               newSubtotal + newTax - (currentBooking.discount || 0);

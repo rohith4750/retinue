@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
+import { GST_RATE } from '@/lib/constants'
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -219,7 +220,7 @@ function NewBookingContent() {
           return total + ((selectedSlot?.price || room?.basePrice || 0) * days)
         }, 0)
         const subtotal = totalBaseAmount + extraBedAmount - discountAmount
-        const gstAmount = data.applyGst ? subtotal * 0.18 : 0
+        const gstAmount = data.applyGst ? subtotal * GST_RATE : 0
         const totalAmount = Math.max(0, subtotal + gstAmount)
         const advanceAmount = parseFloat(data.advanceAmount) || 0
 
@@ -316,7 +317,7 @@ function NewBookingContent() {
     const subtotal = baseAmount + extraBedAmount - discountAmount
 
     // GST only if toggle is on
-    const tax = formData.applyGst ? subtotal * 0.18 : 0 // 18% GST only if applied
+    const tax = formData.applyGst ? subtotal * GST_RATE : 0 // GST only if applied
     const totalAmount = Math.max(0, subtotal + tax)
 
     // Advance and balance
@@ -500,13 +501,13 @@ function NewBookingContent() {
     { name: 'discount', label: 'Discount (₹)', type: 'text', placeholder: '0.00' },
     {
       name: 'applyGst',
-      label: 'GST (18%)',
+      label: `GST (${(GST_RATE * 100).toFixed(0)}%)`,
       type: 'custom',
       render: ({ formData, updateField }) => (
         <div>
           <label className="form-label flex items-center gap-2">
             <FaPercent className="w-3 h-3 text-slate-400" />
-            GST (18%)
+            GST ({(GST_RATE * 100).toFixed(0)}%)
           </label>
           <div className="flex items-center h-[42px] px-3 bg-slate-800/60 rounded-lg border border-white/10">
             <label className="relative inline-flex items-center cursor-pointer text-xs">
@@ -905,7 +906,7 @@ function NewBookingContent() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className={`${overview.gstApplied ? 'text-slate-400' : 'text-slate-500 line-through'}`}>
-                      GST (18%)
+                      GST ({(GST_RATE * 100).toFixed(0)}%)
                       {!overview.gstApplied && <span className="ml-1 text-xs text-slate-500">(Not Applied)</span>}
                     </span>
                     <span className={`font-medium ${overview.gstApplied ? 'text-slate-200' : 'text-slate-500'}`}>

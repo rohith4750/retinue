@@ -14,4 +14,5 @@ export const HOTEL_INFO = {
   landmark:
     'Main Road, Ramachandrapuram, Rajgopal Centre, Near HP Petrol Bank, Near Reliance Trends, 2nd Floor, Hotel The Retinue.',
   stateCode: '37-Andhra Pradesh',
+  gstin: '37AATFD7297D1ZU',
 } as const

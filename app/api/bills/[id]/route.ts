@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { GST_RATE } from "@/lib/constants";
 
 // GET /api/bills/[id] - Get bill details (now uses Booking)
 // id can be billNumber or bookingId
@@ -415,7 +416,7 @@ export async function PATCH(
             // Tax is calculated on (Subtotal - Discount)
             const taxableAmount = Math.max(0, subtotal - discountPerRoom);
             const newTax = b.applyGst
-              ? Math.round(taxableAmount * 0.18 * 100) / 100
+              ? Math.round(taxableAmount * GST_RATE * 100) / 100
               : 0;
             const newTotalAmount =
               Math.round((taxableAmount + newTax) * 100) / 100;

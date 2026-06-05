@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { GST_RATE } from '@/lib/constants'
 import { FaEdit, FaIdCard, FaUsers } from 'react-icons/fa'
 import { FormInput, FormSelect, FormTextarea } from '@/components/FormComponents'
 import { useFormValidation } from '@/hooks/useFormValidation'
@@ -312,7 +313,7 @@ export function EditBookingModal({
                     onChange={(e) => updateField('applyGst', e.target.checked)} 
                     className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-sky-500"
                  />
-                 <label htmlFor="edit-apply-gst" className="text-sm text-slate-300">Apply GST (18%)</label>
+                 <label htmlFor="edit-apply-gst" className="text-sm text-slate-300">Apply GST ({(GST_RATE * 100).toFixed(0)}%)</label>
               </div>
 
               {/* Live Preview Section */}

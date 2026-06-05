@@ -43,7 +43,7 @@ export const USER_ROLES = {
 } as const
 
 // Payment Constants
-export const GST_RATE = 0.18 // 18%
+export const GST_RATE = 0.05 // 5%
 export const PAYMENT_STATUSES = {
   PENDING: 'PENDING',
   PARTIAL: 'PARTIAL',

@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { prisma } from "./prisma";
+import { GST_RATE } from "./constants";
 
 // Zod schema for booking creation
 export const createBookingSchema = z.object({
@@ -178,7 +179,7 @@ export function calculateBookingPrice(
   // This matches UI components that calculate netPayable = (subtotal + tax - discount)
   const subtotal = baseAmount;
   const taxableAmount = baseAmount - discountAmount;
-  const tax = taxableAmount * 0.18; // 18% GST
+  const tax = taxableAmount * GST_RATE; // GST (using GST_RATE)
   const totalAmount = taxableAmount + tax;
 
   return {
@@ -212,7 +213,7 @@ export function calculateEarlyCheckoutAmount(
   let days = Math.max(1, Math.ceil(hours / 24));
   subtotal = basePrice * days;
 
-  const tax = applyGst ? Math.round(subtotal * 0.18) : 0;
+  const tax = applyGst ? Math.round(subtotal * GST_RATE) : 0;
   const totalAmount = subtotal + tax;
 
   const breakdown = `Early checkout ${days} day(s): ₹${subtotal.toFixed(0)} + GST ₹${tax}`;

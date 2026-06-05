@@ -2,6 +2,7 @@ import { Document as PDFDocument, Page, Text as PDFText, View, StyleSheet, Image
 import { HOTEL_INFO } from '@/lib/hotel-info'
 import { amountInWords } from '@/lib/amount-in-words'
 import { registerFonts } from '@/lib/pdf-fonts'
+import { GST_RATE } from '@/lib/constants'
 
 registerFonts()
 
@@ -384,6 +385,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             <PDFText style={styles.taxInvoiceTitle}>Tax Invoice</PDFText>
             <PDFText style={styles.invoiceMeta} hyphenationCallback={() => []}>Invoice No.: {bill.billNumber}</PDFText>
             <PDFText style={styles.invoiceMeta} hyphenationCallback={() => []}>Date: {formatDate(booking.checkOut)}</PDFText>
+            {HOTEL_INFO.gstin && <PDFText style={styles.invoiceMeta} hyphenationCallback={() => []}>GSTIN: {HOTEL_INFO.gstin}</PDFText>}
           </View>
         </View>
 
@@ -458,7 +460,7 @@ export function BillPDF({ bill }: BillPDFProps) {
             </View>
             {displayTax > 0 && (
               <View style={styles.paymentSummaryRow}>
-                <PDFText style={styles.paymentSummaryLabel}>GST (18%)</PDFText>
+                <PDFText style={styles.paymentSummaryLabel}>GST ({(GST_RATE * 100).toFixed(0)}%)</PDFText>
                 <PDFText style={styles.paymentSummaryValue} hyphenationCallback={() => []}>{`\u20B9`} {(displayTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</PDFText>
               </View>
             )}

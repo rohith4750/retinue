@@ -12,6 +12,7 @@ import { pdf } from '@react-pdf/renderer'
 import { BillPDF } from '@/components/BillPDF'
 import { PaymentReceiptPDF } from '@/components/PaymentReceiptPDF'
 import { HOTEL_INFO } from '@/lib/hotel-info'
+import { GST_RATE } from '@/lib/constants'
 
 export default function BillPage() {
   const params = useParams()
@@ -473,7 +474,7 @@ export default function BillPage() {
             <p className="text-sm text-slate-400">Luxury Hotel & Hospitality</p>
             <div className="text-xs text-slate-500 mt-2">
               <p>{HOTEL_INFO.address}</p>
-              <p>Email: {HOTEL_INFO.email}</p>
+              <p>Email: {HOTEL_INFO.email} {HOTEL_INFO.gstin && `| GSTIN: ${HOTEL_INFO.gstin}`}</p>
             </div>
           </div>
 
@@ -535,7 +536,7 @@ export default function BillPage() {
               ))}
               {tax > 0 && (
                 <tr className="border-b border-white/5 text-slate-300">
-                  <td className="py-3">GST (18%)</td>
+                  <td className="py-3">GST ({(GST_RATE * 100).toFixed(0)}%)</td>
                   <td className="py-3 text-right">₹{tax.toLocaleString()}</td>
                 </tr>
               )}
